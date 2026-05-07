@@ -1,0 +1,30 @@
+node_modules/
+uploads/*
+!uploads/.gitkeep
+package-lock.json
+
+# Compilação e Builds
+dist/
+build/
+*.exe
+*.dll
+*.so
+
+# Variáveis de ambiente e segredos (Segurança!)
+.env
+.env.local
+*.pem
+*.key
+
+# Logs e arquivos temporários
+*.log
+npm-debug.log*
+yarn-debug.log*
+.tmp/
+
+# Arquivos do Sistema Operacional e IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
