@@ -64,15 +64,15 @@ const Home = () => {
       <section className="pt-[80px] md:pt-[100px] pb-16 bg-gradient-to-br from-surface-page via-surface-blue to-surface-page overflow-hidden">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
           <div className="grid md:grid-cols-2 gap-10 items-center">
-            <div className="animate-fadeIn">
+            <div className="animate-fadeIn flex flex-col items-center">
               <span className="inline-block bg-surface-hover text-primary text-xs font-semibold px-3 py-1 rounded-full mb-4">
                 CEFET/RJ — Telecomunicações
               </span>
-              <h1 className="text-3xl md:text-5xl font-bold text-text-primary leading-tight mb-4">
+              <h1 className="text-3xl md:text-5xl font-bold text-text-primary leading-tight mb-4 text-center">
                 Transforme o mundo através das{' '}
                 <span className="text-primary">conexões</span>
               </h1>
-              <p className="text-text-secondary text-base md:text-lg leading-relaxed mb-8 max-w-lg">
+              <p className="text-text-secondary text-base md:text-lg leading-relaxed mb-8 max-w-lg text-center">
                 O curso de Telecomunicações do CEFET/RJ prepara você para dominar as tecnologias que conectam pessoas, empresas e o futuro. Seja o profissional que o mercado busca.
               </p>
               <div className="flex flex-wrap gap-3">

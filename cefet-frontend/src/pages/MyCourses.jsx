@@ -43,7 +43,7 @@ const MyCourses = () => {
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-text-primary">Meus Cursos</h1>
-            <p className="text-text-secondary text-sm mt-1">Olá, {user?.name?.split(' ')[0]} 👋</p>
+            <p className="text-text-secondary text-sm mt-1">Olá, {user?.name?.split(' ')[0]}!</p>
           </div>
 
           <div className="card overflow-x-none">
@@ -55,14 +55,14 @@ const MyCourses = () => {
               {loading ? (
                 <div className="flex justify-center py-12"><Spinner /></div>
               ) : filtered.length === 0 ? (
-                <div className="text-center py-14">
+                <div className="text-center py-8 flex flex-col items-center">
                   <div className="w-16 h-16 rounded-full bg-surface-page flex items-center justify-center mx-auto mb-4">
                     <BookOpen size={28} className="text-text-muted" />
                   </div>
                   <h3 className="font-semibold text-text-primary mb-1">Nenhum curso aqui</h3>
                   <p className="text-text-secondary text-sm mb-5">Você ainda não possui cursos nesta categoria.</p>
                   <Link to="/#cursos">
-                    <button className="btn-primary px-6 py-2.5 text-sm">Explorar cursos</button>
+                    <button className="btn-primary px-6 py-2.5 text-sm mt-3">Explorar cursos</button>
                   </Link>
                 </div>
               ) : (
