@@ -9,7 +9,7 @@ import { formatDate } from '../utils/formatDate'
 
 const tabs = [
   { value: 'inscrito', label: 'Inscritos' },
-  { value: 'ativo', label: 'Em andamento' },
+  // { value: 'ativo', label: 'Em andamento' },
   { value: 'concluido', label: 'Concluídos' },
 ]
 

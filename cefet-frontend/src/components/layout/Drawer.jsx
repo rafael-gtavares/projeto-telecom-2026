@@ -51,9 +51,6 @@ const Drawer = ({ open, onClose }) => {
           <NavLink to="/" icon={Home} onClick={close}>Início</NavLink>
           {!isAuthenticated && (
             <>
-              <a href="#parceiros" onClick={close} className="flex items-center gap-3 px-5 py-3.5 text-text-primary hover:bg-surface-hover transition-colors text-[15px]">
-                <Users size={18} className="text-text-muted" /> Parceiros
-              </a>
               <a href="#cursos" onClick={close} className="flex items-center gap-3 px-5 py-3.5 text-text-primary hover:bg-surface-hover transition-colors text-[15px]">
                 <BookOpen size={18} className="text-text-muted" /> Cursos & Eventos
               </a>

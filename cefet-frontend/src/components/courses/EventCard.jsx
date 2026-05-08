@@ -19,23 +19,23 @@ const EventCard = ({ course, onEnroll, loading }) => {
   return (
     <div className="card overflow-hidden flex flex-col hover:shadow-hover hover:border-border transition-all duration-200">
       <div className={`relative h-[160px] bg-gradient-to-br ${grad} flex flex-col items-center justify-center p-4`}>
-          {course.imageUrl && (
-            <>
-              <img 
-                src={`${apiBase}${course.imageUrl}`} 
-                alt={course.title} 
-                className="absolute inset-0 w-full h-full object-cover" 
-              />
-              {/* Camada de escurecimento (Overlay) */}
-              <div className="absolute inset-0 bg-black/30" />
-            </>
-          )}
-          
-          <div className="relative z-10 text-center">
-            <p className="text-white/80 text-xs font-medium uppercase tracking-wider mb-1 drop-shadow-md">Curso</p>
-            <h3 className="text-white font-bold text-base leading-tight line-clamp-2 px-2 drop-shadow-lg">{course.title}</h3>
-          </div>
+        {course.imageUrl && (
+          <>
+            <img
+              src={`${apiBase}${course.imageUrl}`}
+              alt={course.title}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            {/* Camada de escurecimento (Overlay) */}
+            <div className="absolute inset-0 bg-black/30" />
+          </>
+        )}
+
+        <div className="relative z-10 text-center">
+          <p className="text-white/80 text-xs font-medium uppercase tracking-wider mb-1 drop-shadow-md">Curso</p>
+          <h3 className="text-white font-bold text-base leading-tight line-clamp-2 px-2 drop-shadow-lg">{course.title}</h3>
         </div>
+      </div>
       <div className="p-4 flex flex-col flex-1">
         <p className="text-text-secondary text-sm line-clamp-2 mb-3 flex-1">{course.description}</p>
         <div className="space-y-1.5 mb-3">

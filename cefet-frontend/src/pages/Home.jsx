@@ -166,9 +166,9 @@ const Home = () => {
               ))}
             </div>
           )}
-          <div className="text-center mt-10">
+          {/* <div className="text-center mt-10">
             <Button variant="secondary">Ver todos os eventos</Button>
-          </div>
+          </div> */}
         </div>
       </section>
 

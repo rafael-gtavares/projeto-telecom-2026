@@ -1,8 +1,9 @@
 import { Link, useParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Users } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Users, Home } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const items = [
+  { tab: '../', label: 'Home', icon: Home },
   { tab: '', label: 'Dashboard', icon: LayoutDashboard },
   { tab: 'cursos', label: 'Cursos', icon: BookOpen },
   { tab: 'usuarios', label: 'Usuários', icon: Users, adminOnly: true },

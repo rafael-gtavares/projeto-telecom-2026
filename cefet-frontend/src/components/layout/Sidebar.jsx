@@ -1,11 +1,12 @@
 import { Link, useParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Users, GraduationCap, LogOut } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Users, GraduationCap, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Avatar, Badge } from '../ui/index'
 import { getRoleLabel } from '../../utils/formatDate'
 import LogoSVG from '../../assets/cefetrj-logo'
 
 const navItems = [
+  { tab: '../', label: 'Home', icon: Home },
   { tab: '', label: 'Dashboard', icon: LayoutDashboard },
   { tab: 'cursos', label: 'Cursos', icon: BookOpen },
   { tab: 'usuarios', label: 'Usuários', icon: Users, adminOnly: true },
