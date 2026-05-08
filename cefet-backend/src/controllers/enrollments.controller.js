@@ -30,4 +30,34 @@ const getMyEnrollments = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { enroll, getMyEnrollments };
+const checkEnrollment = async (req, res, next) => {
+  try {
+    const enrollment = await Enrollment.findOne({ user: req.user.id, course: req.params.courseId });
+    res.json({ success: true, data: { enrolled: !!enrollment, enrollment } });
+  } catch (err) { next(err); }
+};
+
+const cancelEnrollment = async (req, res, next) => {
+  try {
+    const { courseId } = req.params;
+    const enrollment = await Enrollment.findOne({ user: req.user.id, course: courseId });
+    
+    if (!enrollment) {
+      return res.status(404).json({ success: false, message: 'Inscrição não encontrada' });
+    }
+    
+    if (enrollment.status === 'concluido') {
+      return res.status(400).json({ success: false, message: 'Não é possível cancelar um curso já concluído' });
+    }
+    
+    await enrollment.deleteOne();
+    await Course.findOneAndUpdate(
+      { _id: courseId, enrolledCount: { $gt: 0 } },
+      { $inc: { enrolledCount: -1 } }
+    );
+    
+    res.json({ success: true, message: 'Inscrição cancelada com sucesso' });
+  } catch (err) { next(err); }
+};
+
+module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment };

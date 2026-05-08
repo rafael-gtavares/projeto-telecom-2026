@@ -10,7 +10,7 @@ const gradients = [
   'from-[#0D47A1] to-[#1976D2]',
 ]
 
-const EventCard = ({ course, onEnroll, loading }) => {
+const EventCard = ({ course, onOpenModal, loading }) => {
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
   const grad = gradients[parseInt(course._id?.slice(-1), 16) % gradients.length] || gradients[0]
@@ -63,7 +63,7 @@ const EventCard = ({ course, onEnroll, loading }) => {
           className="w-full text-sm py-2.5"
           disabled={isFull}
           loading={loading}
-          onClick={() => onEnroll(course._id)}
+          onClick={() => onOpenModal(course)}
         >
           {isFull ? 'Sem vagas' : 'Inscrever-se'}
         </Button>

@@ -7,7 +7,7 @@ const courseSchema = new mongoose.Schema({
   time: { type: String, required: true },
   professor: { type: String, required: true, trim: true },
   maxSlots: { type: Number, required: true, min: 1 },
-  enrolledCount: { type: Number, default: 0 },
+  enrolledCount: { type: Number, default: 0, min: 0 },
   imageUrl: { type: String, default: null },
   status: { type: String, enum: ['draft', 'published', 'closed'], default: 'draft' },
 }, { timestamps: true });

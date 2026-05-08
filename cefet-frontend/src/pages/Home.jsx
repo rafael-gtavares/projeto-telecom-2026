@@ -4,10 +4,11 @@ import { ArrowRight, Zap, Briefcase, Globe, BookOpen } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import EventCard from '../components/courses/EventCard'
+import CourseDetailModal from '../components/courses/CourseDetailModal'
 import Toast from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
-import { getCoursesAPI, enrollAPI } from '../api/courses'
+import { getCoursesAPI } from '../api/courses'
 import { mockCourses, mockPartners } from '../mockData/courses'
 
 const partners = [...mockPartners, ...mockPartners]
@@ -22,7 +23,8 @@ const Home = () => {
   const { isAuthenticated } = useAuth()
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState({ show: false, message: '' })
-  const [enrollingId, setEnrollingId] = useState(null)
+  const [selectedCourse, setSelectedCourse] = useState(null)
+  const [modalOpen, setModalOpen] = useState(false)
   // console.log(courses.map(course => course.id))
 
   useEffect(() => {
@@ -31,20 +33,27 @@ const Home = () => {
       .catch(() => setCourses(mockCourses))
   }, [])
 
-  const handleEnroll = async (courseId) => {
-    if (!isAuthenticated) {
-      setToast({ show: true, message: 'Faça login para se inscrever', action: { href: '/login', label: 'Entrar →' } })
-      return
-    }
-    try {
-      setEnrollingId(courseId)
-      await enrollAPI(courseId)
-      setToast({ show: true, message: 'Inscrição realizada com sucesso! 🎉' })
-    } catch (err) {
-      setToast({ show: true, message: err.response?.data?.message || 'Erro ao se inscrever' })
-    } finally {
-      setEnrollingId(null)
-    }
+  const handleOpenModal = (course) => {
+    setSelectedCourse(course)
+    setModalOpen(true)
+  }
+
+  const handleEnrollSuccess = (courseId) => {
+    setCourses(prev => prev.map(c =>
+      c._id === courseId
+        ? { ...c, enrolledCount: c.enrolledCount + 1, availableSlots: c.availableSlots - 1 }
+        : c
+    ))
+    setToast({ show: true, message: 'Inscrição confirmada com sucesso! 🎉' })
+  }
+
+  const handleCancelSuccess = (courseId) => {
+    setCourses(prev => prev.map(c =>
+      c._id === courseId
+        ? { ...c, enrolledCount: c.enrolledCount - 1, availableSlots: c.availableSlots + 1 }
+        : c
+    ))
+    setToast({ show: true, message: 'Inscrição cancelada.' })
   }
 
   return (
@@ -162,7 +171,7 @@ const Home = () => {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {courses.map(c => (
-                <EventCard key={c._id} course={c} onEnroll={handleEnroll} loading={enrollingId === c._id} />
+                <EventCard key={c._id} course={c} onOpenModal={handleOpenModal} />
               ))}
             </div>
           )}
@@ -173,6 +182,14 @@ const Home = () => {
       </section>
 
       <Footer />
+
+      <CourseDetailModal
+        open={modalOpen}
+        onClose={() => { setModalOpen(false); setSelectedCourse(null) }}
+        course={selectedCourse}
+        onEnrollSuccess={handleEnrollSuccess}
+        onCancelSuccess={handleCancelSuccess}
+      />
 
       <Toast
         show={toast.show}
