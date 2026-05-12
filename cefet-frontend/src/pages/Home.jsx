@@ -93,20 +93,20 @@ const Home = () => {
                 <circle cx="210" cy="170" r="60" fill="#E3F0FF" />
                 <circle cx="210" cy="170" r="38" fill="#1565C0" fillOpacity="0.12" />
                 <circle cx="210" cy="170" r="20" fill="#1565C0" fillOpacity="0.9" />
-                {[[80,60],[340,60],[60,280],[360,270],[190,310],[230,40]].map(([x,y],i)=>(
+                {[[80, 60], [340, 60], [60, 280], [360, 270], [190, 310], [230, 40]].map(([x, y], i) => (
                   <g key={i}>
-                    <line x1="210" y1="170" x2={x} y2={y} stroke="#1565C0" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="6 4"/>
-                    <circle cx={x} cy={y} r="12" fill="#1976D2" fillOpacity="0.15" stroke="#1565C0" strokeWidth="1.5" strokeOpacity="0.5"/>
-                    <circle cx={x} cy={y} r="5" fill="#42A5F5"/>
+                    <line x1="210" y1="170" x2={x} y2={y} stroke="#1565C0" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="6 4" />
+                    <circle cx={x} cy={y} r="12" fill="#1976D2" fillOpacity="0.15" stroke="#1565C0" strokeWidth="1.5" strokeOpacity="0.5" />
+                    <circle cx={x} cy={y} r="5" fill="#42A5F5" />
                   </g>
                 ))}
-                {[[130,100],[290,100],[140,240],[280,240]].map(([x,y],i)=>(
+                {[[130, 100], [290, 100], [140, 240], [280, 240]].map(([x, y], i) => (
                   <g key={`s${i}`}>
-                    <circle cx={x} cy={y} r="7" fill="#90CAF9" fillOpacity="0.7"/>
-                    <circle cx={x} cy={y} r="3" fill="#1565C0" fillOpacity="0.5"/>
+                    <circle cx={x} cy={y} r="7" fill="#90CAF9" fillOpacity="0.7" />
+                    <circle cx={x} cy={y} r="3" fill="#1565C0" fillOpacity="0.5" />
                   </g>
                 ))}
-                <circle cx="210" cy="170" r="7" fill="white"/>
+                <circle cx="210" cy="170" r="7" fill="white" />
               </svg>
             </div>
           </div>
@@ -121,7 +121,7 @@ const Home = () => {
         </div>
 
         <div className="relative max-w-[920px] mx-auto overflow-hidden">
-          
+
           <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
           <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 

@@ -28,3 +28,17 @@
     @apply min-h-screen bg-surface-page pt-[72px];
   }
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+#cursos, #sobre {
+  scroll-margin-top: 72px; 
+}
+
+@media (max-width: 768px) {
+  #cursos, #sobre {
+    scroll-margin-top: 59px;
+  }
+}

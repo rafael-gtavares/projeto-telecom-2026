@@ -6,6 +6,7 @@ const statusMap = { published: ['success', 'Publicado'], draft: ['gray', 'Rascun
 
 const CourseTable = ({ courses, onEdit, onDelete }) => {
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  console.log(courses)
 
   return (
     <div className="overflow-x-auto">
@@ -32,7 +33,7 @@ const CourseTable = ({ courses, onEdit, onDelete }) => {
                     <span className="font-medium text-text-primary max-w-[160px] truncate">{c.title}</span>
                   </div>
                 </td>
-                <td className="py-3 pr-4 text-text-secondary whitespace-nowrap">{c.professor?.name || '—'}</td>
+                <td className="py-3 pr-4 text-text-secondary whitespace-nowrap">{c.professor || '—'}</td>
                 <td className="py-3 pr-4 text-text-muted whitespace-nowrap">{formatDate(c.date)}</td>
                 <td className="py-3 pr-4 text-text-secondary whitespace-nowrap">
                   {c.enrolledCount}/{c.maxSlots}

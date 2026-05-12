@@ -1,6 +1,17 @@
 export const formatDate = (dateStr) => {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+  
+  const date = new Date(dateStr)
+  
+  const dia = String(date.getUTCDate()).padStart(2, '0')
+  const meses = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+  ]
+  const mes = meses[date.getUTCMonth()]
+  const ano = date.getUTCFullYear()
+
+  return `${dia} de ${mes} de ${ano}`
 }
 
 export const getInitials = (name = '') =>
