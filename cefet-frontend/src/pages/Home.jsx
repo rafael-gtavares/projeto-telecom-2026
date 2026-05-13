@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Zap, Briefcase, Globe, BookOpen } from 'lucide-react'
 import Header from '../components/layout/Header'
@@ -41,7 +41,7 @@ const Home = () => {
   const handleEnrollSuccess = (courseId) => {
     setCourses(prev => prev.map(c =>
       c._id === courseId
-        ? { ...c, enrolledCount: c.enrolledCount + 1, availableSlots: c.availableSlots - 1 }
+        ? { ...c, isEnrolled: true, enrolledCount: c.enrolledCount + 1, availableSlots: c.availableSlots - 1 }
         : c
     ))
     setToast({ show: true, message: 'Inscrição confirmada com sucesso! 🎉' })
@@ -50,7 +50,7 @@ const Home = () => {
   const handleCancelSuccess = (courseId) => {
     setCourses(prev => prev.map(c =>
       c._id === courseId
-        ? { ...c, enrolledCount: c.enrolledCount - 1, availableSlots: c.availableSlots + 1 }
+        ? { ...c, isEnrolled: false, enrolledCount: c.enrolledCount - 1, availableSlots: c.availableSlots + 1 }
         : c
     ))
     setToast({ show: true, message: 'Inscrição cancelada.' })

@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Download, CheckCircle, Clock, Calendar } from 'lucide-react'
+import { BookOpen, CheckCircle, Clock, Calendar, User, XCircle } from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Badge, Spinner } from '../components/ui/index'
 import { useAuth } from '../context/AuthContext'
 import { getMyEnrollmentsAPI } from '../api/courses'
 import { formatDate } from '../utils/formatDate'
+import CourseDetailModal from '../components/courses/CourseDetailModal' // <--- Importe o Modal
 
 const tabs = [
   { value: 'inscrito', label: 'Inscritos' },
-  // { value: 'ativo', label: 'Em andamento' },
   { value: 'concluido', label: 'Concluídos' },
 ]
 
@@ -26,15 +26,35 @@ const MyCourses = () => {
   const [activeTab, setActiveTab] = useState('inscrito')
   const [enrollments, setEnrollments] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // ESTADOS PARA O MODAL
+  const [selectedCourse, setSelectedCourse] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  useEffect(() => {
+  const fetchEnrollments = () => {
+    setLoading(true)
     getMyEnrollmentsAPI()
       .then(r => setEnrollments(r.data.data))
       .catch(() => setEnrollments([]))
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchEnrollments()
   }, [])
 
   const filtered = enrollments.filter(e => e.status === activeTab)
+
+  const handleOpenModal = (course) => {
+    setSelectedCourse(course)
+    setIsModalOpen(true)
+  }
+
+  // Função para remover o curso da lista visualmente após cancelar
+  const handleCancelSuccess = (courseId) => {
+    setEnrollments(prev => prev.filter(e => e.course._id !== courseId))
+    setIsModalOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -47,7 +67,7 @@ const MyCourses = () => {
           </div>
 
           <div className="card overflow-x-none">
-            <div className="px-4 pt-4 border-b border-border overflow-hidden [&_div]:overflow-y-hidden">
+            <div className="px-4 pt-4 border-b border-border overflow-hidden">
               <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
             </div>
 
@@ -70,39 +90,63 @@ const MyCourses = () => {
                   {filtered.map(({ _id, course, status }) => {
                     if (!course) return null
                     const { variant, label } = statusBadge[status] || {}
+
                     return (
-                      <div key={_id} className="flex gap-4 p-4 border border-border rounded-card hover:border-primary hover:shadow-card transition-all">
-                        <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-primary to-primary-light flex-shrink-0 overflow-hidden">
-                          {course.imageUrl && <img src={`${apiBase}${course.imageUrl}`} alt="" className="w-full h-full object-cover" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 flex-wrap">
-                            <h3 className="font-semibold text-text-primary text-sm leading-tight">{course.title}</h3>
-                            <Badge variant={variant}>{label}</Badge>
-                          </div>
-                          <div className="flex items-center gap-4 mt-2 flex-wrap">
-                            <span className="flex items-center gap-1 text-xs text-text-muted">
-                              <Calendar size={11} />{formatDate(course.date)}
-                            </span>
-                            <span className="flex items-center gap-1 text-xs text-text-muted">
-                              <Clock size={11} />{course.time}
-                            </span>
-                          </div>
-                          {status === 'ativo' && (
-                            <div className="mt-2">
-                              <div className="h-1.5 bg-border rounded-full overflow-hidden w-40">
-                                <div className="h-full bg-success rounded-full" style={{ width: '45%' }} />
-                              </div>
-                              <p className="text-xs text-text-muted mt-0.5">45% concluído</p>
-                            </div>
+                      <div key={_id} className="flex flex-col md:flex-row gap-4 p-5 border border-border rounded-card hover:border-primary/50 hover:shadow-sm transition-all bg-white group">
+                        
+                        <div className="w-full md:w-24 h-24 rounded-lg bg-gradient-to-br from-primary/10 to-primary flex-shrink-0 overflow-hidden border border-border">
+                          {course.imageUrl ? (
+                            <img src={`${apiBase}${course.imageUrl}`} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-primary/40"><BookOpen size={32} /></div>
                           )}
-                          {status === 'concluido' && (
-                            <button className="flex items-center gap-1 text-xs text-primary mt-2 hover:underline font-medium">
-                              <Download size={12} /> Baixar certificado
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div>
+                              <h3 className="font-bold text-text-primary text-base leading-snug group-hover:text-primary transition-colors">
+                                {course.title}
+                              </h3>
+                              <p className="text-xs text-text-secondary mt-0.5 flex items-center gap-1.5">
+                                <User size={12} className="text-primary" />
+                                Prof. {course.professor || 'A definir'}
+                              </p>
+                            </div>
+                            <Badge variant={variant} className="whitespace-nowrap">{label}</Badge>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 pt-3 border-t border-border/50">
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
+                              <Calendar size={13} className="text-primary" />
+                              {formatDate(course.date)}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-text-muted">
+                              <Clock size={13} className="text-primary" />
+                              {course.time}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* AÇÕES LATERAIS */}
+                        <div className="flex md:flex-col justify-center items-stretch gap-3 mt-4 md:mt-0 md:pl-6 md:border-l md:border-border min-w-[140px]">
+                          <button
+                            onClick={() => handleOpenModal(course)}
+                            className="btn-primary text-[13px] py-2 px-4 w-full flex items-center justify-center gap-2"
+                          >
+                            Ver Detalhes
+                          </button>
+
+                          {status !== 'concluido' && (
+                            <button
+                              onClick={() => handleOpenModal(course)}
+                              className="border border-red-200 btn-ghost text-error hover:bg-error-light text-[13px] py-2 px-4 w-full flex items-center justify-center gap-2 transition-colors"
+                            >
+                              <XCircle size={14} />
+                              Cancelar
                             </button>
                           )}
                         </div>
-                        {status === 'concluido' && <CheckCircle size={18} className="text-success flex-shrink-0 mt-0.5" />}
                       </div>
                     )
                   })}
@@ -112,6 +156,15 @@ const MyCourses = () => {
           </div>
         </div>
       </div>
+
+      {/* COMPONENTE DO MODAL */}
+      <CourseDetailModal 
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        course={selectedCourse}
+        onCancelSuccess={handleCancelSuccess}
+        onEnrollSuccess={fetchEnrollments} // Recarrega se ele se inscrever por algum motivo
+      />
     </div>
   )
 }

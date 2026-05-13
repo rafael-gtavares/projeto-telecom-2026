@@ -9,7 +9,7 @@ const getCourses = async (req, res, next) => {
 
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
-      .sort({ createdAt: -1 })
+      .sort({ date: 1, time: 1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 

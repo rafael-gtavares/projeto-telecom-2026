@@ -19,4 +19,7 @@ courseSchema.virtual('availableSlots').get(function () {
 courseSchema.set('toJSON', { virtuals: true });
 courseSchema.set('toObject', { virtuals: true });
 
+// Cria um índice para busca e ordenação rápida por data
+courseSchema.index({ date: 1, time: 1 });
+
 module.exports = mongoose.model('Course', courseSchema);
