@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, User, Users, CheckCircle } from 'lucide-react'
+import { Calendar, Clock, User, Users, CheckCircle, MapPin } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { formatDate } from '../../utils/formatDate'
@@ -43,13 +43,31 @@ const EventCard = ({ course, onOpenModal }) => {
     if (course.isEnrolled === undefined) {
       checkStatus()
     }
-
   }, [course._id, course.isEnrolled, isAuthenticated])
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
-  const grad = gradients[parseInt(course._id?.slice(-1), 16) % gradients.length] || gradients[0]
+
+  //Se quiser cores de fundos diferentes e aleatórias para cada curso (caso não tenha dado upload numa foto)
+  //const grad = gradients[parseInt(course._id?.slice(-1), 16) % gradients.length] || gradients[0]
+
+  //Se quiser uma única cor
+  const grad = gradients[0]
+
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+  // Lógica para exibição de data simplificada
+  const isOneDay = course.startDate?.slice(0, 10) === course.endDate?.slice(0, 10)
+  
+  // Resumo dos dias (ex: "Seg, Qua, Sex" ou "Sábado")
+  const scheduleSummary = course.schedule?.length > 1 
+    ? `${course.schedule.length} dias na semana`
+    : course.schedule?.[0] 
+      ? `${course.schedule[0].dayOfWeek}, ${course.schedule[0].startTime}`
+      : 'Horário a definir'
+
+  // Local principal (primeira sala encontrada)
+  const mainLocation = course.schedule?.[0]?.location || 'A definir'
 
   return (
     <div
@@ -78,17 +96,33 @@ const EventCard = ({ course, onOpenModal }) => {
         <p className="text-text-secondary text-sm line-clamp-2 mb-3 flex-1">{course.description}</p>
 
         <div className="space-y-1.5 mb-3">
+          {/* Datas: Mostra intervalo ou dia único */}
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <Calendar size={13} className="text-primary flex-shrink-0" />
-            <span>{formatDate(course.date)}</span>
+            <span>
+              {isOneDay 
+                ? formatDate(course.startDate) 
+                : `${formatDate(course.startDate)} - ${formatDate(course.endDate)}`
+              }
+            </span>
           </div>
+
+          {/* Horários e Dias */}
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <Clock size={13} className="text-primary flex-shrink-0" />
-            <span>{course.time}</span>
+            <span className="truncate">{scheduleSummary}</span>
           </div>
+
+          {/* Localização (Nova!) */}
+          <div className="flex items-center gap-2 text-xs text-text-muted">
+            <MapPin size={13} className="text-primary flex-shrink-0" />
+            <span className="truncate">{mainLocation}</span>
+          </div>
+
+          {/* Professor */}
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <User size={13} className="text-primary flex-shrink-0" />
-            <span>{course.professor || 'A definir'}</span>
+            <span className="truncate">{course.professor || 'A definir'}</span>
           </div>
         </div>
 
@@ -100,7 +134,6 @@ const EventCard = ({ course, onOpenModal }) => {
         </div>
 
         <Button
-          // Se estiver inscrito ou checando, muda o estilo
           variant={isEnrolled ? "secondary" : "primary"}
           className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : ''}`}
           disabled={(isFull && !isEnrolled) || checking}

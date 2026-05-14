@@ -4,12 +4,17 @@ const getCourses = async (req, res, next) => {
   try {
     const { status = 'published', page = 1, limit = 12 } = req.query;
     const filter = {};
-    if (req.user?.role === 'aluno' || !req.user) filter.status = 'published';
-    else if (status) filter.status = status;
+
+    if (req.user?.role === 'aluno' || !req.user) {
+      filter.status = 'published';
+    } else if (status) {
+      filter.status = status;
+    }
 
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
-      .sort({ date: 1, time: 1 })
+      // ATUALIZADO: Ordena pela data de início do curso
+      .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
@@ -28,13 +33,24 @@ const getCourse = async (req, res, next) => {
 
 const createCourse = async (req, res, next) => {
   try {
-    const { title, description, date, time, professor, maxSlots, status } = req.body;
+    if (req.body.schedule && typeof req.body.schedule === 'string') {
+      req.body.schedule = JSON.parse(req.body.schedule);
+    }
+    const { title, description, schedule, startDate, endDate, professor, maxSlots, status } = req.body;
     const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+
     const course = await Course.create({
-      title, description, date, time,
+      title,
+      description,
+      schedule,   // Array de sessões [{dayOfWeek, startTime, endTime}]
+      startDate,
+      endDate,
       professor: professor || req.user.id,
-      maxSlots, status, imageUrl,
+      maxSlots,
+      status,
+      imageUrl,
     });
+
     await course.populate('professor', 'name email');
     res.status(201).json({ success: true, data: course });
   } catch (err) { next(err); }
@@ -42,6 +58,10 @@ const createCourse = async (req, res, next) => {
 
 const updateCourse = async (req, res, next) => {
   try {
+    if (req.body.schedule && typeof req.body.schedule === 'string') {
+      req.body.schedule = JSON.parse(req.body.schedule);
+    }
+    
     const course = await Course.findById(req.params.id);
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
@@ -51,8 +71,9 @@ const updateCourse = async (req, res, next) => {
     const updates = { ...req.body };
     if (req.file) updates.imageUrl = `/uploads/${req.file.filename}`;
 
-    const updated = await Course.findByIdAndUpdate(req.params.id, updates, { new: true })
+    const updated = await Course.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true })
       .populate('professor', 'name email');
+
     res.json({ success: true, data: updated });
   } catch (err) { next(err); }
 };
