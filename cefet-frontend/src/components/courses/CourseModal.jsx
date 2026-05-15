@@ -82,6 +82,16 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
 
   const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }
 
+  const isFormValid =
+    form.title.trim() &&
+    form.description.trim() &&
+    form.professor.trim() &&
+    form.maxSlots &&
+    form.startDate &&
+    form.schedule.every(s =>
+      s.startTime && s.endTime && s.location
+    )
+
   const handleSubmit = () => {
     const fd = new FormData()
 
@@ -264,7 +274,13 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
         </div>
 
         <div className="flex gap-3 pt-2">
-          <Button variant="primary" className="flex-1" onClick={handleSubmit} loading={loading}>
+          <Button
+            variant="primary"
+            className="flex-1"
+            onClick={handleSubmit}
+            loading={loading}
+            disabled={!isFormValid}
+          >
             {course ? 'Salvar alterações' : 'Criar curso'}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={loading}>Cancelar</Button>

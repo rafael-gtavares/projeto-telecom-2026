@@ -31,7 +31,7 @@ export const Spinner = ({ size = 'md' }) => {
 }
 
 export const Tabs = ({ tabs, active, onChange }) => (
-  <div className="flex gap-1 overflow-x-auto border-b border-border pb-0 scrollbar-hide">
+  <div className="flex gap-1 border-b border-border pb-0 scrollbar-hide">
     {tabs.map((tab) => (
       <button
         key={tab.value}

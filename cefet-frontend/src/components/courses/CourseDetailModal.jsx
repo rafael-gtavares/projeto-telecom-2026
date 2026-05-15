@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle } from 'lucide-react'
+import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Badge, Spinner } from '../ui/index'
@@ -19,7 +19,6 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
 
   useEffect(() => {
     if (!open || !course) return
-
     setConfirmCancel(false)
 
     if (!isAuthenticated) {
@@ -46,6 +45,9 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const isFull = slots <= 0
   const occupancyPercent = Math.min(100, (course.enrolledCount / course.maxSlots) * 100)
   const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+  // Lógica para verificar se o curso dura mais de um dia
+  const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
 
   const handleEnroll = async () => {
     try {
@@ -76,8 +78,8 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   return (
     <>
       <Modal open={open} onClose={onClose} size="lg" title="Detalhes do Curso">
-        {/* Topo do modal (imagem de capa) com negative margin para ignorar o padding do modal */}
-        <div className="relative h-[180px] bg-gradient-to-br from-primary to-primary-light flex flex-col justify-end p-6 -mx-6 -mt-5 mb-5 rounded-t-sm overflow-hidden">
+        {/* Banner com Imagem */}
+        <div className="relative h-[200px] bg-gradient-to-br from-primary to-primary-light flex flex-col justify-end p-6 -mx-6 -mt-5 mb-6 rounded-t-sm overflow-hidden">
           {course.imageUrl && (
             <>
               <img
@@ -85,140 +87,156 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                 alt={course.title}
                 className="absolute inset-0 w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/20" />
+              <div className="absolute inset-0 bg-black/30" />
             </>
           )}
           
           <div className="absolute top-4 right-4 z-10">
             <Badge variant={course.status === 'published' ? 'blue' : 'gray'}>
-              {course.status === 'published' ? 'Publicado' : 'Encerrado'}
+              {course.status === 'published' ? 'Inscrições Abertas' : 'Encerrado'}
             </Badge>
           </div>
 
           <div className="relative z-10">
-            <h2 className="text-white font-bold text-xl md:text-2xl leading-tight">{course.title}</h2>
+            <h2 className="text-white font-bold text-2xl leading-tight drop-shadow-md">{course.title}</h2>
           </div>
         </div>
 
-        {/* Corpo do modal */}
-        <p className="text-text-secondary text-sm leading-relaxed mb-6">
-          {course.description}
-        </p>
-
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Calendar size={16} className="text-primary flex-shrink-0" />
-            <span>{formatDate(course.date)}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Clock size={16} className="text-primary flex-shrink-0" />
-            <span>{course.time}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <User size={16} className="text-primary flex-shrink-0" />
-            <span>{course.professor || 'A definir'}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <Users size={16} className="text-primary flex-shrink-0" />
-            <span>{slots} {slots === 1 ? 'vaga restante' : 'vagas restantes'}</span>
-          </div>
-        </div>
-
+        {/* Descrição */}
         <div className="mb-6">
-          <div className="flex justify-between text-xs text-text-muted mb-1.5">
-            <span>Ocupação das vagas</span>
-            <span>{course.enrolledCount} de {course.maxSlots}</span>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-2 flex items-center gap-2">
+            <Info size={16} /> Sobre o curso
+          </h3>
+          <p className="text-text-secondary text-sm leading-relaxed">
+            {course.description}
+          </p>
+        </div>
+
+        {/* Grid de Informações Básicas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="flex items-center gap-3 p-3 bg-surface-hover rounded-lg border border-border">
+            <Calendar size={20} className="text-primary" />
+            <div>
+              <p className="text-xs text-text-muted font-medium uppercase">Duração / Data</p>
+              <p className="text-sm font-semibold text-text-primary">
+                {isMultiDay 
+                  ? `${formatDate(course.startDate)} até ${formatDate(course.endDate)}` 
+                  : formatDate(course.startDate)}
+              </p>
+            </div>
           </div>
-          <div className="bg-border h-1.5 rounded-full overflow-hidden w-full">
+          <div className="flex items-center gap-3 p-3 bg-surface-hover rounded-lg border border-border">
+            <User size={20} className="text-primary" />
+            <div>
+              <p className="text-xs text-text-muted font-medium uppercase">Professor</p>
+              <p className="text-sm font-semibold text-text-primary">{course.professor || 'A definir'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* NOVO: Cronograma Detalhado (Schedule) */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
+            <Clock size={16} /> Cronograma Semanal e Local
+          </h3>
+          <div className="space-y-2">
+            {course.schedule && course.schedule.length > 0 ? (
+              course.schedule.map((item, idx) => (
+                <div key={idx} className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white border border-border rounded-lg shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <span className="w-20 text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded text-center">
+                      {item.dayOfWeek}
+                    </span>
+                    <div className="flex items-center gap-1 text-sm text-text-primary font-medium">
+                      <span>{item.startTime}</span>
+                      <span className="text-text-muted">—</span>
+                      <span>{item.endTime}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-sm text-text-secondary italic">
+                    <MapPin size={14} className="text-primary" />
+                    <span>{item.location}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-text-muted italic">Horários não definidos.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Vagas e Ocupação */}
+        <div className="bg-surface-secondary p-4 rounded-xl border border-border mb-8">
+           <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Users size={18} className="text-primary" />
+                <span className="text-sm font-bold text-text-primary">Disponibilidade</span>
+              </div>
+              <span className="text-sm font-semibold text-primary">{course.enrolledCount} / {course.maxSlots} vagas</span>
+           </div>
+           <div className="bg-border h-2 rounded-full overflow-hidden w-full">
             <div 
-              className="bg-primary h-full rounded-full transition-all duration-500" 
+              className={`h-full rounded-full transition-all duration-500 ${isFull ? 'bg-error' : 'bg-primary'}`}
               style={{ width: `${occupancyPercent}%` }}
             />
           </div>
+          {isFull && <p className="text-[11px] text-error mt-1 font-medium">* Vagas esgotadas para este curso.</p>}
         </div>
 
-        {/* Seção de ação */}
-        <div className="border-t border-border pt-4">
+        {/* Rodapé de Ações */}
+        <div className="border-t border-border pt-5">
           {enrollmentStatus === 'loading' ? (
-            <div className="flex flex-col items-center justify-center py-4">
-              <Spinner size="md" className="mb-2" />
-              <p className="text-sm text-text-secondary">Verificando sua inscrição...</p>
+            <div className="flex flex-col items-center justify-center py-2">
+              <Spinner size="sm" className="mb-2" />
             </div>
           ) : !isAuthenticated ? (
-            <div className="bg-surface-blue rounded-card p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <LogIn size={20} className="text-primary" />
-                <p className="text-sm font-medium text-text-primary">Faça login para se inscrever neste curso</p>
-              </div>
-              <div className="flex gap-3">
-                <Button variant="primary" className="flex-1" onClick={() => { onClose(); navigate('/login'); }}>
-                  Entrar
-                </Button>
-                <Button variant="secondary" className="flex-1" onClick={() => { onClose(); navigate('/cadastro'); }}>
-                  Criar conta
-                </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-primary/5 p-4 rounded-lg border border-primary/10">
+              <p className="text-sm text-text-primary font-medium">Deseja participar deste curso?</p>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="primary" size="sm" onClick={() => { onClose(); navigate('/login'); }}>Entrar</Button>
+                <Button variant="secondary" size="sm" onClick={() => { onClose(); navigate('/cadastro'); }}>Criar Conta</Button>
               </div>
             </div>
           ) : enrollmentStatus === 'enrolled' ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Badge variant="success" className="gap-1.5 px-3 py-1.5">
-                  <CheckCircle size={14} /> Você já está inscrito
-                </Badge>
-                <Button variant="ghost" className="text-error hover:bg-error-light gap-1.5" onClick={() => setConfirmCancel(true)}>
-                  <XCircle size={16} /> Cancelar inscrição
-                </Button>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between bg-success/10 p-3 rounded-lg border border-success/20">
+                <div className="flex items-center gap-2 text-success font-bold text-sm">
+                  <CheckCircle size={18} /> Inscrição confirmada
+                </div>
+                {!confirmCancel && (
+                  <button onClick={() => setConfirmCancel(true)} className="text-xs text-error hover:underline font-medium">
+                    Cancelar inscrição?
+                  </button>
+                )}
               </div>
 
               {confirmCancel && (
-                <div className="bg-error-light/50 border border-error-light rounded-card p-4 animate-fadeIn">
-                  <p className="text-sm text-text-primary mb-3">Tem certeza? Sua vaga será liberada para outra pessoa.</p>
-                  <div className="flex gap-3">
-                    <Button variant="ghost" className="flex-1 text-error hover:bg-error/10" loading={actionLoading} onClick={handleCancel}>
-                      Sim, cancelar
-                    </Button>
-                    <Button variant="secondary" className="flex-1" onClick={() => setConfirmCancel(false)} disabled={actionLoading}>
-                      Manter inscrição
-                    </Button>
+                <div className="bg-error/5 p-4 rounded-lg border border-error/20 animate-fadeIn">
+                  <p className="text-xs text-text-primary mb-3 text-center">Ao cancelar, sua vaga será liberada imediatamente. Confirmar?</p>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" className="flex-1 text-error text-xs" loading={actionLoading} onClick={handleCancel}>Confirmar Cancelamento</Button>
+                    <Button variant="secondary" className="flex-1 text-xs" onClick={() => setConfirmCancel(false)}>Voltar</Button>
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-4">
-              {course.status === 'closed' ? (
-                <>
-                  <Badge variant="gray">Inscrições encerradas</Badge>
-                  <Button variant="primary" className="flex-1 max-w-[200px]" disabled>
-                    Inscrições encerradas
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Badge variant={isFull ? "gray" : "blue"}>
-                    {isFull ? 'Vagas esgotadas' : `${slots} ${slots === 1 ? 'vaga' : 'vagas'} restantes`}
-                  </Badge>
-                  <Button 
-                    variant="primary" 
-                    className="flex-1 max-w-[240px]" 
-                    disabled={isFull} 
-                    loading={actionLoading}
-                    onClick={handleEnroll}
-                  >
-                    {isFull ? 'Sem vagas disponíveis' : 'Confirmar inscrição'}
-                  </Button>
-                </>
-              )}
+            <div className="flex gap-4">
+              <Button 
+                variant="primary" 
+                className="flex-1 py-4 text-lg" 
+                disabled={isFull || course.status === 'closed'} 
+                loading={actionLoading}
+                onClick={handleEnroll}
+              >
+                {course.status === 'closed' ? 'Encerrado' : isFull ? 'Vagas Esgotadas' : 'Quero me inscrever'}
+              </Button>
             </div>
           )}
         </div>
       </Modal>
 
-      <Toast
-        show={toast.show}
-        message={toast.message}
-        onClose={() => setToast({ show: false })}
-      />
+      <Toast show={toast.show} message={toast.message} onClose={() => setToast({ show: false })} />
     </>
   )
 }
