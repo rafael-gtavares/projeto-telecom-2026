@@ -10,14 +10,14 @@ const getMe = async (req, res, next) => {
 
 const updateMe = async (req, res, next) => {
   try {
-    const { name, birthDate, gender, hasHighSchool, incomeRange, password } = req.body;
+    const { name, birthDate, gender, schoolLevel, incomeRange, password } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
 
     if (name) user.name = name;
     if (birthDate) user.birthDate = birthDate;
     if (gender) user.gender = gender;
-    if (hasHighSchool !== undefined) user.hasHighSchool = hasHighSchool;
+    if (schoolLevel !== undefined) user.schoolLevel = schoolLevel;
     if (incomeRange) user.incomeRange = incomeRange;
     if (password) user.password = password;
 

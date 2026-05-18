@@ -7,7 +7,17 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6 },
   birthDate: { type: Date },
   gender: { type: String, enum: ['masculino', 'feminino', 'prefiro_nao_informar'], default: 'prefiro_nao_informar' },
-  hasHighSchool: { type: Boolean, default: false },
+  schoolLevel: {
+    type: String,
+    required: true,
+    enum: [
+      'ensino_fundamental',
+      '1_ou_2_ano_em',
+      'ultimo_ano_em',
+      'ensino_medio_finalizado',
+      'eja'
+    ]
+  },
   incomeRange: {
     type: String,
     enum: ['ate_1sm', '1_a_2sm', '2_a_3sm', '3_a_5sm', 'acima_5sm', 'prefiro_nao_informar'],

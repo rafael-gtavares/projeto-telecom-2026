@@ -17,13 +17,21 @@ const incomeOptions = [
   { value: 'prefiro_nao_informar', label: 'Prefiro não informar' },
 ]
 
+const schoolLevelOptions = [
+  { value: 'ensino_fundamental', label: 'Ensino Fundamental' },
+  { value: '1_ou_2_ano_em', label: '1º ou 2º Ano do Ensino Médio' },
+  { value: 'ultimo_ano_em', label: 'Último ano do Ensino Médio' },
+  { value: 'ensino_medio_finalizado', label: 'Ensino Médio Finalizado' },
+  { value: 'eja', label: 'EJA' },
+]
+
 const MyProfile = () => {
   const { user, role, updateUser } = useAuth()
   const [form, setForm] = useState({
     name: user?.name || '',
     birthDate: user?.birthDate ? user.birthDate.slice(0, 10) : '',
     gender: user?.gender || 'prefiro_nao_informar',
-    hasHighSchool: user?.hasHighSchool || false,
+    schoolLevel: user?.schoolLevel || '',
     incomeRange: user?.incomeRange || 'prefiro_nao_informar',
   })
   const [passwords, setPasswords] = useState({ password: '', confirm: '' })
@@ -62,7 +70,7 @@ const MyProfile = () => {
   const handleCancel = () => {
     setForm({
       name: user?.name || '', birthDate: user?.birthDate?.slice(0, 10) || '',
-      gender: user?.gender || 'prefiro_nao_informar', hasHighSchool: user?.hasHighSchool || false,
+      gender: user?.gender || 'prefiro_nao_informar', schoolLevel: user?.schoolLevel || false,
       incomeRange: user?.incomeRange || 'prefiro_nao_informar',
     })
     setError(''); setSuccess(''); setShowPassSection(false)
@@ -100,10 +108,24 @@ const MyProfile = () => {
                 </div>
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-lg border border-border hover:border-primary transition-colors">
-                <input type="checkbox" checked={form.hasHighSchool} onChange={set('hasHighSchool')} className="w-4 h-4 accent-primary" />
-                <span className="text-sm text-text-secondary">Possuo ensino médio concluído</span>
-              </label>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Nível Escolar
+                </label>
+
+                <select
+                  value={form.schoolLevel}
+                  onChange={set('schoolLevel')}
+                  className="input-field"
+                  required
+                >
+                  {schoolLevelOptions.map(o => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">Renda familiar per capita</label>

@@ -90,7 +90,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
               <div className="absolute inset-0 bg-black/30" />
             </>
           )}
-          
+
           <div className="absolute top-4 right-4 z-10">
             <Badge variant={course.status === 'published' ? 'blue' : 'gray'}>
               {course.status === 'published' ? 'Inscrições Abertas' : 'Encerrado'}
@@ -119,8 +119,8 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
             <div>
               <p className="text-xs text-text-muted font-medium uppercase">Duração / Data</p>
               <p className="text-sm font-semibold text-text-primary">
-                {isMultiDay 
-                  ? `${formatDate(course.startDate)} até ${formatDate(course.endDate)}` 
+                {isMultiDay
+                  ? `${formatDate(course.startDate)} até ${formatDate(course.endDate)}`
                   : formatDate(course.startDate)}
               </p>
             </div>
@@ -167,15 +167,15 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
 
         {/* Vagas e Ocupação */}
         <div className="bg-surface-secondary p-4 rounded-xl border border-border mb-8">
-           <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Users size={18} className="text-primary" />
-                <span className="text-sm font-bold text-text-primary">Disponibilidade</span>
-              </div>
-              <span className="text-sm font-semibold text-primary">{course.enrolledCount} / {course.maxSlots} vagas</span>
-           </div>
-           <div className="bg-border h-2 rounded-full overflow-hidden w-full">
-            <div 
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Users size={18} className="text-primary" />
+              <span className="text-sm font-bold text-text-primary">Disponibilidade</span>
+            </div>
+            <span className="text-sm font-semibold text-primary">{course.enrolledCount} / {course.maxSlots} vagas</span>
+          </div>
+          <div className="bg-border h-2 rounded-full overflow-hidden w-full">
+            <div
               className={`h-full rounded-full transition-all duration-500 ${isFull ? 'bg-error' : 'bg-primary'}`}
               style={{ width: `${occupancyPercent}%` }}
             />
@@ -199,12 +199,27 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
             </div>
           ) : enrollmentStatus === 'enrolled' ? (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between bg-success/10 p-3 rounded-lg border border-success/20">
+              <div className="flex items-center justify-between bg-success/10 py-3 px-10 rounded-lg border border-success/20">
                 <div className="flex items-center gap-2 text-success font-bold text-sm">
                   <CheckCircle size={18} /> Inscrição confirmada
                 </div>
                 {!confirmCancel && (
-                  <button onClick={() => setConfirmCancel(true)} className="text-xs text-error hover:underline font-medium">
+                  <button
+                    onClick={() => setConfirmCancel(true)}
+                    className="
+                      w-auto
+                      mt-3
+                      p-3
+                      rounded-xl
+                      text-sm
+                      font-semibold
+                      text-error
+                      bg-red-500/5
+                      border border-red-500/10
+                      hover:bg-red-500/10
+                      transition-all
+                    "
+                  >
                     Cancelar inscrição?
                   </button>
                 )}
@@ -213,19 +228,52 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
               {confirmCancel && (
                 <div className="bg-error/5 p-4 rounded-lg border border-error/20 animate-fadeIn">
                   <p className="text-xs text-text-primary mb-3 text-center">Ao cancelar, sua vaga será liberada imediatamente. Confirmar?</p>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" className="flex-1 text-error text-xs" loading={actionLoading} onClick={handleCancel}>Confirmar Cancelamento</Button>
-                    <Button variant="secondary" className="flex-1 text-xs" onClick={() => setConfirmCancel(false)}>Voltar</Button>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="ghost"
+                      className="
+                        flex-1
+                        justify-center
+                        py-3
+                        rounded-xl
+                        text-sm
+                        font-semibold
+                        border border-red-500/20
+                        bg-red-500/5
+                        text-error
+                        hover:bg-red-500/10
+                        transition-all
+                      "
+                      loading={actionLoading}
+                      onClick={handleCancel}
+                    >
+                      Confirmar Cancelamento
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      className="
+                        flex-1
+                        py-3
+                        rounded-xl
+                        text-sm
+                        font-semibold
+                        transition-all
+                      "
+                      onClick={() => setConfirmCancel(false)}
+                    >
+                      Voltar
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
           ) : (
             <div className="flex gap-4">
-              <Button 
-                variant="primary" 
-                className="flex-1 py-4 text-lg" 
-                disabled={isFull || course.status === 'closed'} 
+              <Button
+                variant="primary"
+                className="flex-1 py-4 text-lg"
+                disabled={isFull || course.status === 'closed'}
                 loading={actionLoading}
                 onClick={handleEnroll}
               >

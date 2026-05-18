@@ -16,11 +16,19 @@ const incomeOptions = [
   { value: 'prefiro_nao_informar', label: 'Prefiro não informar' },
 ]
 
+const schoolLevelOptions = [
+  { value: 'ensino_fundamental', label: 'Ensino Fundamental' },
+  { value: '1_ou_2_ano_em', label: '1º ou 2º Ano do Ensino Médio' },
+  { value: 'ultimo_ano_em', label: 'Último ano do Ensino Médio' },
+  { value: 'ensino_medio_finalizado', label: 'Ensino Médio Finalizado' },
+  { value: 'eja', label: 'EJA' },
+]
+
 const Register = () => {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     name: '', email: '', birthDate: '', gender: 'prefiro_nao_informar',
-    password: '', confirmPassword: '', hasHighSchool: false, incomeRange: 'prefiro_nao_informar',
+    password: '', confirmPassword: '', schoolLevel: '', incomeRange: 'prefiro_nao_informar',
   })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -45,6 +53,7 @@ const Register = () => {
     else if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres'
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'As senhas não coincidem'
     return errs
+    if (!form.schoolLevel) errs.schoolLevel = 'Selecione um nível escolar'
   }
 
   const handleSubmit = async (e) => {
@@ -71,7 +80,7 @@ const Register = () => {
       <div className="w-full max-w-[520px]">
         <div className="card rounded-modal shadow-modal p-8 md:p-10 animate-fadeIn">
           <div className="text-center mb-8">
-            <Link to="/"  className="inline-flex items-center gap-2 text-primary font-bold text-2xl mb-1">
+            <Link to="/" className="inline-flex items-center gap-2 text-primary font-bold text-2xl mb-1">
               <LogoSVG color="#1565C0" size={22} /> CEFET/RJ
             </Link>
             <h1 className="text-xl font-bold text-text-primary mt-2">Crie sua conta</h1>
@@ -137,10 +146,34 @@ const Register = () => {
               error={errors.confirmPassword}
             />
 
-            <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-lg border border-border hover:border-primary transition-colors">
-              <input type="checkbox" checked={form.hasHighSchool} onChange={set('hasHighSchool')} className="w-4 h-4 accent-primary" />
-              <span className="text-sm text-text-secondary">Possuo ensino médio concluído</span>
-            </label>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                Nível Escolar
+              </label>
+
+              <select
+                value={form.schoolLevel}
+                onChange={set('schoolLevel')}
+                className="input-field"
+                required
+              >
+                <option value="" disabled>
+                  Selecione
+                </option>
+
+                {schoolLevelOptions.map(o => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+
+              {errors.schoolLevel && (
+                <p className="text-error text-sm mt-1">
+                  {errors.schoolLevel}
+                </p>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">Renda familiar per capita</label>

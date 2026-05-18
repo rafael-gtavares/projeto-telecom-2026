@@ -3,14 +3,14 @@ const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../co
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, birthDate, gender, hasHighSchool, incomeRange } = req.body;
+    const { name, email, password, birthDate, gender, schoolLevel, incomeRange } = req.body;
     if (!name || !email || !password)
       return res.status(400).json({ success: false, message: 'Nome, e-mail e senha são obrigatórios' });
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ success: false, message: 'E-mail já cadastrado' });
 
-    const user = await User.create({ name, email, password, birthDate, gender, hasHighSchool, incomeRange });
+    const user = await User.create({ name, email, password, birthDate, gender, schoolLevel, incomeRange });
     res.status(201).json({ success: true, message: 'Cadastro realizado com sucesso', data: user.toPublic() });
   } catch (err) { next(err); }
 };
