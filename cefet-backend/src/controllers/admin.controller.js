@@ -4,18 +4,9 @@ const Enrollment = require('../models/Enrollment');
 
 const getStats = async (req, res, next) => {
   try {
-
-    // =====================================================
+    // =========================
     // MÉTRICAS GERAIS
-    // =====================================================
-    // Busca:
-    // - total de alunos cadastrados
-    // - total de cursos publicados
-    // - total de inscrições realizadas
-    //
-    // Promise.all executa todas as consultas ao mesmo tempo,
-    // deixando a resposta mais rápida.
-    // =====================================================
+    // =========================
 
     const [totalUsers, totalCourses, totalEnrollments] = await Promise.all([
       User.countDocuments({ role: 'aluno' }),
@@ -24,14 +15,24 @@ const getStats = async (req, res, next) => {
     ]);
 
 
-    // =====================================================
-    // OCUPAÇÃO MÉDIA DOS CURSOS
-    // =====================================================
-    // Calcula a média de ocupação dos cursos publicados.
-    //
-    // Fórmula:
-    // (inscritos / vagas máximas) * 100
-    // =====================================================
+    // =========================
+    // PERÍODO PARA FILTRO
+    // =========================
+    const { period = '6m' } = req.query;
+
+    const periodMap = {
+      '1m': 1,
+      '3m': 3,
+      '6m': 6,
+      '1y': 12
+    };
+
+    const monthsBack = periodMap[period] || 6;
+
+    const startDate = new Date();
+
+    startDate.setMonth(startDate.getMonth() - monthsBack);
+    startDate.setDate(1);
 
     const courses = await Course.find(
       { status: 'published' },
@@ -40,41 +41,18 @@ const getStats = async (req, res, next) => {
 
     const avgOccupancy = courses.length
       ? Math.round(
-          courses.reduce(
-            (acc, c) =>
-              acc + (c.enrolledCount / c.maxSlots) * 100,
-            0
-          ) / courses.length
-        )
+        courses.reduce(
+          (acc, course) =>
+            acc + (course.enrolledCount / course.maxSlots) * 100,
+          0
+        ) / courses.length
+      )
       : 0;
-
-
-    // =====================================================
-    // INSCRIÇÕES DOS ÚLTIMOS 6 MESES
-    // =====================================================
-    // Cria uma data de referência para buscar apenas
-    // inscrições recentes.
-    // =====================================================
-
-    const sixMonthsAgo = new Date();
-
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    sixMonthsAgo.setDate(1);
-
-
-    // =====================================================
-    // AGRUPAMENTO DE INSCRIÇÕES POR MÊS
-    // =====================================================
-    // Aggregate:
-    // - filtra inscrições recentes
-    // - agrupa por ano e mês
-    // - conta quantas inscrições existem em cada mês
-    // =====================================================
 
     const enrollmentsByMonth = await Enrollment.aggregate([
       {
         $match: {
-          createdAt: { $gte: sixMonthsAgo }
+          createdAt: { $gte: startDate }
         }
       },
 
@@ -97,33 +75,20 @@ const getStats = async (req, res, next) => {
       },
     ]);
 
-
-    // =====================================================
-    // FORMATAÇÃO DOS DADOS DO GRÁFICO
-    // =====================================================
-    // Transforma os dados do aggregate em um formato
-    // mais amigável para o frontend.
-    // =====================================================
-
     const months = [
       'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
       'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
     ];
 
-    const chartData = enrollmentsByMonth.map(e => ({
-      month: months[e._id.month - 1],
-      count: e.count,
+    const chartData = enrollmentsByMonth.map(item => ({
+      month: months[item._id.month - 1],
+      count: item.count,
     }));
 
 
-    // =====================================================
+    // =========================
     // CURSOS RECENTES
-    // =====================================================
-    // Busca os 5 cursos mais recentes.
-    //
-    // populate:
-    // substitui o id do professor pelos dados do professor.
-    // =====================================================
+    // =========================
 
     const recentCourses = await Course.find()
       .populate('professor', 'name')
@@ -131,61 +96,143 @@ const getStats = async (req, res, next) => {
       .limit(5);
 
 
-    // =====================================================
-    // ESTATÍSTICAS DE GÊNERO
-    // =====================================================
-    // Busca todas as inscrições trazendo apenas o campo
-    // gender do usuário relacionado à inscrição.
-    // =====================================================
+    // =========================
+    // ESTATÍSTICAS DEMOGRÁFICAS
+    // =========================
 
-    const enrollments = await Enrollment.find()
-      .populate('user', 'gender');
+    const enrollments = await Enrollment.find({
+      createdAt: { $gte: startDate }
+    })
+      .populate({
+        path: 'user',
+        select: 'gender schoolLevel incomeRange birthDate'
+      });
 
-
-    // Estrutura inicial das estatísticas
     const genderStats = {
       masculino: 0,
       feminino: 0,
       prefiro_nao_informar: 0,
     };
 
+    const schoolLevelStats = {
+      ensino_fundamental: 0,
+      '1_ou_2_ano_em': 0,
+      ultimo_ano_em: 0,
+      ensino_medio_finalizado: 0,
+      eja: 0
+    };
 
-    // Percorre todas as inscrições e soma
-    // no gênero correspondente
+    const incomeRangeStats = {
+      ate_1sm: 0,
+      '1_a_2sm': 0,
+      '2_a_3sm': 0,
+      '3_a_5sm': 0,
+      acima_5sm: 0,
+      prefiro_nao_informar: 0
+    };
+
+    const ageStats = {
+      ate_14: 0,
+      de_15_a_17: 0,
+      de_18_a_21: 0,
+      de_22_a_25: 0,
+      acima_de_25: 0
+    };
+
+
+    // =========================
+    // PROCESSAMENTO DAS ESTATÍSTICAS
+    // =========================
+
     enrollments.forEach(enrollment => {
 
-      const gender = enrollment.user?.gender;
+      const user = enrollment.user;
 
-      // Verifica se o gênero existe no objeto
-      // antes de incrementar
+      const gender = user?.gender;
+      const schoolLevel = user?.schoolLevel;
+      const incomeRange = user?.incomeRange;
+      const birthDate = user?.birthDate;
+
+
+      // Gênero
       if (genderStats[gender] !== undefined) {
         genderStats[gender]++;
+      }
+
+
+      // Escolaridade
+      if (schoolLevelStats[schoolLevel] !== undefined) {
+        schoolLevelStats[schoolLevel]++;
+      }
+
+
+      // Faixa de renda
+      if (incomeRangeStats[incomeRange] !== undefined) {
+        incomeRangeStats[incomeRange]++;
+      }
+
+
+      // Idade
+      if (birthDate) {
+
+        const today = new Date();
+        const birth = new Date(birthDate);
+
+        let age = today.getFullYear() - birth.getFullYear();
+
+        const monthDiff = today.getMonth() - birth.getMonth();
+
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birth.getDate())
+        ) {
+          age--;
+        }
+
+        if (age <= 14) {
+          ageStats.ate_14++;
+        }
+
+        else if (age <= 17) {
+          ageStats.de_15_a_17++;
+        }
+
+        else if (age <= 21) {
+          ageStats.de_18_a_21++;
+        }
+
+        else if (age <= 25) {
+          ageStats.de_22_a_25++;
+        }
+
+        else {
+          ageStats.acima_de_25++;
+        }
       }
     });
 
 
-    // =====================================================
-    // RESPOSTA FINAL
-    // =====================================================
+    // =========================
+    // RESPOSTA
+    // =========================
 
     res.json({
       success: true,
 
       data: {
-        // Métricas gerais
         totalUsers,
         totalCourses,
         totalEnrollments,
         avgOccupancy,
 
-        // Gráfico de inscrições
         enrollmentsByMonth: chartData,
 
-        // Cursos recentes
         recentCourses,
 
-        // Estatísticas demográficas
         genderStats,
+        schoolLevelStats,
+        incomeRangeStats,
+        ageStats,
       }
     });
 
