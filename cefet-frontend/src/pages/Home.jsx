@@ -25,13 +25,21 @@ const Home = () => {
   const [toast, setToast] = useState({ show: false, message: '' })
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
-  // console.log(courses.map(course => course.id))
+  const [visibleCourses, setVisibleCourses] = useState(3)
 
   useEffect(() => {
-    getCoursesAPI({ status: 'published', limit: 6 })
+    getCoursesAPI({ status: 'published'})
       .then(r => setCourses(r.data.data.courses))
       .catch(() => setCourses(mockCourses))
   }, [])
+
+  const handleShowMore = () => {
+    setVisibleCourses(prev => prev + 3)
+  }
+
+  const handleShowLess = () => {
+    setVisibleCourses(3)
+  }
 
   const handleOpenModal = (course) => {
     setSelectedCourse(course)
@@ -55,6 +63,8 @@ const Home = () => {
     ))
     setToast({ show: true, message: 'Inscrição cancelada.' })
   }
+
+  console.log(courses)
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -169,15 +179,38 @@ const Home = () => {
               <p className="text-text-secondary">Nenhum curso disponível no momento.</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map(c => (
-                <EventCard key={c._id} course={c} onOpenModal={handleOpenModal} />
-              ))}
-            </div>
+            <>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {courses
+                  .slice(0, visibleCourses)
+                  .map(c => (
+                    <EventCard
+                      key={c._id}
+                      course={c}
+                      onOpenModal={handleOpenModal}
+                    />
+                  ))}
+              </div>
+              <div className="flex text-center mt-10 justify-center">
+                {visibleCourses < courses.length ? (
+                  <Button
+                    variant="secondary"
+                    onClick={handleShowMore}
+                  >
+                    Ver mais
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={handleShowLess}
+                  >
+                    Ver menos
+                  </Button>
+                )
+                }
+              </div>
+            </>
           )}
-          {/* <div className="text-center mt-10">
-            <Button variant="secondary">Ver todos os eventos</Button>
-          </div> */}
         </div>
       </section>
 
