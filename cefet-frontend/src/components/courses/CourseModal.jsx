@@ -140,7 +140,7 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
 
   return (
     <Modal open={open} onClose={onClose} title={course ? 'Editar Curso' : 'Novo Curso'} size="lg">
-      <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2">
+      <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 sm:pr-4 px-2">
 
         {/* Informações Básicas */}
         <div className="space-y-4">
@@ -151,7 +151,7 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             <textarea
               value={form.description} onChange={set('description')}
               rows={3} placeholder="Descreva o conteúdo do curso..."
-              className="input-field resize-none w-full"
+              className="input-field resize-none w-full min-h-[96px]"
             />
           </div>
         </div>
@@ -193,7 +193,7 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
           {/* Lista Dinâmica de Sessões */}
           <div className="space-y-3 mt-4">
             {form.schedule.map((item, index) => (
-              <div key={index} className="p-4 bg-surface-hover border border-border rounded-lg relative">
+              <div key={index} className="p-4 bg-surface border border-border rounded-lg relative shadow-sm">
                 {isRecurring && form.schedule.length > 1 && (
                   <button
                     onClick={() => removeScheduleItem(index)}
@@ -256,11 +256,11 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-card p-6 text-center transition-colors ${dragOver ? 'border-primary bg-surface-hover' : 'border-border hover:border-primary'}`}
+            className={`border-2 border-dashed rounded-card p-6 text-center transition-colors ${dragOver ? 'border-primary bg-surface' : 'border-border hover:border-primary'}`}
           >
             {preview ? (
               <div className="relative">
-                <img src={preview} alt="preview" className="w-full h-32 object-cover rounded-lg" />
+                <img src={preview} alt="preview" className="w-full h-40 object-cover rounded-card shadow-sm" />
                 <button onClick={() => { setPreview(null); setImage(null) }} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-card"><X size={14} /></button>
               </div>
             ) : (
