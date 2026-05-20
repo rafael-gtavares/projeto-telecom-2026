@@ -433,6 +433,7 @@ const Admin = () => {
 
                     <EnrollmentChartCard
                       data={stats?.enrollmentsByMonth}
+                      period={period}
                     />
 
                     <GenderChartCard
