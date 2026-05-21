@@ -18,7 +18,7 @@ const Sidebar = ({ onLogout }) => {
   const items = navItems.filter(i => !i.adminOnly || role === 'admin')
 
   return (
-    <aside className="hidden md:flex w-[240px] flex-shrink-0 flex-col bg-white border-r border-border min-h-screen">
+    <aside className="hidden md:flex w-[240px] flex-shrink-0 flex-col bg-white border-r border-border h-screen sticky top-0 overflow-y-auto">
       <div className="px-5 py-5 border-b border-border">
         <Link to="/" className="flex items-center gap-2 text-primary font-bold text-xl">
           <LogoSVG color="#1565C0" size={22} /> CEFET/RJ

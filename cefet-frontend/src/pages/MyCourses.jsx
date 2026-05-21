@@ -19,7 +19,6 @@ const statusBadge = {
   concluido: { variant: 'gray', label: 'Concluído' },
 }
 
-const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
 const MyCourses = () => {
   const { user } = useAuth()
@@ -87,19 +86,19 @@ const MyCourses = () => {
                   {filtered.map(({ _id, course, status }) => {
                     if (!course) return null
                     const { variant, label } = statusBadge[status] || {}
-                    
+
                     // Resumo dos dias (Ex: "Segunda, Quarta")
                     const daysSummary = course.schedule?.map(s => s.dayOfWeek).join(', ')
                     // Local da primeira sessão
                     const mainLocation = course.schedule?.[0]?.location || 'A definir'
 
                     return (
-                      <div key={_id} className="group relative flex flex-col md:flex-row gap-6 p-5 bg-white border border-border rounded-xl hover:shadow-md hover:border-primary/30 transition-all">
-                        
+                      <div key={_id} className="group relative flex flex-col md:flex-row gap-6 p-5 mx-6 bg-white border border-border rounded-xl hover:shadow-md hover:border-primary/30 transition-all">
+
                         {/* Imagem/Capa */}
                         <div className="w-full md:w-32 h-32 md:h-auto rounded-lg bg-surface-hover flex-shrink-0 overflow-hidden relative border border-border/50">
                           {course.imageUrl ? (
-                            <img src={`${apiBase}${course.imageUrl}`} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src={course.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-primary/30 bg-primary/5"><BookOpen size={32} /></div>
                           )}
@@ -174,7 +173,7 @@ const MyCourses = () => {
         </div>
       </div>
 
-      <CourseDetailModal 
+      <CourseDetailModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         course={selectedCourse}

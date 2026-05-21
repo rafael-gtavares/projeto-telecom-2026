@@ -47,6 +47,7 @@ import { useAuth } from '../context/AuthContext'
 // APIs
 import {
   getCoursesAPI,
+  getAllCoursesAPI,
   createCourseAPI,
   updateCourseAPI,
   deleteCourseAPI
@@ -85,6 +86,7 @@ const Admin = () => {
   const [users, setUsers] = useState([])
 
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
 
   const [courseModal, setCourseModal] = useState({
     open: false,
@@ -95,6 +97,8 @@ const Admin = () => {
     open: false,
     course: null
   })
+
+  const [statusFilter, setStatusFilter] = useState('all')
 
   const [loading, setLoading] = useState({
     stats: true,
@@ -157,7 +161,8 @@ const Admin = () => {
 
       setLoad('courses', true)
 
-      getCoursesAPI({ limit: 50 })
+      // envia o filtro de status (pode ser 'all', 'published', 'draft', 'closed')
+      getAllCoursesAPI({ limit: 50, status: statusFilter })
 
         .then(response => {
           setCourses(response.data.data.courses)
@@ -172,28 +177,28 @@ const Admin = () => {
         })
     }
 
+  }, [tab, role, statusFilter])
 
-    // Usuários
-    if (tab === 'usuarios' && role === 'admin') {
+  // useEffect dedicado para busca de usuários com debounce
+  useEffect(() => {
+    if (tab !== 'usuarios' || role !== 'admin') return
 
-      setLoad('users', true)
+    setLoad('users', true)
 
-      getUsersAPI()
+    const timeout = setTimeout(() => {
+      const params = {}
+      if (search.trim()) params.search = search.trim()
+      if (roleFilter !== 'all') params.role = roleFilter
 
-        .then(response => {
-          setUsers(response.data.data.users)
-        })
+      getUsersAPI(params)
+        .then(response => { setUsers(response.data.data.users) })
+        .catch(() => { setUsers([]) })
+        .finally(() => { setLoad('users', false) })
+    }, 300)  // debounce de 300ms para não disparar a cada tecla
 
-        .catch(() => {
-          setUsers([])
-        })
+    return () => clearTimeout(timeout)
 
-        .finally(() => {
-          setLoad('users', false)
-        })
-    }
-
-  }, [tab, role])
+  }, [tab, role, search, roleFilter])
 
 
   // ======================================================
@@ -335,18 +340,7 @@ const Admin = () => {
   }
 
 
-  // ======================================================
-  // FILTRAR USUÁRIOS
-  // ======================================================
 
-  const filteredUsers = users.filter(user =>
-
-    !search ||
-
-    user.name.toLowerCase().includes(search.toLowerCase()) ||
-
-    user.email.toLowerCase().includes(search.toLowerCase())
-  )
 
 
   // ======================================================
@@ -368,7 +362,7 @@ const Admin = () => {
       <Sidebar onLogout={handleLogout} />
 
 
-      <div className="flex-1 min-w-0 flex flex-col pb-16 md:pb-0">
+      <div className="flex-1 min-w-0 flex flex-col pb-16 md:pb-0 overflow-y-auto h-screen">
 
         <div className="px-4 md:px-8 py-6 max-w-5xl w-full mx-auto">
 
@@ -477,19 +471,34 @@ const Admin = () => {
                   Cursos
                 </h1>
 
-                <Button
-                  variant="primary"
-                  className="gap-2 text-sm py-2.5 px-4"
-                  onClick={() =>
-                    setCourseModal({
-                      open: true,
-                      course: null
-                    })
-                  }
-                >
-                  <Plus size={16} />
-                  Novo curso
-                </Button>
+                {/* Select e botão agrupados à direita */}
+                <div className="flex items-center gap-3">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="border border-border rounded-btn px-3 py-2.5 text-sm bg-white text-text-primary focus:border-primary focus:shadow-focus transition-all"
+                  >
+                    <option value="all">Todos os cursos</option>
+                    <option value="published">Publicados</option>
+                    <option value="draft">Rascunhos</option>
+                    <option value="closed">Encerrados</option>
+                  </select>
+
+                  <Button
+                    variant="primary"
+                    className="gap-2 text-sm py-2.5 px-4"
+                    onClick={() =>
+                      setCourseModal({
+                        open: true,
+                        course: null
+                      })
+                    }
+                  >
+                    <Plus size={16} />
+                    Novo curso
+                  </Button>
+                </div>
+
               </div>
 
               <div className="card overflow-hidden">
@@ -541,20 +550,33 @@ const Admin = () => {
               <div className="card overflow-hidden">
 
                 <div className="p-4 border-b border-border">
+                  <div className="flex gap-3 flex-wrap">
 
-                  <div className="relative">
+                    {/* Campo de busca — ocupa o espaço disponível */}
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+                      />
+                      <input
+                        placeholder="Buscar por nome ou e-mail..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="input-field pl-9 text-sm py-2.5 w-full"
+                      />
+                    </div>
 
-                    <Search
-                      size={15}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
-                    />
-
-                    <input
-                      placeholder="Buscar por nome ou e-mail..."
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      className="input-field pl-9 text-sm py-2.5"
-                    />
+                    {/* Select de filtro por role — fica à direita */}
+                    <select
+                      value={roleFilter}
+                      onChange={e => setRoleFilter(e.target.value)}
+                      className="border border-border rounded-btn px-3 py-2.5 text-sm bg-white text-text-primary focus:border-primary focus:shadow-focus transition-all"
+                    >
+                      <option value="all">Todos os usuários</option>
+                      <option value="aluno">Alunos</option>
+                      <option value="professor">Professores</option>
+                      <option value="admin">Admins</option>
+                    </select>
 
                   </div>
                 </div>
@@ -570,7 +592,7 @@ const Admin = () => {
                   ) : (
 
                     <UserTable
-                      users={filteredUsers}
+                      users={users}
                       onRoleChange={handleRoleChange}
                       loading={loading.role}
                     />

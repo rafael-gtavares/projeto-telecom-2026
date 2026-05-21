@@ -44,8 +44,6 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
   const occupancyPercent = Math.min(100, (course.enrolledCount / course.maxSlots) * 100)
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
   // Lógica para verificar se o curso dura mais de um dia
   const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
 
@@ -83,7 +81,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
           {course.imageUrl && (
             <>
               <img
-                src={`${apiBase}${course.imageUrl}`}
+                src={course.imageUrl}
                 alt={course.title}
                 className="absolute inset-0 w-full h-full object-cover"
               />
