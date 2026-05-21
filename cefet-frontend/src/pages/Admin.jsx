@@ -161,7 +161,8 @@ const Admin = () => {
 
       setLoad('courses', true)
 
-      getAllCoursesAPI({ limit: 50 })
+      // envia o filtro de status (pode ser 'all', 'published', 'draft', 'closed')
+      getAllCoursesAPI({ limit: 50, status: statusFilter })
 
         .then(response => {
           setCourses(response.data.data.courses)
@@ -176,7 +177,7 @@ const Admin = () => {
         })
     }
 
-  }, [tab, role])
+  }, [tab, role, statusFilter])
 
   // useEffect dedicado para busca de usuários com debounce
   useEffect(() => {

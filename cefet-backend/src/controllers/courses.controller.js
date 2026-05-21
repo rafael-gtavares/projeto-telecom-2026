@@ -37,15 +37,19 @@ const getCourse = async (req, res, next) => {
 
 const getAllCourses = async (req, res, next) => {
   try {
-    const { page = 1, limit = 12 } = req.query;
+    const { status, page = 1, limit = 12 } = req.query;
+    const filter = {};
 
-    const courses = await Course.find({})
+    // Aceita opcionalmente filter por status quando passado (ex: draft, published, closed)
+    if (status && status !== 'all') filter.status = status;
+
+    const courses = await Course.find(filter)
       .populate('professor', 'name email')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
 
-    const total = await Course.countDocuments({});
+    const total = await Course.countDocuments(filter);
     res.json({ success: true, data: { courses, total, page: Number(page), limit: Number(limit) } });
   } catch (err) { next(err); }
 };
