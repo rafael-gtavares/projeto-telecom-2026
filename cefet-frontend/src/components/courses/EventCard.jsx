@@ -49,20 +49,18 @@ const EventCard = ({ course, onOpenModal }) => {
   const isFull = slots <= 0
 
   //Se quiser cores de fundos diferentes e aleatórias para cada curso (caso não tenha dado upload numa foto)
-  //const grad = gradients[parseInt(course._id?.slice(-1), 16) % gradients.length] || gradients[0]
+  // const grad = gradients[parseInt(course._id?.slice(-1), 16) % gradients.length] || gradients[0]
 
   //Se quiser uma única cor
   const grad = gradients[0]
 
-  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
   // Lógica para exibição de data simplificada
   const isOneDay = course.startDate?.slice(0, 10) === course.endDate?.slice(0, 10)
-  
+
   // Resumo dos dias (ex: "Seg, Qua, Sex" ou "Sábado")
-  const scheduleSummary = course.schedule?.length > 1 
+  const scheduleSummary = course.schedule?.length > 1
     ? `${course.schedule.length} dias na semana`
-    : course.schedule?.[0] 
+    : course.schedule?.[0]
       ? `${course.schedule[0].dayOfWeek}, ${course.schedule[0].startTime}`
       : 'Horário a definir'
 
@@ -78,7 +76,7 @@ const EventCard = ({ course, onOpenModal }) => {
         {course.imageUrl && (
           <>
             <img
-              src={`${apiBase}${course.imageUrl}`}
+              src={course.imageUrl}
               alt={course.title}
               className="absolute inset-0 w-full h-full object-cover"
             />
@@ -100,8 +98,8 @@ const EventCard = ({ course, onOpenModal }) => {
           <div className="flex items-center gap-2 text-xs text-text-muted">
             <Calendar size={13} className="text-primary flex-shrink-0" />
             <span>
-              {isOneDay 
-                ? formatDate(course.startDate) 
+              {isOneDay
+                ? formatDate(course.startDate)
                 : `${formatDate(course.startDate)} - ${formatDate(course.endDate)}`
               }
             </span>

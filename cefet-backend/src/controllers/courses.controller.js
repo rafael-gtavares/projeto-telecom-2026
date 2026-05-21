@@ -2,14 +2,18 @@ const Course = require('../models/Course');
 
 const getCourses = async (req, res, next) => {
   try {
-    const { status = 'published', page = 1, limit = 12 } = req.query;
+    const { status, page = 1, limit = 12 } = req.query;  // ← REMOVIDO o default 'published'
     const filter = {};
+    console.log('User role:', req.user?.role, 'Requested status:', status);
 
     if (req.user?.role === 'aluno' || !req.user) {
+      // Visitantes e alunos: sempre apenas publicados, sem exceção
       filter.status = 'published';
-    } else if (status) {
+    } else if (status && status !== 'all') {
+      // Admin/Professor: aplica filtro se status foi passado E não é 'all'
       filter.status = status;
     }
+    // Admin/Professor sem status (ou status='all'): filter fica vazio → retorna todos
 
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
@@ -31,13 +35,27 @@ const getCourse = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getAllCourses = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 12 } = req.query;
+
+    const courses = await Course.find({})
+      .populate('professor', 'name email')
+      .sort({ startDate: 1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await Course.countDocuments({});
+    res.json({ success: true, data: { courses, total, page: Number(page), limit: Number(limit) } });
+  } catch (err) { next(err); }
+};
+
 const createCourse = async (req, res, next) => {
   try {
     if (req.body.schedule && typeof req.body.schedule === 'string') {
       req.body.schedule = JSON.parse(req.body.schedule);
     }
-    const { title, description, schedule, startDate, endDate, professor, maxSlots, status } = req.body;
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const { title, description, schedule, startDate, endDate, professor, maxSlots, status, imageUrl } = req.body;
 
     const course = await Course.create({
       title,
@@ -48,7 +66,7 @@ const createCourse = async (req, res, next) => {
       professor: professor || req.user.id,
       maxSlots,
       status,
-      imageUrl,
+      imageUrl: imageUrl || null,
     });
 
     await course.populate('professor', 'name email');
@@ -61,7 +79,7 @@ const updateCourse = async (req, res, next) => {
     if (req.body.schedule && typeof req.body.schedule === 'string') {
       req.body.schedule = JSON.parse(req.body.schedule);
     }
-    
+
     const course = await Course.findById(req.params.id);
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
@@ -69,7 +87,6 @@ const updateCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Sem permissão para editar este curso' });
 
     const updates = { ...req.body };
-    if (req.file) updates.imageUrl = `/uploads/${req.file.filename}`;
 
     const updated = await Course.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true })
       .populate('professor', 'name email');
@@ -91,4 +108,4 @@ const deleteCourse = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getCourses, getCourse, createCourse, updateCourse, deleteCourse };
+module.exports = { getCourses, getCourse, getAllCourses, createCourse, updateCourse, deleteCourse };

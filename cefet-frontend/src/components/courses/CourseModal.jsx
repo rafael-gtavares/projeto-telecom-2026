@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Upload, X, Plus, Trash2 } from 'lucide-react'
+import { X, Plus, Trash2, Link } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -13,15 +13,14 @@ const INITIAL = {
   status: 'published',
   startDate: '',
   endDate: '',
+  imageUrl: '',
   schedule: [{ dayOfWeek: 'Segunda', startTime: '', endTime: '', location: '' }]
 }
 
 const CourseModal = ({ open, onClose, onSave, course, loading }) => {
   const [form, setForm] = useState(INITIAL)
   const [isRecurring, setIsRecurring] = useState(false)
-  const [image, setImage] = useState(null)
   const [preview, setPreview] = useState(null)
-  const [dragOver, setDragOver] = useState(false)
 
   useEffect(() => {
     if (course && open) {
@@ -39,14 +38,14 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
         status: course.status || 'published',
         startDate: start,
         endDate: end,
+        imageUrl: course.imageUrl || '',
         schedule: course.schedule?.length ? course.schedule : INITIAL.schedule
       })
-      setPreview(course.imageUrl ? `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${course.imageUrl}` : null)
+      setPreview(course.imageUrl || null)
     } else {
       setForm(INITIAL)
       setIsRecurring(false)
       setPreview(null)
-      setImage(null)
     }
   }, [course, open])
 
@@ -74,13 +73,7 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     setForm({ ...form, schedule: newSchedule })
   }
 
-  const handleFile = (file) => {
-    if (!file) return
-    setImage(file)
-    setPreview(URL.createObjectURL(file))
-  }
 
-  const handleDrop = (e) => { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files[0]) }
 
   const isFormValid =
     form.title.trim() &&
@@ -93,24 +86,21 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     )
 
   const handleSubmit = () => {
-    const fd = new FormData()
-
-    // Se for curso de 1 dia, a data final é igual à data inicial
     const finalEndDate = isRecurring ? form.endDate : form.startDate
 
-    fd.append('title', form.title)
-    fd.append('description', form.description)
-    fd.append('professor', form.professor)
-    fd.append('maxSlots', form.maxSlots)
-    fd.append('status', form.status)
-    fd.append('startDate', form.startDate)
-    fd.append('endDate', finalEndDate)
+    const payload = {
+      title: form.title,
+      description: form.description,
+      professor: form.professor,
+      maxSlots: form.maxSlots,
+      status: form.status,
+      startDate: form.startDate,
+      endDate: finalEndDate,
+      schedule: form.schedule,
+      imageUrl: form.imageUrl || null,
+    }
 
-    // Transformamos o array de objetos em uma string JSON para enviar via FormData
-    fd.append('schedule', JSON.stringify(form.schedule))
-
-    if (image) fd.append('image', image)
-    onSave(fd)
+    onSave(payload)
   }
 
   const handleStartDateChange = (e) => {
@@ -249,28 +239,59 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
         </div>
         <Input label="Nome do professor responsável" value={form.professor} onChange={set('professor')} placeholder="Nome do professor" />
 
-        {/* Upload de Imagem */}
+        {/* URL da Imagem */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1.5">Imagem de capa</label>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-card p-6 text-center transition-colors ${dragOver ? 'border-primary bg-surface' : 'border-border hover:border-primary'}`}
-          >
-            {preview ? (
-              <div className="relative">
-                <img src={preview} alt="preview" className="w-full h-40 object-cover rounded-card shadow-sm" />
-                <button onClick={() => { setPreview(null); setImage(null) }} className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-card"><X size={14} /></button>
-              </div>
-            ) : (
-              <>
-                <Upload size={24} className="mx-auto text-text-muted mb-2" />
-                <p className="text-sm text-text-secondary">Arraste ou <label className="text-primary cursor-pointer font-medium"><input type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files[0])} />clique para enviar</label></p>
-                <p className="text-xs text-text-muted mt-1">PNG, JPG até 5MB</p>
-              </>
+          <label className="block text-sm font-medium text-text-secondary mb-1.5">
+            Imagem de capa (URL)
+          </label>
+
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Link
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+              />
+              <input
+                type="url"
+                value={form.imageUrl}
+                onChange={(e) => {
+                  const url = e.target.value
+                  setForm(f => ({ ...f, imageUrl: url }))
+                  setPreview(url || null)
+                }}
+                placeholder="https://exemplo.com/imagem.jpg"
+                className="input-field pl-9"
+              />
+            </div>
+
+            {form.imageUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  setForm(f => ({ ...f, imageUrl: '' }))
+                  setPreview(null)
+                }}
+                className="p-3 rounded-btn border border-border text-text-muted hover:text-error hover:border-error transition-colors"
+              >
+                <X size={16} />
+              </button>
             )}
           </div>
+
+          <p className="text-xs text-text-muted mt-1.5">
+            Cole a URL de uma imagem pública (JPG, PNG, WebP)
+          </p>
+
+          {preview && (
+            <div className="mt-3 relative overflow-hidden rounded-card">
+              <img
+                src={preview}
+                alt="Preview da capa"
+                className="w-full h-40 object-cover"
+                onError={() => setPreview(null)}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 pt-2">
