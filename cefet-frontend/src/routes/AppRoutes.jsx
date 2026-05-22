@@ -6,6 +6,8 @@ import Register from '../pages/Register'
 import MyCourses from '../pages/MyCourses'
 import MyProfile from '../pages/MyProfile'
 import Admin from '../pages/Admin'
+import VerifyEmailPage from '../pages/VerifyEmailPage'
+import CheckEmailPage from '../pages/CheckEmailPage'
 
 const AppRoutes = () => (
   <Routes>
@@ -17,6 +19,8 @@ const AppRoutes = () => (
     <Route path="/admin" element={<PrivateRoute roles={['admin', 'professor']}><Admin /></PrivateRoute>} />
     <Route path="/admin/:tab" element={<PrivateRoute roles={['admin', 'professor']}><Admin /></PrivateRoute>} />
     <Route path="*" element={<Home />} />
+    <Route path="/auth/verify-email/:token" element={<VerifyEmailPage />} />
+    <Route path="/check-email" element={<CheckEmailPage />}/>
   </Routes>
 )
 

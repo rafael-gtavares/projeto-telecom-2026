@@ -1,5 +1,7 @@
+const crypto = require('crypto')
 const User = require('../models/User');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../config/jwt');
+const { sendVerificationEmail } = require('../services/email.services')
 
 const register = async (req, res, next) => {
   try {
@@ -10,7 +12,22 @@ const register = async (req, res, next) => {
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ success: false, message: 'E-mail já cadastrado' });
 
-    const user = await User.create({ name, email, password, birthDate, gender, schoolLevel, incomeRange });
+    const verificationToken = crypto
+      .randomBytes(32)
+      .toString('hex')
+
+    const user = await User.create({
+      name, email, password, birthDate, gender, schoolLevel, incomeRange,
+      verificationToken,
+      verificationTokenExpires: Date.now() + 1000 * 60 * 60,
+      isVerified: false
+    });
+
+    await sendVerificationEmail(
+      user.email,
+      verificationToken
+    )
+
     res.status(201).json({ success: true, message: 'Cadastro realizado com sucesso', data: user.toPublic() });
   } catch (err) { next(err); }
 };
@@ -25,6 +42,31 @@ const login = async (req, res, next) => {
     if (!user || !(await user.comparePassword(password)))
       return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
 
+    if (!user.isVerified) {
+
+      const verificationToken = crypto
+        .randomBytes(32)
+        .toString('hex')
+
+      user.verificationToken = verificationToken
+
+      user.verificationTokenExpires =
+        Date.now() + 1000 * 60 * 60
+
+      await user.save()
+      console.log('TOKEN SALVO:', verificationToken)
+
+      await sendVerificationEmail(
+        user.email,
+        verificationToken
+      )
+
+      return res.status(401).json({
+        success: false,
+        message: 'Verifique seu e-mail antes de entrar. Um novo link foi enviado.'
+      })
+    }
+
     const payload = { id: user._id, role: user.role };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload, rememberMe);
@@ -32,6 +74,63 @@ const login = async (req, res, next) => {
     res.json({ success: true, data: { accessToken, refreshToken, user: user.toPublic() } });
   } catch (err) { next(err); }
 };
+
+const verifyEmail = async (req, res, next) => {
+  try {
+
+    console.log('VERIFY EMAIL CHAMADO')
+    console.log('TOKEN:', req.params.token)
+
+    const { token } = req.params
+
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpires: {
+        $gt: Date.now()
+      }
+    })
+
+    console.log('Token recebido:', token)
+    console.log('Usuário encontrado:', user)
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token inválido ou expirado'
+      })
+    }
+
+    user.isVerified = true
+    user.verificationToken = undefined
+    user.verificationTokenExpires = undefined
+
+    await user.save()
+
+    const payload = {
+      id: user._id,
+      role: user.role
+    }
+
+    const accessToken =
+      signAccessToken(payload)
+
+    const refreshToken =
+      signRefreshToken(payload)
+
+    res.json({
+      success: true,
+
+      data: {
+        accessToken,
+        refreshToken,
+        user: user.toPublic()
+      }
+    })
+
+  } catch (err) {
+    next(err)
+  }
+}
 
 const refresh = async (req, res, next) => {
   try {
@@ -49,4 +148,4 @@ const refresh = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh };
+module.exports = { register, login, refresh, verifyEmail };

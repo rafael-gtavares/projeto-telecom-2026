@@ -64,7 +64,7 @@ const Register = () => {
     try {
       const { confirmPassword, ...payload } = form
       await registerAPI(payload)
-      navigate('/login', { state: { success: 'Conta criada com sucesso! Faça login.' } })
+      navigate('/check-email', { state: { success: 'Verifique seu email para concluir seu cadastro.' } })
     } catch (err) {
       setGlobalErr(err.response?.data?.message || 'Erro ao criar conta. Tente novamente.')
     } finally {
