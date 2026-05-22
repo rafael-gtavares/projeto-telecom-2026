@@ -28,7 +28,7 @@ const Home = () => {
   const [visibleCourses, setVisibleCourses] = useState(3)
 
   useEffect(() => {
-    getCoursesAPI({ status: 'published'})
+    getCoursesAPI({ status: 'published' })
       .then(r => setCourses(r.data.data.courses))
       .catch(() => setCourses(mockCourses))
   }, [])
@@ -137,8 +137,18 @@ const Home = () => {
 
           <div className="flex gap-4 animate-scroll [animation-duration:70s] w-max py-2">
             {[...partners, ...partners].map((p, i) => (
-              <div key={i} className="w-[130px] h-[52px] bg-surface-page border border-border rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-medium text-text-muted hover:border-primary hover:text-primary transition-colors">
-                {p}
+              <div
+                key={i}
+                className="w-[130px] h-[52px] bg-surface-page border border-border rounded-lg flex items-center justify-center flex-shrink-0 hover:border-primary transition-colors px-4"
+              >
+                <img
+                  src={p.logo}
+                  alt={p.name}
+                  className={`object-contain ${p.name === 'Anatel'
+                      ? 'h-18 w-auto'
+                      : 'h-8 w-auto'
+                    }`}
+                />
               </div>
             ))}
           </div>

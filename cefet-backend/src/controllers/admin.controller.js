@@ -11,7 +11,7 @@ const getStats = async (req, res, next) => {
     const [totalUsers, totalCourses, totalEnrollments] = await Promise.all([
       User.countDocuments({ role: 'aluno' }),
       Course.countDocuments({ status: 'published' }),
-      Enrollment.countDocuments(),
+      Enrollment.countDocuments({ status: 'inscrito' }),
     ]);
 
 
@@ -52,7 +52,8 @@ const getStats = async (req, res, next) => {
     const enrollmentsByMonth = await Enrollment.aggregate([
       {
         $match: {
-          createdAt: { $gte: startDate }
+          createdAt: { $gte: startDate },
+          status: 'inscrito'
         }
       },
 

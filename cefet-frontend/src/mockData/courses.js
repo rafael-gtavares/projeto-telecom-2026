@@ -1,3 +1,14 @@
+import embratelLogo from '../assets/logo-embratel.svg'
+import claroLogo from '../assets/logo-claro.svg'
+import ericssonLogo from '../assets/logo-ericsson.svg'
+import huaweiLogo from '../assets/logo-huawei.svg'
+import ciscoLogo from '../assets/logo-cisco.svg'
+import nokiaLogo from '../assets/logo-nokia.svg'
+import anatelLogo from '../assets/logo-anatel.png'
+import timLogo from '../assets/logo-tim.svg'
+import vivoLogo from '../assets/logo-vivo.svg'
+import oiLogo from '../assets/logo-oi.png'
+
 export const mockCourses = [
   {
     _id: '1', title: 'Redes de Telecomunicações', description: 'Fundamentos de redes de dados, protocolos TCP/IP, topologias e infraestrutura de telecomunicações modernas.',
@@ -32,5 +43,44 @@ export const mockCourses = [
 ]
 
 export const mockPartners = [
-  'Embratel', 'Claro', 'Ericsson', 'Huawei', 'Cisco', 'Nokia', 'Anatel', 'TIM', 'Vivo', 'OI Telecom',
+  {
+    name: 'Embratel',
+    logo: embratelLogo,
+  },
+  {
+    name: 'Claro',
+    logo: claroLogo,
+  },
+  {
+    name: 'Ericsson',
+    logo: ericssonLogo,
+  },
+  {
+    name: 'Huawei',
+    logo: huaweiLogo,
+  },
+  {
+    name: 'Cisco',
+    logo: ciscoLogo,
+  },
+  {
+    name: 'Nokia',
+    logo: nokiaLogo,
+  },
+  {
+    name: 'Anatel',
+    logo: anatelLogo,
+  },
+  {
+    name: 'TIM',
+    logo: timLogo,
+  },
+  {
+    name: 'Vivo',
+    logo: vivoLogo,
+  },
+  {
+    name: 'OI Telecom',
+    logo: oiLogo,
+  },
 ]
