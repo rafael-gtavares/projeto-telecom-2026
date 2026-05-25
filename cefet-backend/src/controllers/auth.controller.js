@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const User = require('../models/User');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../config/jwt');
-const { sendVerificationEmail } = require('../services/email.services')
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/email.services')
 
 const register = async (req, res, next) => {
   try {
@@ -148,4 +148,57 @@ const refresh = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, refresh, verifyEmail };
+// Solicitar redefinição de senha
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body
+    if (!email)
+      return res.status(400).json({ success: false, message: 'E-mail é obrigatório' })
+
+    const user = await User.findOne({ email })
+
+    // Resposta genérica por segurança — não revela se o email existe ou não
+    if (!user)
+      return res.json({ success: true, message: 'Se este e-mail estiver cadastrado, você receberá um link em breve.' })
+
+    const resetToken = crypto.randomBytes(32).toString('hex')
+
+    user.passwordResetToken = resetToken
+    user.passwordResetExpires = Date.now() + 1000 * 60 * 60 // 1 hora
+
+    await user.save()
+
+    await sendPasswordResetEmail(user.email, resetToken)
+
+    res.json({ success: true, message: 'Se este e-mail estiver cadastrado, você receberá um link em breve.' })
+  } catch (err) { next(err) }
+}
+
+// Redefinir a senha com o token
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token } = req.params
+    const { password } = req.body
+
+    if (!password)
+      return res.status(400).json({ success: false, message: 'Nova senha é obrigatória' })
+
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() }
+    })
+
+    if (!user)
+      return res.status(400).json({ success: false, message: 'Token inválido ou expirado' })
+
+    user.password = password
+    user.passwordResetToken = undefined
+    user.passwordResetExpires = undefined
+
+    await user.save()
+
+    res.json({ success: true, message: 'Senha redefinida com sucesso' })
+  } catch (err) { next(err) }
+}
+
+module.exports = { register, login, refresh, verifyEmail, forgotPassword, resetPassword };

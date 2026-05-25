@@ -78,7 +78,31 @@ const sendVerificationEmail = async (email, token) => {
   })
 }
 
-module.exports = { sendVerificationEmail }
+const sendPasswordResetEmail = async (email, token) => {
+  const resetLink = `${process.env.CLIENT_URL}/auth/reset-password/${token}`
+
+  await transporter.sendMail({
+    from: '"Projeto Telecom" <rafael.tavares.informatica@gmail.com>',
+    to: email,
+    subject: 'Redefinição de senha',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #f9fafb; border-radius: 12px; text-align: center;">
+        <h1 style="color: #111827; margin-bottom: 16px;">Redefinir senha</h1>
+        <p style="color: #4b5563; font-size: 16px; line-height: 1.5; margin-bottom: 32px;">
+          Clique no botão abaixo para redefinir sua senha. O link expira em 1 hora.
+        </p>
+        <a href="${resetLink}" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px;">
+          Redefinir senha
+        </a>
+        <p style="margin-top: 32px; font-size: 14px; color: #6b7280;">
+          Se você não solicitou a redefinição, ignore este e-mail.
+        </p>
+      </div>
+    `
+  })
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail }
 
 //SOLUÇÃO COM RESEND (precisa de domínio)
 /*const { Resend } = require('resend')
