@@ -13,7 +13,7 @@ const sendVerificationEmail = async (email, token) => {
   const verifyLink = `${process.env.CLIENT_URL}/auth/verify-email/${token}`
 
   await transporter.sendMail({
-    from: '"Seu App" <rafael.tavares.informatica@gmail.com>',
+    from: '"Projeto Telecom" <rafael.tavares.informatica@gmail.com>',
     to: email,
     subject: 'Verifique seu e-mail',
     html: `
