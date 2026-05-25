@@ -1,21 +1,17 @@
+import { useLocation } from 'react-router-dom'
+
 export default function CheckEmailPage() {
+  const { state } = useLocation()
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+  const title = state?.title || 'Verifique seu e-mail'
+  const message = state?.message || 'Enviamos um link de verificação para o seu e-mail. Clique no link recebido para ativar sua conta.'
 
-            <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
-
-                <h1 className="text-3xl font-bold text-gray-800 mb-4">
-                    Verifique seu e-mail
-                </h1>
-
-                <p className="text-gray-600 leading-relaxed">
-                    Enviamos um link de verificação para o seu e-mail.
-                    Clique no link recebido para ativar sua conta.
-                </p>
-
-            </div>
-
-        </div>
-    )
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">{title}</h1>
+        <p className="text-gray-600 leading-relaxed">{message}</p>
+      </div>
+    </div>
+  )
 }

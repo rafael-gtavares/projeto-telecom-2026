@@ -53,7 +53,7 @@ const Login = () => {
       <div className="w-full max-w-[420px]">
         <div className="card rounded-modal shadow-modal p-8 md:p-10 animate-fadeIn">
           <div className="text-center mb-8">
-            <Link to="/"  className="inline-flex items-center gap-2 text-primary font-bold text-2xl mb-1">
+            <Link to="/" className="inline-flex items-center gap-2 text-primary font-bold text-2xl mb-1">
               <LogoSVG color="#1565C0" size={22} /> CEFET/RJ
             </Link>
             <p className="text-text-secondary text-sm mt-1">Acesse sua conta</p>
@@ -100,9 +100,12 @@ const Login = () => {
                 />
                 Lembrar por 30 dias
               </label>
-              <button type="button" className="text-primary text-sm hover:underline">
+              <Link
+                to="/esqueci-senha"
+                className="text-primary text-sm hover:underline"
+              >
                 Esqueci a senha
-              </button>
+              </Link>
             </div>
 
             <Button type="submit" variant="primary" className="w-full h-12 text-base mt-2" loading={loading}>
