@@ -5,7 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import {
   Plus,
   Search,
-  Trash2
+  Trash2,
+  Pencil,
 } from 'lucide-react'
 
 
@@ -36,6 +37,7 @@ import CourseModal from '../components/courses/CourseModal'
 
 import Modal from '../components/ui/Modal'
 import Button from '../components/ui/Button'
+import Input from '../components/ui/Input'
 
 import { Spinner } from '../components/ui/index'
 
@@ -59,10 +61,18 @@ import {
   getAdminStatsAPI
 } from '../api/users'
 
+import {
+  getAdminSchoolsAPI,
+  createSchoolAPI,
+  updateSchoolAPI,
+  deleteSchoolAPI,
+} from '../api/schools'
+
 
 // Mock
 import { mockCourses } from '../mockData/courses'
 
+const EMPTY_SCHOOL_FORM = { name: '', city: '', state: '' }
 
 const Admin = () => {
 
@@ -85,6 +95,8 @@ const Admin = () => {
 
   const [users, setUsers] = useState([])
 
+  const [schools, setSchools] = useState([])
+
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
 
@@ -98,15 +110,30 @@ const Admin = () => {
     course: null
   })
 
+  const [schoolModal, setSchoolModal] = useState({
+    open: false,
+    school: null, // null = criação, objeto = edição
+  })
+  const [schoolForm, setSchoolForm] = useState(EMPTY_SCHOOL_FORM)
+  const [schoolFormError, setSchoolFormError] = useState('')
+
+  const [deleteSchoolModal, setDeleteSchoolModal] = useState({
+    open: false,
+    school: null,
+  })
+
   const [statusFilter, setStatusFilter] = useState('all')
 
   const [loading, setLoading] = useState({
     stats: true,
     courses: true,
     users: true,
+    schools: true,
     save: false,
     delete: false,
-    role: false
+    role: false,
+    schoolSave: false,
+    schoolDelete: false,
   })
 
 
@@ -148,20 +175,18 @@ const Admin = () => {
 
 
   // ======================================================
-  // BUSCAR CURSOS / USUÁRIOS
+  // BUSCAR CURSOS / USUÁRIOS / ESCOLAS
   // ======================================================
 
   useEffect(() => {
 
     if (!tab) return
 
-
     // Cursos
     if (tab === 'cursos') {
 
       setLoad('courses', true)
 
-      // envia o filtro de status (pode ser 'all', 'published', 'draft', 'closed')
       getAllCoursesAPI({ limit: 50, status: statusFilter })
 
         .then(response => {
@@ -175,6 +200,17 @@ const Admin = () => {
         .finally(() => {
           setLoad('courses', false)
         })
+    }
+
+    // Escolas
+    if (tab === 'escolas' && role === 'admin') {
+
+      setLoad('schools', true)
+
+      getAdminSchoolsAPI()
+        .then(response => setSchools(response.data.data))
+        .catch(() => setSchools([]))
+        .finally(() => setLoad('schools', false))
     }
 
   }, [tab, role, statusFilter])
@@ -194,7 +230,7 @@ const Admin = () => {
         .then(response => { setUsers(response.data.data.users) })
         .catch(() => { setUsers([]) })
         .finally(() => { setLoad('users', false) })
-    }, 300)  // debounce de 300ms para não disparar a cada tecla
+    }, 300)
 
     return () => clearTimeout(timeout)
 
@@ -211,7 +247,6 @@ const Admin = () => {
 
     try {
 
-      // Editar
       if (courseModal.course) {
 
         const { data } = await updateCourseAPI(
@@ -228,7 +263,6 @@ const Admin = () => {
         )
       }
 
-      // Criar
       else {
 
         const { data } = await createCourseAPI(formData)
@@ -340,7 +374,71 @@ const Admin = () => {
   }
 
 
+  // ======================================================
+  // ESCOLAS — abrir modal
+  // ======================================================
 
+  const openSchoolModal = (school = null) => {
+    setSchoolForm(school
+      ? { name: school.name, city: school.city || '', state: school.state || '' }
+      : EMPTY_SCHOOL_FORM
+    )
+    setSchoolFormError('')
+    setSchoolModal({ open: true, school })
+  }
+
+
+  // ======================================================
+  // ESCOLAS — salvar (criar ou editar)
+  // ======================================================
+
+  const handleSaveSchool = async () => {
+    if (!schoolForm.name.trim()) {
+      setSchoolFormError('O nome é obrigatório')
+      return
+    }
+
+    setLoad('schoolSave', true)
+    setSchoolFormError('')
+
+    try {
+      if (schoolModal.school) {
+        // Editar
+        const { data } = await updateSchoolAPI(schoolModal.school._id, schoolForm)
+        setSchools(prev => prev.map(s => s._id === data.data._id ? data.data : s))
+      } else {
+        // Criar
+        const { data } = await createSchoolAPI(schoolForm)
+        setSchools(prev => [data.data, ...prev])
+      }
+      setSchoolModal({ open: false, school: null })
+    } catch (err) {
+      setSchoolFormError(err.response?.data?.message || 'Erro ao salvar escola')
+    } finally {
+      setLoad('schoolSave', false)
+    }
+  }
+
+
+  // ======================================================
+  // ESCOLAS — excluir
+  // ======================================================
+
+  const handleDeleteSchool = async () => {
+    if (!deleteSchoolModal.school) return
+
+    setLoad('schoolDelete', true)
+
+    try {
+      await deleteSchoolAPI(deleteSchoolModal.school._id)
+      setSchools(prev => prev.filter(s => s._id !== deleteSchoolModal.school._id))
+      setDeleteSchoolModal({ open: false, school: null })
+    } catch {
+      alert('Erro ao excluir escola')
+    } finally {
+      setLoad('schoolDelete', false)
+    }
+  }
 
 
   // ======================================================
@@ -471,7 +569,6 @@ const Admin = () => {
                   Cursos
                 </h1>
 
-                {/* Select e botão agrupados à direita */}
                 <div className="flex items-center gap-3">
                   <select
                     value={statusFilter}
@@ -552,7 +649,6 @@ const Admin = () => {
                 <div className="p-4 border-b border-border">
                   <div className="flex gap-3 flex-wrap">
 
-                    {/* Campo de busca — ocupa o espaço disponível */}
                     <div className="relative flex-1 min-w-[200px]">
                       <Search
                         size={15}
@@ -566,7 +662,6 @@ const Admin = () => {
                       />
                     </div>
 
-                    {/* Select de filtro por role — fica à direita */}
                     <select
                       value={roleFilter}
                       onChange={e => setRoleFilter(e.target.value)}
@@ -602,6 +697,99 @@ const Admin = () => {
               </div>
             </div>
           )}
+
+
+          {/* ======================================================
+              ESCOLAS
+          ====================================================== */}
+
+          {tab === 'escolas' && role === 'admin' && (
+
+            <div className="animate-fadeIn">
+
+              <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+                <h1 className="text-xl font-bold text-text-primary">Escolas</h1>
+                <Button
+                  variant="primary"
+                  className="gap-2 text-sm py-2.5 px-4"
+                  onClick={() => openSchoolModal()}
+                >
+                  <Plus size={16} />
+                  Nova escola
+                </Button>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="p-4 md:p-6">
+
+                  {loading.schools ? (
+
+                    <div className="flex justify-center py-12">
+                      <Spinner />
+                    </div>
+
+                  ) : schools.length === 0 ? (
+
+                    <p className="text-center text-text-muted text-sm py-12">
+                      Nenhuma escola cadastrada ainda.
+                    </p>
+
+                  ) : (
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-left">
+                            <th className="pb-3 font-medium text-text-secondary">Nome</th>
+                            <th className="pb-3 font-medium text-text-secondary">Cidade</th>
+                            <th className="pb-3 font-medium text-text-secondary">Estado</th>
+                            <th className="pb-3 font-medium text-text-secondary">Status</th>
+                            <th className="pb-3 font-medium text-text-secondary text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {schools.map(school => (
+                            <tr key={school._id} className="hover:bg-surface-page transition-colors">
+                              <td className="py-3 font-medium text-text-primary">{school.name}</td>
+                              <td className="py-3 text-text-secondary">{school.city || '—'}</td>
+                              <td className="py-3 text-text-secondary">{school.state || '—'}</td>
+                              <td className="py-3">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  school.active
+                                    ? 'bg-success-light text-success-text'
+                                    : 'bg-surface-hover text-text-muted'
+                                }`}>
+                                  {school.active ? 'Ativa' : 'Inativa'}
+                                </span>
+                              </td>
+                              <td className="py-3">
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    onClick={() => openSchoolModal(school)}
+                                    className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors"
+                                    title="Editar"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteSchoolModal({ open: true, school })}
+                                    className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors"
+                                    title="Excluir"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -628,7 +816,7 @@ const Admin = () => {
 
 
       {/* ======================================================
-          MODAL EXCLUIR
+          MODAL EXCLUIR CURSO
       ====================================================== */}
 
       <Modal
@@ -687,6 +875,114 @@ const Admin = () => {
             Cancelar
           </Button>
 
+        </div>
+      </Modal>
+
+
+      {/* ======================================================
+          MODAL CRIAR / EDITAR ESCOLA
+      ====================================================== */}
+
+      <Modal
+        open={schoolModal.open}
+        onClose={() => setSchoolModal({ open: false, school: null })}
+        title={schoolModal.school ? 'Editar escola' : 'Nova escola'}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Nome da escola"
+            placeholder="Ex: Colégio Estadual João da Silva"
+            value={schoolForm.name}
+            onChange={e => setSchoolForm(f => ({ ...f, name: e.target.value }))}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Cidade"
+              placeholder="Ex: Niterói"
+              value={schoolForm.city}
+              onChange={e => setSchoolForm(f => ({ ...f, city: e.target.value }))}
+            />
+            <Input
+              label="Estado"
+              placeholder="Ex: RJ"
+              value={schoolForm.state}
+              onChange={e => setSchoolForm(f => ({ ...f, state: e.target.value }))}
+            />
+          </div>
+
+          {/* Toggle ativo/inativo — só aparece na edição */}
+          {schoolModal.school && (
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={schoolForm.active ?? true}
+                  onChange={e => setSchoolForm(f => ({ ...f, active: e.target.checked }))}
+                />
+                <div className={`w-10 h-6 rounded-full transition-colors ${(schoolForm.active ?? true) ? 'bg-primary' : 'bg-border'}`} />
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${(schoolForm.active ?? true) ? 'translate-x-4' : ''}`} />
+              </div>
+              <span className="text-sm text-text-secondary">Escola ativa</span>
+            </label>
+          )}
+
+          {schoolFormError && (
+            <p className="text-error text-sm">{schoolFormError}</p>
+          )}
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <Button
+            variant="primary"
+            className="flex-1"
+            onClick={handleSaveSchool}
+            loading={loading.schoolSave}
+          >
+            {schoolModal.school ? 'Salvar alterações' : 'Criar escola'}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setSchoolModal({ open: false, school: null })}
+            disabled={loading.schoolSave}
+          >
+            Cancelar
+          </Button>
+        </div>
+      </Modal>
+
+
+      {/* ======================================================
+          MODAL EXCLUIR ESCOLA
+      ====================================================== */}
+
+      <Modal
+        open={deleteSchoolModal.open}
+        onClose={() => setDeleteSchoolModal({ open: false, school: null })}
+        title="Excluir escola"
+        size="sm"
+      >
+        <p className="text-text-secondary text-sm mb-5">
+          Tem certeza que deseja excluir
+          <strong className="text-text-primary"> "{deleteSchoolModal.school?.name}"</strong>?
+          {' '}Esta ação não pode ser desfeita.
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleDeleteSchool}
+            disabled={loading.schoolDelete}
+            className="flex-1 btn-primary bg-error hover:bg-error-text justify-center"
+          >
+            {loading.schoolDelete ? 'Excluindo...' : <><Trash2 size={14} /> Excluir</>}
+          </button>
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteSchoolModal({ open: false, school: null })}
+          >
+            Cancelar
+          </Button>
         </div>
       </Modal>
     </div>

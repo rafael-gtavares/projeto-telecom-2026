@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Lock, Eye, EyeOff } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Input from '../components/ui/Input'
@@ -6,6 +6,7 @@ import Button from '../components/ui/Button'
 import { Avatar, Badge } from '../components/ui/index'
 import { useAuth } from '../context/AuthContext'
 import { updateMeAPI } from '../api/users'
+import { getActiveSchoolsAPI } from '../api/schools'
 import { getRoleLabel } from '../utils/formatDate'
 
 const incomeOptions = [
@@ -33,13 +34,21 @@ const MyProfile = () => {
     gender: user?.gender || 'prefiro_nao_informar',
     schoolLevel: user?.schoolLevel || '',
     incomeRange: user?.incomeRange || 'prefiro_nao_informar',
+    school: user?.school?._id || user?.school || '',
   })
+  const [schools, setSchools] = useState([])
   const [passwords, setPasswords] = useState({ password: '', confirm: '' })
   const [showPassSection, setShowPassSection] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    getActiveSchoolsAPI()
+      .then(res => setSchools(res.data.data))
+      .catch(() => setSchools([]))
+  }, [])
 
   const set = (k) => (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
@@ -48,7 +57,7 @@ const MyProfile = () => {
 
   const handleSave = async () => {
     setError(''); setSuccess('')
-    const payload = { ...form }
+    const payload = { ...form, school: form.school || null }
     if (showPassSection && passwords.password) {
       if (passwords.password !== passwords.confirm) { setError('As senhas não coincidem'); return }
       if (passwords.password.length < 6) { setError('Mínimo 6 caracteres'); return }
@@ -70,8 +79,9 @@ const MyProfile = () => {
   const handleCancel = () => {
     setForm({
       name: user?.name || '', birthDate: user?.birthDate?.slice(0, 10) || '',
-      gender: user?.gender || 'prefiro_nao_informar', schoolLevel: user?.schoolLevel || false,
+      gender: user?.gender || 'prefiro_nao_informar', schoolLevel: user?.schoolLevel || '',
       incomeRange: user?.incomeRange || 'prefiro_nao_informar',
+      school: user?.school?._id || user?.school || '',
     })
     setError(''); setSuccess(''); setShowPassSection(false)
   }
@@ -109,20 +119,10 @@ const MyProfile = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                  Nível Escolar
-                </label>
-
-                <select
-                  value={form.schoolLevel}
-                  onChange={set('schoolLevel')}
-                  className="input-field"
-                  required
-                >
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Nível Escolar</label>
+                <select value={form.schoolLevel} onChange={set('schoolLevel')} className="input-field">
                   {schoolLevelOptions.map(o => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
+                    <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
                 </select>
               </div>
@@ -133,6 +133,21 @@ const MyProfile = () => {
                   {incomeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
+
+              {/* Campo escola — só aparece para alunos */}
+              {role !== 'professor' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Escola de origem</label>
+                  <select value={form.school} onChange={set('school')} className="input-field">
+                    <option value="">Prefiro não informar</option>
+                    {schools.map(s => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}{s.city ? ` — ${s.city}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Password section */}
               <div className="border border-border rounded-card overflow-hidden">

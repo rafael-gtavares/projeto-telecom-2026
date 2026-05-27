@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Users, GraduationCap, LogOut, Home } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Users, LogOut, Home, School } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Avatar, Badge } from '../ui/index'
 import { getRoleLabel } from '../../utils/formatDate'
@@ -10,6 +10,7 @@ const navItems = [
   { tab: '', label: 'Dashboard', icon: LayoutDashboard },
   { tab: 'cursos', label: 'Cursos', icon: BookOpen },
   { tab: 'usuarios', label: 'Usuários', icon: Users, adminOnly: true },
+  { tab: 'escolas', label: 'Escolas', icon: School, adminOnly: true },
 ]
 
 const Sidebar = ({ onLogout }) => {
@@ -46,7 +47,6 @@ const Sidebar = ({ onLogout }) => {
               <Badge variant="blue" className="text-[10px]">{getRoleLabel(role)}</Badge>
             </div>
           </div>
-
           <button onClick={onLogout} className="btn-ghost w-full justify-center">
             <LogOut size={16} /> Sair da conta
           </button>
