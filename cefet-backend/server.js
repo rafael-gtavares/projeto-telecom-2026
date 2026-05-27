@@ -10,6 +10,7 @@ const coursesRoutes = require('./src/routes/courses.routes');
 const enrollmentsRoutes = require('./src/routes/enrollments.routes');
 const usersRoutes = require('./src/routes/users.routes');
 const adminRoutes = require('./src/routes/admin.routes');
+const schoolRoutes = require('./src/routes/school.routes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/courses', coursesRoutes);
 app.use('/enrollments', enrollmentsRoutes);
 app.use('/users', usersRoutes);
 app.use('/admin', adminRoutes);
+app.use('/schools', schoolRoutes)
 
 app.get('/health', (req, res) => res.json({ status: 'ok', message: 'CEFET API rodando' }));
 

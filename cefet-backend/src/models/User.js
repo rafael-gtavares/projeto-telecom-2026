@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema({
   },
   role: { type: String, enum: ['aluno', 'professor', 'admin'], default: 'aluno' },
   avatar: { type: String, default: null },
+  school: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'School',
+    default: null,
+  },
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {

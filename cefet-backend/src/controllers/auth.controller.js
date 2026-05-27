@@ -5,7 +5,7 @@ const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/e
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, birthDate, gender, schoolLevel, incomeRange } = req.body;
+    const { name, email, password, birthDate, gender, schoolLevel, incomeRange, school } = req.body;
     if (!name || !email || !password)
       return res.status(400).json({ success: false, message: 'Nome, e-mail e senha são obrigatórios' });
 
@@ -17,7 +17,7 @@ const register = async (req, res, next) => {
       .toString('hex')
 
     const user = await User.create({
-      name, email, password, birthDate, gender, schoolLevel, incomeRange,
+      name, email, password, birthDate, gender, schoolLevel, incomeRange, school: school || null,
       verificationToken,
       verificationTokenExpires: Date.now() + 1000 * 60 * 60,
       isVerified: false
