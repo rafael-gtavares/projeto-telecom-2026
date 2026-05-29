@@ -52,7 +52,8 @@ import {
   getAllCoursesAPI,
   createCourseAPI,
   updateCourseAPI,
-  deleteCourseAPI
+  deleteCourseAPI,
+  getCourseStatsAPI
 } from '../api/courses'
 
 import {
@@ -114,7 +115,7 @@ const Admin = () => {
     open: false,
     school: null, // null = criação, objeto = edição
   })
-  
+
   const [schoolForm, setSchoolForm] = useState(EMPTY_SCHOOL_FORM)
   const [schoolFormError, setSchoolFormError] = useState('')
 
@@ -136,6 +137,14 @@ const Admin = () => {
     schoolSave: false,
     schoolDelete: false,
   })
+
+  const [selectedCourse, setSelectedCourse] = useState(null);
+
+  const [courseStats, setCourseStats] = useState(null);
+
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+
+  const [loadingCourseStats, setLoadingCourseStats] = useState(false);
 
 
   // ======================================================
@@ -181,10 +190,8 @@ const Admin = () => {
 
   useEffect(() => {
 
-    if (!tab) return
-
-    // Cursos
-    if (tab === 'cursos') {
+    // Dashboard OU página de cursos
+    if (!tab || tab === 'cursos') {
 
       setLoad('courses', true)
 
@@ -374,6 +381,34 @@ const Admin = () => {
     }
   }
 
+  // ======================================================
+  // COURSES - abrir modal e buscar estatísticas
+  // ======================================================
+
+  const handleOpenCourseStats = async (course) => {
+
+    try {
+
+      setSelectedCourse(course);
+
+      setIsStatsModalOpen(true);
+
+      setLoadingCourseStats(true);
+
+      const response = await getCourseStatsAPI(course._id);
+
+      setCourseStats(response.data.data);
+
+    } catch (error) {
+
+      console.error(error);
+
+    } finally {
+
+      setLoadingCourseStats(false);
+
+    }
+  };
 
   // ======================================================
   // ESCOLAS — abrir modal
@@ -467,8 +502,8 @@ const Admin = () => {
 
 
           {/* ======================================================
-              DASHBOARD
-          ====================================================== */}
+                  DASHBOARD
+              ====================================================== */}
 
           {!tab && (
 
@@ -477,7 +512,6 @@ const Admin = () => {
               <h1 className="text-xl font-bold text-text-primary mb-6">
                 Dashboard
               </h1>
-
 
               {loading.stats ? (
 
@@ -489,70 +523,162 @@ const Admin = () => {
 
                 <>
 
-                  <DashboardMetrics stats={stats} />
+                  {/* ======================================================
+                          ESTATÍSTICAS GERAIS
+                      ====================================================== */}
 
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="mb-10">
 
-                    <div>
-                      <h3 className="font-semibold text-text-primary text-sm">
-                        Inscrições por mês
-                      </h3>
+                    <div className="mb-6">
 
-                      <p className="text-xs text-text-muted">
-                        Período selecionado
+                      <h2 className="text-lg font-bold text-text-primary">
+                        Estatísticas gerais
+                      </h2>
+
+                      <p className="text-sm text-text-muted">
+                        Visão geral da plataforma
                       </p>
+
                     </div>
 
-                    <select
-                      value={period}
-                      onChange={(e) => setPeriod(e.target.value)}
-                      className="
-                        border border-border
-                        rounded-lg
-                        px-3 py-2
-                        text-sm
-                        bg-surface
-                      "
-                    >
-                      <option value="1m">1 mês</option>
-                      <option value="3m">3 meses</option>
-                      <option value="6m">6 meses</option>
-                      <option value="1y">1 ano</option>
-                    </select>
+                    <DashboardMetrics stats={stats} />
+
+                    <div className="flex items-center justify-between mb-4 mt-8">
+
+                      <div>
+
+                        <h3 className="font-semibold text-text-primary text-sm">
+                          Inscrições por mês
+                        </h3>
+
+                        <p className="text-xs text-text-muted">
+                          Período selecionado
+                        </p>
+
+                      </div>
+
+                      <select
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        className="
+                          border border-border
+                          rounded-lg
+                          px-3 py-2
+                          text-sm
+                          bg-surface
+                        "
+                      >
+                        <option value="1m">1 mês</option>
+                        <option value="3m">3 meses</option>
+                        <option value="6m">6 meses</option>
+                        <option value="1y">1 ano</option>
+                      </select>
+
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+
+                      <EnrollmentChartCard
+                        data={stats?.enrollmentsByMonth}
+                        period={period}
+                      />
+
+                      <GenderChartCard
+                        data={stats?.genderStats}
+                      />
+
+                      <AgeChartCard
+                        data={stats?.ageStats}
+                      />
+
+                      <SchoolLevelChartCard
+                        data={stats?.schoolLevelStats}
+                      />
+
+                      <IncomeRangeChartCard
+                        data={stats?.incomeRangeStats}
+                      />
+
+                      <RecentCoursesCard
+                        courses={stats?.recentCourses}
+                      />
+
+                    </div>
 
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-6">
 
-                    <EnrollmentChartCard
-                      data={stats?.enrollmentsByMonth}
-                      period={period}
-                    />
+                  {/* ======================================================
+                        ESTATÍSTICAS POR CURSO
+                    ====================================================== */}
 
-                    <GenderChartCard
-                      data={stats?.genderStats}
-                    />
+                  <div>
 
-                    <AgeChartCard
-                      data={stats?.ageStats}
-                    />
+                    <div className="mb-6">
 
-                    <SchoolLevelChartCard
-                      data={stats?.schoolLevelStats}
-                    />
+                      <h2 className="text-lg font-bold text-text-primary">
+                        Estatísticas por curso
+                      </h2>
 
-                    <IncomeRangeChartCard
-                      data={stats?.incomeRangeStats}
-                    />
+                      <p className="text-sm text-text-muted">
+                        Visualize dados detalhados individualmente
+                      </p>
 
-                    <RecentCoursesCard
-                      courses={stats?.recentCourses}
-                    />
+                    </div>
+
+                    <div className="grid gap-4">
+
+                      {courses.map((course) => (
+
+                        <div
+                          key={course._id}
+                          className="
+                            bg-surface
+                            border border-border
+                            rounded-xl
+                            p-4
+                            flex items-center justify-between
+                          "
+                        >
+
+                          <div>
+
+                            <h3 className="font-semibold text-text-primary">
+                              {course.title}
+                            </h3>
+
+                            <p className="text-sm text-text-muted">
+                              {course.professor?.name}
+                            </p>
+
+                          </div>
+
+                          <button
+                            onClick={() => handleOpenCourseStats(course)}
+                            className="
+                              px-4 py-2
+                              rounded-lg
+                              bg-primary
+                              text-white
+                              text-sm
+                              hover:opacity-90
+                              transition
+                            "
+                          >
+                            Ver estatísticas
+                          </button>
+
+                        </div>
+                      ))}
+
+                    </div>
 
                   </div>
 
                 </>
+
               )}
+
             </div>
           )}
 
@@ -755,11 +881,10 @@ const Admin = () => {
                               <td className="py-3 text-text-secondary">{school.city || '—'}</td>
                               <td className="py-3 text-text-secondary">{school.state || '—'}</td>
                               <td className="py-3">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  school.active
-                                    ? 'bg-success-light text-success-text'
-                                    : 'bg-surface-hover text-text-muted'
-                                }`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${school.active
+                                  ? 'bg-success-light text-success-text'
+                                  : 'bg-surface-hover text-text-muted'
+                                  }`}>
                                   {school.active ? 'Ativa' : 'Inativa'}
                                 </span>
                               </td>
