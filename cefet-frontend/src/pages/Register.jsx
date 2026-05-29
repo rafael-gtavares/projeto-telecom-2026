@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, User, Eye, EyeOff, GraduationCap } from 'lucide-react'
 import { registerAPI } from '../api/auth'
+import { getActiveSchoolsAPI } from '../api/schools'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import { passwordStrength } from '../utils/passwordStrength'
@@ -28,7 +29,7 @@ const Register = () => {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     name: '', email: '', birthDate: '', gender: 'prefiro_nao_informar',
-    password: '', confirmPassword: '', schoolLevel: '', incomeRange: 'prefiro_nao_informar',
+    password: '', confirmPassword: '', schoolLevel: '', incomeRange: 'prefiro_nao_informar', school: ''
   })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -52,8 +53,8 @@ const Register = () => {
     if (!form.password) errs.password = 'Senha obrigatória'
     else if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres'
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'As senhas não coincidem'
-    return errs
     if (!form.schoolLevel) errs.schoolLevel = 'Selecione um nível escolar'
+    return errs
   }
 
   const handleSubmit = async (e) => {
@@ -71,6 +72,13 @@ const Register = () => {
       setLoading(false)
     }
   }
+
+  const [schools, setSchools] = useState([])
+  useEffect(() => {
+    getActiveSchoolsAPI()
+      .then(res => setSchools(res.data.data))
+      .catch(() => setSchools([]))
+  }, [])
 
   const strengthColors = ['', 'bg-error', 'bg-orange-400', 'bg-yellow-400', 'bg-success']
   const strengthLabels = ['', 'Muito fraca', 'Fraca', 'Regular', 'Boa', 'Forte']
@@ -179,6 +187,18 @@ const Register = () => {
               <label className="block text-sm font-medium text-text-secondary mb-1.5">Renda familiar per capita</label>
               <select value={form.incomeRange} onChange={set('incomeRange')} className="input-field">
                 {incomeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">Escola de origem</label>
+              <select value={form.school} onChange={set('school')} className="input-field">
+                <option value="">Prefiro não informar</option>
+                {schools.map(s => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}{s.city ? ` — ${s.city}` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -72,7 +72,7 @@ import {
 // Mock
 import { mockCourses } from '../mockData/courses'
 
-const EMPTY_SCHOOL_FORM = { name: '', city: '', state: '' }
+const EMPTY_SCHOOL_FORM = { name: '', city: '', state: '', active: true }
 
 const Admin = () => {
 
@@ -114,6 +114,7 @@ const Admin = () => {
     open: false,
     school: null, // null = criação, objeto = edição
   })
+  
   const [schoolForm, setSchoolForm] = useState(EMPTY_SCHOOL_FORM)
   const [schoolFormError, setSchoolFormError] = useState('')
 
@@ -380,7 +381,7 @@ const Admin = () => {
 
   const openSchoolModal = (school = null) => {
     setSchoolForm(school
-      ? { name: school.name, city: school.city || '', state: school.state || '' }
+      ? { name: school.name, city: school.city || '', state: school.state || '', active: school.active ?? true }
       : EMPTY_SCHOOL_FORM
     )
     setSchoolFormError('')
