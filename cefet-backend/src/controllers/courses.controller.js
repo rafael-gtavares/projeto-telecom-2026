@@ -1,4 +1,5 @@
 const Course = require('../models/Course');
+const Enrollment = require('../models/Enrollment')
 
 const getCourses = async (req, res, next) => {
   try {
@@ -52,6 +53,158 @@ const getAllCourses = async (req, res, next) => {
     const total = await Course.countDocuments(filter);
     res.json({ success: true, data: { courses, total, page: Number(page), limit: Number(limit) } });
   } catch (err) { next(err); }
+};
+
+const getCourseStats = async (req, res, next) => {
+  try {
+
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Curso não encontrado'
+      });
+    }
+
+    // Professor só pode acessar stats dos próprios cursos
+    if (
+      req.user.role === 'professor' &&
+      course.professor.toString() !== req.user.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Sem permissão para acessar estatísticas deste curso'
+      });
+    }
+
+    const enrollments = await Enrollment.find({
+      course: req.params.id
+    }).populate({
+      path: 'user',
+      select: 'gender schoolLevel incomeRange birthDate'
+    });
+
+    // =========================
+    // ESTATÍSTICAS DEMOGRÁFICAS
+    // =========================
+
+    const genderStats = {
+      masculino: 0,
+      feminino: 0,
+      prefiro_nao_informar: 0,
+    };
+
+    const schoolLevelStats = {
+      ensino_fundamental: 0,
+      '1_ou_2_ano_em': 0,
+      ultimo_ano_em: 0,
+      ensino_medio_finalizado: 0,
+      eja: 0
+    };
+
+    const incomeRangeStats = {
+      ate_1sm: 0,
+      '1_a_2sm': 0,
+      '2_a_3sm': 0,
+      '3_a_5sm': 0,
+      acima_5sm: 0,
+      prefiro_nao_informar: 0
+    };
+
+    const ageStats = {
+      ate_14: 0,
+      de_15_a_17: 0,
+      de_18_a_21: 0,
+      de_22_a_25: 0,
+      acima_de_25: 0
+    };
+
+    // =========================
+    // PROCESSAMENTO DAS ESTATÍSTICAS
+    // =========================
+
+    enrollments.forEach((enrollment) => {
+
+      const user = enrollment.user;
+
+      if (!user) return;
+
+      const {
+        gender,
+        schoolLevel,
+        incomeRange,
+        birthDate
+      } = user;
+
+      // Gênero
+      if (genderStats[gender] !== undefined) {
+        genderStats[gender]++;
+      }
+
+      // Escolaridade
+      if (schoolLevelStats[schoolLevel] !== undefined) {
+        schoolLevelStats[schoolLevel]++;
+      }
+
+      // Faixa de renda
+      if (incomeRangeStats[incomeRange] !== undefined) {
+        incomeRangeStats[incomeRange]++;
+      }
+
+      // Idade
+      if (birthDate) {
+
+        const today = new Date();
+        const birth = new Date(birthDate);
+
+        let age = today.getFullYear() - birth.getFullYear();
+
+        const monthDiff = today.getMonth() - birth.getMonth();
+
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birth.getDate())
+        ) {
+          age--;
+        }
+
+        if (age <= 14) {
+          ageStats.ate_14++;
+        }
+
+        else if (age <= 17) {
+          ageStats.de_15_a_17++;
+        }
+
+        else if (age <= 21) {
+          ageStats.de_18_a_21++;
+        }
+
+        else if (age <= 25) {
+          ageStats.de_22_a_25++;
+        }
+
+        else {
+          ageStats.acima_de_25++;
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totalEnrollments: enrollments.length,
+        genderStats,
+        schoolLevelStats,
+        incomeRangeStats,
+        ageStats
+      }
+    });
+
+  } catch (err) {
+    next(err);
+  }
 };
 
 const createCourse = async (req, res, next) => {
@@ -112,4 +265,4 @@ const deleteCourse = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getCourses, getCourse, getAllCourses, createCourse, updateCourse, deleteCourse };
+module.exports = { getCourses, getCourse, getAllCourses, createCourse, updateCourse, deleteCourse, getCourseStats };
