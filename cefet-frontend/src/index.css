@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { -webkit-font-smoothing: antialiased; }
+  input, textarea, select { outline: none; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white font-semibold px-6 py-3 rounded-btn hover:bg-primary-dark active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+  .btn-secondary {
+    @apply border border-primary text-primary font-semibold px-6 py-3 rounded-btn hover:bg-surface-hover active:scale-95 transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2;
+  }
+  .btn-ghost {
+    @apply text-error font-medium px-4 py-2 rounded-btn hover:bg-error-light transition-all duration-150 flex items-center gap-2;
+  }
+  .input-field {
+    @apply w-full border border-border rounded-btn px-4 py-3 text-text-primary placeholder-text-muted focus:border-primary focus:shadow-focus transition-all duration-150 bg-white;
+  }
+  .card {
+    @apply bg-white rounded-card shadow-card border border-border;
+  }
+  .page-container {
+    @apply min-h-screen bg-surface-page pt-[72px];
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+#cursos, #sobre {
+  scroll-margin-top: 72px; 
+}
+
+@media (max-width: 768px) {
+  #cursos, #sobre {
+    scroll-margin-top: 59px;
+  }
+}
