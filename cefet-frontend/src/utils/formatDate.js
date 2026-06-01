@@ -24,3 +24,15 @@ export const getIncomeLabel = (val) => ({
   '2_a_3sm': 'De 2 a 3 salários mínimos', '3_a_5sm': 'De 3 a 5 salários mínimos',
   acima_5sm: 'Acima de 5 salários mínimos', prefiro_nao_informar: 'Prefiro não informar',
 }[val] || val)
+
+export const parseUTCDate = (dateStr) => {
+  if (!dateStr) return null
+
+  const date = new Date(dateStr)
+
+  return new Date(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  )
+}

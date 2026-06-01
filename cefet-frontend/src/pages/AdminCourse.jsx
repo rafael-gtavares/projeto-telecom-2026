@@ -17,7 +17,7 @@ import {
   addAllowedProfessorAPI, removeAllowedProfessorAPI,
 } from '../api/courses'
 import { getUsersAPI } from '../api/users'
-import { formatDate } from '../utils/formatDate'
+import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
 
@@ -139,7 +139,7 @@ const AdminCourse = () => {
     if (lessonModal.open && lessonModal.lesson) {
       setLessonForm({
         title: lessonModal.lesson.title || '',
-        date: lessonModal.lesson.date ? new Date(lessonModal.lesson.date).toISOString().slice(0,10) : '',
+        date: lessonModal.lesson.date ? parseUTCDate(lessonModal.lesson.date).toISOString().slice(0, 10) : '',
         modality: lessonModal.lesson.modality || 'presencial',
         startTime: lessonModal.lesson.startTime || '',
         endTime: lessonModal.lesson.endTime || '',
@@ -161,7 +161,7 @@ const AdminCourse = () => {
         setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
       } else {
         const { data } = await createLessonAPI(courseId, lessonForm)
-        setLessons(prev => [...prev, data.data].sort((a,b) => new Date(a.date) - new Date(b.date)))
+        setLessons(prev => [...prev, data.data].sort((a, b) => new Date(a.date) - new Date(b.date)))
       }
       setLessonModal({ open: false, lesson: null })
     } catch (err) { showToast('Erro ao salvar aula') }
@@ -325,7 +325,6 @@ const AdminCourse = () => {
     })
   }
 
-
   if (loading || !course) return <div className="flex justify-center p-12"><Spinner /></div>
 
   return (
@@ -362,370 +361,368 @@ const AdminCourse = () => {
 
         {/* Abas + conteúdo: sem gap entre eles */}
         <div>
-        <div className="border-b border-border bg-white px-4 sticky top-0 z-10 rounded-t-card">
-          <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
-        </div>
+          <div className="border-b border-border bg-white px-4 sticky top-0 z-10 rounded-t-card">
+            <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+          </div>
 
-        <div className="bg-white rounded-b-card border border-border border-t-0">
-          
-          {/* ABA AULAS */}
-          {activeTab === 'aulas' && (
-            <div className="p-4 md:p-6 space-y-6">
+          <div className="bg-white rounded-b-card border border-border border-t-0">
 
-              <div className="flex justify-end">
-                <Button variant="primary" className="gap-2 text-sm" onClick={() => setLessonModal({ open: true, lesson: null })}>
-                  <Plus size={15} /> Nova aula
-                </Button>
-              </div>
+            {/* ABA AULAS */}
+            {activeTab === 'aulas' && (
+              <div className="p-4 md:p-6 space-y-6">
 
-              <div className="card p-0 overflow-hidden">
-                {/* Header do mês */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-page">
-                  <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
-                    <ChevronLeft size={16} />
-                  </button>
-                  <span className="font-semibold text-text-primary capitalize text-sm">
-                    {calendarDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                  </span>
-                  <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
-                    <ChevronRight size={16} />
-                  </button>
+                <div className="flex justify-end">
+                  <Button variant="primary" className="gap-2 text-sm" onClick={() => setLessonModal({ open: true, lesson: null })}>
+                    <Plus size={15} /> Nova aula
+                  </Button>
                 </div>
 
-                {/* Grid */}
-                <div className="p-3">
-                  <div className="grid grid-cols-7 text-center mb-1">
-                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                      <div key={d} className="text-[10px] font-bold text-text-muted uppercase py-1">{d}</div>
-                    ))}
+                <div className="card p-0 overflow-hidden">
+                  {/* Header do mês */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-page">
+                    <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="font-semibold text-text-primary capitalize text-sm">
+                      {calendarDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
+                      <ChevronRight size={16} />
+                    </button>
                   </div>
-                  <div className="grid grid-cols-7 gap-y-1">
-                    {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
-                      const today = day && date?.toDateString() === new Date().toDateString()
-                      const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
-                      const hasLessons = lessonCount > 0
-                      return (
-                        <div key={idx}
-                          onClick={() => day && hasLessons && setSelectedCalendarDay(isSelected ? null : date)}
-                          className={`
+
+                  {/* Grid */}
+                  <div className="p-3">
+                    <div className="grid grid-cols-7 text-center mb-1">
+                      {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                        <div key={d} className="text-[10px] font-bold text-text-muted uppercase py-1">{d}</div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-y-1">
+                      {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
+                        const today = day && date?.toDateString() === new Date().toDateString()
+                        const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
+                        const hasLessons = lessonCount > 0
+                        return (
+                          <div key={idx}
+                            onClick={() => day && hasLessons && setSelectedCalendarDay(isSelected ? null : date)}
+                            className={`
                             flex flex-col items-center justify-start py-1.5 rounded-xl text-sm transition-all select-none
                             ${!day ? '' : hasLessons ? 'cursor-pointer' : 'cursor-default'}
                             ${isSelected ? 'bg-primary' : today ? 'bg-surface-blue' : hasLessons ? 'hover:bg-surface-hover' : ''}
                           `}
-                        >
-                          <span className={`font-semibold leading-none text-sm ${
-                            isSelected ? 'text-white' : today ? 'text-primary' : 'text-text-primary'
-                          } ${!day ? 'invisible' : ''}`}>
-                            {day || '0'}
-                          </span>
-                          {hasLessons && (
-                            <div className="flex gap-0.5 mt-1">
-                              {Array.from({ length: Math.min(lessonCount, 3) }).map((_, i) => (
-                                <span key={i} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : 'bg-primary'}`} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                          >
+                            <span className={`font-semibold leading-none text-sm ${isSelected ? 'text-white' : today ? 'text-primary' : 'text-text-primary'
+                              } ${!day ? 'invisible' : ''}`}>
+                              {day || '0'}
+                            </span>
+                            {hasLessons && (
+                              <div className="flex gap-0.5 mt-1">
+                                {Array.from({ length: Math.min(lessonCount, 3) }).map((_, i) => (
+                                  <span key={i} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : 'bg-primary'}`} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                {/* Painel do dia selecionado */}
-                {selectedCalendarDay && (() => {
-                  const dayLessons = lessons.filter(l =>
-                    new Date(l.date).toDateString() === selectedCalendarDay.toDateString()
-                  )
-                  return (
-                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
-                      <p className="text-xs font-bold text-text-muted uppercase">
-                        {selectedCalendarDay.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                      </p>
-                      {dayLessons.map(lesson => (
-                        <div key={lesson._id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-hover border border-border">
-                          <div className="flex-shrink-0 w-10 text-center">
-                            <p className="text-[10px] font-bold text-primary uppercase">{lesson.startTime}</p>
-                            <div className="w-px h-3 bg-primary/30 mx-auto my-0.5" />
-                            <p className="text-[10px] text-text-muted">{lesson.endTime}</p>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-text-primary truncate">{lesson.title}</p>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'} className="text-[10px]">
-                                {lesson.modality}
-                              </Badge>
-                              {lesson.location && <span className="text-[10px] text-text-muted">{lesson.location}</span>}
-                              {lesson.meetingUrl && (
-                                <a href={lesson.meetingUrl} target="_blank" rel="noreferrer"
-                                  className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>
-                                  Link da aula
-                                </a>
-                              )}
-                            </div>
-                            {lesson.description && <p className="text-[11px] text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
-                          </div>
-                          <button onClick={() => setLessonModal({ open: true, lesson })}
-                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-white transition-colors flex-shrink-0">
-                            <Edit2 size={13} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })()}
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-semibold text-text-primary">Todas as aulas</h3>
-                {lessons.length === 0 ? (
-                  <div className="text-center py-10 text-text-muted text-sm">Nenhuma aula cadastrada ainda.</div>
-                ) : (
-                  lessons.map(lesson => (
-                    <div key={lesson._id} className="card p-4 flex gap-4 items-start">
-                      <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-primary">
-                          {new Date(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-text-primary text-sm">{lesson.title}</h4>
-                        <div className="flex flex-wrap gap-3 mt-1">
-                          <span className="text-xs text-text-muted">{lesson.startTime} – {lesson.endTime}</span>
-                          <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'}>
-                            {lesson.modality}
-                          </Badge>
-                          {lesson.location && <span className="text-xs text-text-muted">{lesson.location}</span>}
-                        </div>
-                        {lesson.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button onClick={() => setLessonModal({ open: true, lesson })}
-                          className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => handleDeleteLesson(lesson._id)}
-                          className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ABA ALUNOS */}
-          {activeTab === 'alunos' && (
-            <div className="p-4 md:p-6 space-y-4">
-              <h3 className="font-semibold text-text-primary">
-                Alunos inscritos — {students.length} aluno{students.length !== 1 ? 's' : ''}
-              </h3>
-
-              {students.length === 0 ? (
-                <div className="text-center py-12 text-text-muted text-sm">Nenhum aluno inscrito ainda.</div>
-              ) : (
-                <div className="space-y-2">
-                  {students.map(({ _id, user: student, status }) => (
-                    <button
-                      key={_id}
-                      onClick={() => setStudentModal({ open: true, student })}
-                      className="w-full flex items-center gap-3 p-3 card hover:shadow-hover hover:border-primary transition-all text-left"
-                    >
-                      <Avatar name={student.name} size="md" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-text-primary text-sm truncate">{student.name}</p>
-                        <p className="text-xs text-text-muted truncate">{student.email}</p>
-                      </div>
-                      <Badge variant={status === 'ativo' ? 'success' : 'blue'}>
-                        {status === 'ativo' ? 'Ativo' : 'Inscrito'}
-                      </Badge>
-                      <ChevronRightIcon size={16} className="text-text-muted flex-shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ABA MATERIAL */}
-          {activeTab === 'material' && (
-            <div className="p-4 md:p-6 space-y-4">
-              <div className="flex justify-end">
-                <Button variant="primary" className="gap-2 text-sm" onClick={() => setMaterialModal({ open: true, material: null })}>
-                  <Plus size={15} /> Novo material
-                </Button>
-              </div>
-
-              {materials.length === 0 ? (
-                <div className="text-center py-12 text-text-muted text-sm">Nenhum material cadastrado.</div>
-              ) : (
-                <div className="space-y-3">
-                  {materials.map(mat => {
-                    const typeIcon = {
-                      leitura: <BookOpen size={16} />,
-                      video: <Video size={16} />,
-                      exercicio: <FileText size={16} />,
-                      prova: <FileQuestion size={16} />,
-                      link: <Link size={16} />,
-                      outro: <File size={16} />,
-                    }[mat.type] || <File size={16} />
-
+                  {/* Painel do dia selecionado */}
+                  {selectedCalendarDay && (() => {
+                    const dayLessons = lessons.filter(l =>
+                      new Date(l.date).toDateString() === selectedCalendarDay.toDateString()
+                    )
                     return (
-                      <div key={mat._id} className="card p-4 flex gap-4 items-start">
-                        <div className="w-10 h-10 rounded-card bg-surface-hover flex items-center justify-center flex-shrink-0 text-primary">
-                          {typeIcon}
+                      <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
+                        <p className="text-xs font-bold text-text-muted uppercase">
+                          {selectedCalendarDay.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </p>
+                        {dayLessons.map(lesson => (
+                          <div key={lesson._id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-hover border border-border">
+                            <div className="flex-shrink-0 w-10 text-center">
+                              <p className="text-[10px] font-bold text-primary uppercase">{lesson.startTime}</p>
+                              <div className="w-px h-3 bg-primary/30 mx-auto my-0.5" />
+                              <p className="text-[10px] text-text-muted">{lesson.endTime}</p>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-text-primary truncate">{lesson.title}</p>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'} className="text-[10px]">
+                                  {lesson.modality}
+                                </Badge>
+                                {lesson.location && <span className="text-[10px] text-text-muted">{lesson.location}</span>}
+                                {lesson.meetingUrl && (
+                                  <a href={lesson.meetingUrl} target="_blank" rel="noreferrer"
+                                    className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>
+                                    Link da aula
+                                  </a>
+                                )}
+                              </div>
+                              {lesson.description && <p className="text-[11px] text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
+                            </div>
+                            <button onClick={() => setLessonModal({ open: true, lesson })}
+                              className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-white transition-colors flex-shrink-0">
+                              <Edit2 size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-text-primary">Todas as aulas</h3>
+                  {lessons.length === 0 ? (
+                    <div className="text-center py-10 text-text-muted text-sm">Nenhuma aula cadastrada ainda.</div>
+                  ) : (
+                    lessons.map(lesson => (
+                      <div key={lesson._id} className="card p-4 flex gap-4 items-start">
+                        <div className="text-center w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-primary">
+                            {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-text-primary text-sm">{mat.title}</h4>
-                          <Badge variant="gray" className="text-xs mt-1">{mat.type}</Badge>
-                          {mat.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{mat.description}</p>}
-                          {mat.content && (
-                            <a href={mat.content} target="_blank" rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline mt-1 block truncate">
-                              {mat.content}
-                            </a>
-                          )}
+                          <h4 className="font-semibold text-text-primary text-sm">{lesson.title}</h4>
+                          <div className="flex flex-wrap gap-3 mt-1">
+                            <span className="text-xs text-text-muted">{lesson.startTime} – {lesson.endTime}</span>
+                            <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'}>
+                              {lesson.modality}
+                            </Badge>
+                            {lesson.location && <span className="text-xs text-text-muted">{lesson.location}</span>}
+                          </div>
+                          {lesson.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
-                          <button onClick={() => setMaterialModal({ open: true, material: mat })}
+                          <button onClick={() => setLessonModal({ open: true, lesson })}
                             className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
                             <Edit2 size={14} />
                           </button>
-                          <button onClick={() => handleDeleteMaterial(mat._id)}
+                          <button onClick={() => handleDeleteLesson(lesson._id)}
                             className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
                             <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ABA DASHBOARD */}
-          {activeTab === 'dashboard' && (
-            <div className="p-4 md:p-6 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricCard label="Alunos inscritos" value={students.length} icon={Users} />
-                <MetricCard label="Aulas cadastradas" value={lessons.length} icon={BookOpen} />
-                <MetricCard label="Materiais" value={materials.length} icon={FileText} />
-                <MetricCard label="Ocupação" value={`${course.maxSlots > 0 ? Math.round((course.enrolledCount / course.maxSlots) * 100) : 0}%`} icon={BarChart2} />
-              </div>
-              <div className="card p-4">
-                <h3 className="font-semibold text-text-primary mb-3 text-sm">Informações do curso</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><p className="text-text-muted text-xs">Início</p><p className="font-medium">{formatDate(course.startDate)}</p></div>
-                  <div><p className="text-text-muted text-xs">Término</p><p className="font-medium">{formatDate(course.endDate)}</p></div>
-                  <div><p className="text-text-muted text-xs">Modalidade</p><p className="font-medium">{formatModality(course.modality)}</p></div>
-                  <div><p className="text-text-muted text-xs">Local</p><p className="font-medium">{course.location || '—'}</p></div>
+                    ))
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ABA CONFIG */}
-          {activeTab === 'config' && (
-            <div className="p-4 md:p-6 space-y-6">
+            {/* ABA ALUNOS */}
+            {activeTab === 'alunos' && (
+              <div className="p-4 md:p-6 space-y-4">
+                <h3 className="font-semibold text-text-primary">
+                  Alunos inscritos — {students.length} aluno{students.length !== 1 ? 's' : ''}
+                </h3>
 
-              {/* Status do Curso */}
-              <div className="pb-6 border-b border-border">
-                <h3 className="font-semibold text-text-primary mb-1">Status do curso</h3>
-                <p className="text-xs text-text-muted mb-4">
-                  Controla a visibilidade e o acesso dos alunos. Você pode alterar em qualquer direção.
-                </p>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { key: 'draft', label: 'Rascunho', desc: 'Oculto para alunos', dot: 'bg-text-muted' },
-                    { key: 'published', label: 'Publicado', desc: 'Visível, inscrições abertas', dot: 'bg-success' },
-                    { key: 'em_andamento', label: 'Em Andamento', desc: 'Curso em execução', dot: 'bg-blue-500' },
-                    { key: 'closed', label: 'Encerrado', desc: 'Curso finalizado', dot: 'bg-warning' },
-                  ].map(opt => (
-                    <button
-                      key={opt.key}
-                      onClick={() => handleChangeStatus(opt.key)}
-                      disabled={statusLoading || course.status === opt.key}
-                      className={`p-3 rounded-xl border text-left transition-all disabled:opacity-60 ${
-                        course.status === opt.key
-                          ? 'border-primary bg-primary/5 cursor-default'
-                          : 'border-border hover:border-primary/50 bg-white cursor-pointer'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dot}`} />
-                        <span className={`text-sm font-semibold ${course.status === opt.key ? 'text-primary' : 'text-text-primary'}`}>
-                          {opt.label}
-                        </span>
-                        {course.status === opt.key && <CheckCircle size={13} className="text-primary ml-auto" />}
-                      </div>
-                      <p className="text-xs text-text-muted pl-4">{opt.desc}</p>
-                    </button>
-                  ))}
-                </div>
-
-                {statusLoading && (
-                  <div className="flex justify-center mt-4"><Spinner /></div>
-                )}
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-text-primary mb-1">Acesso ao curso</h3>
-                <p className="text-xs text-text-muted mb-4">
-                  Professores com acesso podem gerenciar aulas, materiais e notas. Admins sempre têm acesso total.
-                </p>
-
-                {configUsersLoading ? (
-                  <div className="flex justify-center py-8"><Spinner /></div>
+                {students.length === 0 ? (
+                  <div className="text-center py-12 text-text-muted text-sm">Nenhum aluno inscrito ainda.</div>
                 ) : (
                   <div className="space-y-2">
-                    {configUsers.map(u => {
-                      const isCreator = course.professor?._id === u._id || course.professor === u._id
-                      const hasAccess = isCreator || (course.allowedProfessors || []).some(p => p._id === u._id)
-                      const isAdmin = u.fetchedRole === 'admin'
-
-                      return (
-                        <div key={u._id} className="flex items-center gap-3 p-3 card">
-                          <Avatar name={u.name} size="sm" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-text-primary truncate">{u.name}</p>
-                            <p className="text-xs text-text-muted">{u.email}</p>
-                          </div>
-
-                          {isCreator ? (
-                            <Badge variant="blue">Criador</Badge>
-                          ) : isAdmin ? (
-                            <Badge variant="success">Admin</Badge>
-                          ) : hasAccess ? (
-                            <button
-                              onClick={() => handleRevokeAccess(u._id)}
-                              className="flex items-center gap-1.5 text-xs font-semibold text-success border border-success/30 bg-success/5 hover:bg-error/10 hover:text-error hover:border-error/30 px-3 py-1.5 rounded-full transition-all"
-                            >
-                              <CheckCircle size={13} /> Com acesso
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleGrantAccess(u._id)}
-                              className="flex items-center gap-1.5 text-xs font-semibold text-text-muted border border-border hover:bg-primary/5 hover:text-primary hover:border-primary/30 px-3 py-1.5 rounded-full transition-all"
-                            >
-                              <Plus size={13} /> Sem acesso
-                            </button>
-                          )}
+                    {students.map(({ _id, user: student, status }) => (
+                      <button
+                        key={_id}
+                        onClick={() => setStudentModal({ open: true, student })}
+                        className="w-full flex items-center gap-3 p-3 card hover:shadow-hover hover:border-primary transition-all text-left"
+                      >
+                        <Avatar name={student.name} size="md" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-text-primary text-sm truncate">{student.name}</p>
+                          <p className="text-xs text-text-muted truncate">{student.email}</p>
                         </div>
-                      )
-                    })}
-                    {configUsers.length === 0 && (
-                      <p className="text-sm text-text-muted text-center py-6">Nenhum professor ou admin encontrado.</p>
-                    )}
+                        <Badge variant={status === 'ativo' ? 'success' : 'blue'}>
+                          {status === 'ativo' ? 'Ativo' : 'Inscrito'}
+                        </Badge>
+                        <ChevronRightIcon size={16} className="text-text-muted flex-shrink-0" />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-        </div>
+            {/* ABA MATERIAL */}
+            {activeTab === 'material' && (
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="flex justify-end">
+                  <Button variant="primary" className="gap-2 text-sm" onClick={() => setMaterialModal({ open: true, material: null })}>
+                    <Plus size={15} /> Novo material
+                  </Button>
+                </div>
+
+                {materials.length === 0 ? (
+                  <div className="text-center py-12 text-text-muted text-sm">Nenhum material cadastrado.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {materials.map(mat => {
+                      const typeIcon = {
+                        leitura: <BookOpen size={16} />,
+                        video: <Video size={16} />,
+                        exercicio: <FileText size={16} />,
+                        prova: <FileQuestion size={16} />,
+                        link: <Link size={16} />,
+                        outro: <File size={16} />,
+                      }[mat.type] || <File size={16} />
+
+                      return (
+                        <div key={mat._id} className="card p-4 flex gap-4 items-start">
+                          <div className="w-10 h-10 rounded-card bg-surface-hover flex items-center justify-center flex-shrink-0 text-primary">
+                            {typeIcon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-text-primary text-sm">{mat.title}</h4>
+                            <Badge variant="gray" className="text-xs mt-1">{mat.type}</Badge>
+                            {mat.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{mat.description}</p>}
+                            {mat.content && (
+                              <a href={mat.content} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline mt-1 block truncate">
+                                {mat.content}
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button onClick={() => setMaterialModal({ open: true, material: mat })}
+                              className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+                              <Edit2 size={14} />
+                            </button>
+                            <button onClick={() => handleDeleteMaterial(mat._id)}
+                              className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ABA DASHBOARD */}
+            {activeTab === 'dashboard' && (
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <MetricCard label="Alunos inscritos" value={students.length} icon={Users} />
+                  <MetricCard label="Aulas cadastradas" value={lessons.length} icon={BookOpen} />
+                  <MetricCard label="Materiais" value={materials.length} icon={FileText} />
+                  <MetricCard label="Ocupação" value={`${course.maxSlots > 0 ? Math.round((course.enrolledCount / course.maxSlots) * 100) : 0}%`} icon={BarChart2} />
+                </div>
+                <div className="card p-4">
+                  <h3 className="font-semibold text-text-primary mb-3 text-sm">Informações do curso</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><p className="text-text-muted text-xs">Início</p><p className="font-medium">{formatDate(course.startDate)}</p></div>
+                    <div><p className="text-text-muted text-xs">Término</p><p className="font-medium">{formatDate(course.endDate)}</p></div>
+                    <div><p className="text-text-muted text-xs">Modalidade</p><p className="font-medium">{formatModality(course.modality)}</p></div>
+                    <div><p className="text-text-muted text-xs">Local</p><p className="font-medium">{course.location || '—'}</p></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ABA CONFIG */}
+            {activeTab === 'config' && (
+              <div className="p-4 md:p-6 space-y-6">
+
+                {/* Status do Curso */}
+                <div className="pb-6 border-b border-border">
+                  <h3 className="font-semibold text-text-primary mb-1">Status do curso</h3>
+                  <p className="text-xs text-text-muted mb-4">
+                    Controla a visibilidade e o acesso dos alunos. Você pode alterar em qualquer direção.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { key: 'draft', label: 'Rascunho', desc: 'Oculto para alunos', dot: 'bg-text-muted' },
+                      { key: 'published', label: 'Publicado', desc: 'Visível, inscrições abertas', dot: 'bg-success' },
+                      { key: 'em_andamento', label: 'Em Andamento', desc: 'Curso em execução', dot: 'bg-blue-500' },
+                      { key: 'closed', label: 'Encerrado', desc: 'Curso finalizado', dot: 'bg-warning' },
+                    ].map(opt => (
+                      <button
+                        key={opt.key}
+                        onClick={() => handleChangeStatus(opt.key)}
+                        disabled={statusLoading || course.status === opt.key}
+                        className={`p-3 rounded-xl border text-left transition-all disabled:opacity-60 ${course.status === opt.key
+                            ? 'border-primary bg-primary/5 cursor-default'
+                            : 'border-border hover:border-primary/50 bg-white cursor-pointer'
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dot}`} />
+                          <span className={`text-sm font-semibold ${course.status === opt.key ? 'text-primary' : 'text-text-primary'}`}>
+                            {opt.label}
+                          </span>
+                          {course.status === opt.key && <CheckCircle size={13} className="text-primary ml-auto" />}
+                        </div>
+                        <p className="text-xs text-text-muted pl-4">{opt.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  {statusLoading && (
+                    <div className="flex justify-center mt-4"><Spinner /></div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-text-primary mb-1">Acesso ao curso</h3>
+                  <p className="text-xs text-text-muted mb-4">
+                    Professores com acesso podem gerenciar aulas, materiais e notas. Admins sempre têm acesso total.
+                  </p>
+
+                  {configUsersLoading ? (
+                    <div className="flex justify-center py-8"><Spinner /></div>
+                  ) : (
+                    <div className="space-y-2">
+                      {configUsers.map(u => {
+                        const isCreator = course.professor?._id === u._id || course.professor === u._id
+                        const hasAccess = isCreator || (course.allowedProfessors || []).some(p => p._id === u._id)
+                        const isAdmin = u.fetchedRole === 'admin'
+
+                        return (
+                          <div key={u._id} className="flex items-center gap-3 p-3 card">
+                            <Avatar name={u.name} size="sm" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-text-primary truncate">{u.name}</p>
+                              <p className="text-xs text-text-muted">{u.email}</p>
+                            </div>
+
+                            {isCreator ? (
+                              <Badge variant="blue">Criador</Badge>
+                            ) : isAdmin ? (
+                              <Badge variant="success">Admin</Badge>
+                            ) : hasAccess ? (
+                              <button
+                                onClick={() => handleRevokeAccess(u._id)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-success border border-success/30 bg-success/5 hover:bg-error/10 hover:text-error hover:border-error/30 px-3 py-1.5 rounded-full transition-all"
+                              >
+                                <CheckCircle size={13} /> Com acesso
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleGrantAccess(u._id)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-text-muted border border-border hover:bg-primary/5 hover:text-primary hover:border-primary/30 px-3 py-1.5 rounded-full transition-all"
+                              >
+                                <Plus size={13} /> Sem acesso
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })}
+                      {configUsers.length === 0 && (
+                        <p className="text-sm text-text-muted text-center py-6">Nenhum professor ou admin encontrado.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>{/* fecha wrapper abas+conteúdo */}
       </div>
 
@@ -829,11 +826,11 @@ const AdminCourse = () => {
 
       <Modal open={gradeModal.open} onClose={() => setGradeModal({ open: false, student: null })} title="Lançar nota" size="sm">
         <div className="space-y-4">
-          <Input label="Título da avaliação *" value={gradeForm.title} onChange={e => setGradeForm(f => ({...f, title: e.target.value}))} placeholder="Ex: Prova 1" />
+          <Input label="Título da avaliação *" value={gradeForm.title} onChange={e => setGradeForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Prova 1" />
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">Tipo</label>
-              <select value={gradeForm.type} onChange={e => setGradeForm(f => ({...f, type: e.target.value}))} className="input-field w-full">
+              <select value={gradeForm.type} onChange={e => setGradeForm(f => ({ ...f, type: e.target.value }))} className="input-field w-full">
                 <option value="prova">Prova</option>
                 <option value="trabalho">Trabalho</option>
                 <option value="exercicio">Exercício</option>
@@ -841,11 +838,11 @@ const AdminCourse = () => {
                 <option value="outro">Outro</option>
               </select>
             </div>
-            <Input label="Nota (0-10)" type="number" min="0" max="10" step="0.1" value={gradeForm.grade} onChange={e => setGradeForm(f => ({...f, grade: e.target.value}))} />
+            <Input label="Nota (0-10)" type="number" min="0" max="10" step="0.1" value={gradeForm.grade} onChange={e => setGradeForm(f => ({ ...f, grade: e.target.value }))} />
           </div>
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">Feedback (opcional)</label>
-            <textarea value={gradeForm.feedback} onChange={e => setGradeForm(f => ({...f, feedback: e.target.value}))} rows={2} className="input-field w-full resize-none" />
+            <textarea value={gradeForm.feedback} onChange={e => setGradeForm(f => ({ ...f, feedback: e.target.value }))} rows={2} className="input-field w-full resize-none" />
           </div>
           <div className="flex gap-3">
             <Button variant="primary" className="flex-1" onClick={handleSaveGrade} loading={gradeSaveLoading}>Lançar nota</Button>
@@ -879,10 +876,10 @@ const AdminCourse = () => {
       {/* --- Modais de Material --- */}
       <Modal open={materialModal.open} onClose={() => setMaterialModal({ open: false, material: null })} title={materialModal.material ? 'Editar material' : 'Novo material'} size="md">
         <div className="space-y-4">
-          <Input label="Título *" value={materialForm.title} onChange={e => setMaterialForm(f => ({...f, title: e.target.value}))} />
+          <Input label="Título *" value={materialForm.title} onChange={e => setMaterialForm(f => ({ ...f, title: e.target.value }))} />
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">Tipo *</label>
-            <select value={materialForm.type} onChange={e => setMaterialForm(f => ({...f, type: e.target.value}))} className="input-field w-full">
+            <select value={materialForm.type} onChange={e => setMaterialForm(f => ({ ...f, type: e.target.value }))} className="input-field w-full">
               <option value="leitura">Leitura</option>
               <option value="video">Vídeo</option>
               <option value="exercicio">Exercício</option>
@@ -894,18 +891,18 @@ const AdminCourse = () => {
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">
               {materialForm.type === 'leitura' ? 'Conteúdo (texto)' :
-               materialForm.type === 'video' ? 'URL do vídeo' :
-               materialForm.type === 'link' ? 'URL do link' : 'Conteúdo / URL'}
+                materialForm.type === 'video' ? 'URL do vídeo' :
+                  materialForm.type === 'link' ? 'URL do link' : 'Conteúdo / URL'}
             </label>
             {materialForm.type === 'leitura' ? (
-              <textarea value={materialForm.content} onChange={e => setMaterialForm(f => ({...f, content: e.target.value}))} rows={5} className="input-field w-full resize-none" placeholder="Digite o conteúdo de leitura..." />
+              <textarea value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} rows={5} className="input-field w-full resize-none" placeholder="Digite o conteúdo de leitura..." />
             ) : (
-              <input type="url" value={materialForm.content} onChange={e => setMaterialForm(f => ({...f, content: e.target.value}))} className="input-field w-full" placeholder="https://..." />
+              <input type="url" value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} className="input-field w-full" placeholder="https://..." />
             )}
           </div>
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">Descrição</label>
-            <textarea value={materialForm.description} onChange={e => setMaterialForm(f => ({...f, description: e.target.value}))} rows={2} className="input-field w-full resize-none" />
+            <textarea value={materialForm.description} onChange={e => setMaterialForm(f => ({ ...f, description: e.target.value }))} rows={2} className="input-field w-full resize-none" />
           </div>
           <div className="flex gap-3">
             <Button variant="primary" className="flex-1" onClick={handleSaveMaterial} loading={materialSaveLoading}>
