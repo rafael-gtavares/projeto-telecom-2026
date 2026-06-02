@@ -19,6 +19,7 @@ import BottomNav from '../components/layout/BottomNav'
 // Dashboard
 import DashboardMetrics from '../components/admin/dashboard/DashboardMetrics'
 import RecentCoursesCard from '../components/admin/dashboard/RecentCoursesCard'
+import CourseStatsSection from '../components/admin/dashboard/CouseStatsSection'
 
 
 // Charts
@@ -55,6 +56,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   getCoursesAPI,
   getAllCoursesAPI,
+  getCourseStatsAPI,
   createCourseAPI,
   updateCourseAPI,
   deleteCourseAPI
@@ -417,14 +419,29 @@ const Admin = () => {
               ) : (
 
                 <>
-
                   <DashboardMetrics stats={stats} />
+
+                  {/* ======================================================
+      ESTATÍSTICAS GERAIS
+  ====================================================== */}
+
+                  <div className="mt-8 mb-4">
+
+                    <h2 className="text-lg font-semibold text-text-primary">
+                      Estatísticas gerais
+                    </h2>
+
+                    <p className="text-sm text-text-muted">
+                      Dados referentes aos alunos inscritos nos cursos da plataforma
+                    </p>
+
+                  </div>
 
                   <div className="flex items-center justify-between mb-4">
 
                     <div>
                       <h3 className="font-semibold text-text-primary text-sm">
-                        Inscrições por mês
+                        Evolução das inscrições
                       </h3>
 
                       <p className="text-xs text-text-muted">
@@ -483,6 +500,8 @@ const Admin = () => {
                     />
 
                   </div>
+
+                  <CourseStatsSection />
 
                 </>
               )}
@@ -544,34 +563,34 @@ const Admin = () => {
                     </div>
 
                   ) : courses.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <BookOpen size={36} className="text-text-muted mb-3" />
-                        <p className="font-semibold text-text-primary mb-1">Nenhum curso encontrado</p>
-                        <p className="text-sm text-text-muted mb-5">
-                          {statusFilter === 'all'
-                            ? 'Crie seu primeiro curso para começar.'
-                            : 'Nenhum curso com este status.'}
-                        </p>
-                        <Button
-                          variant="primary"
-                          className="gap-2 text-sm"
-                          onClick={() => setCourseModal({ open: true, course: null })}
-                        >
-                          <Plus size={16} /> Criar curso
-                        </Button>
-                      </div>
-                    ) : (
-                      <CourseTable
-                        courses={courses}
-                        onEdit={course =>
-                          setCourseModal({ open: true, course })
-                        }
-                        onDelete={course =>
-                          setDeleteModal({ open: true, course })
-                        }
-                        onView={handleViewCourse}
-                      />
-                    )}
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <BookOpen size={36} className="text-text-muted mb-3" />
+                      <p className="font-semibold text-text-primary mb-1">Nenhum curso encontrado</p>
+                      <p className="text-sm text-text-muted mb-5">
+                        {statusFilter === 'all'
+                          ? 'Crie seu primeiro curso para começar.'
+                          : 'Nenhum curso com este status.'}
+                      </p>
+                      <Button
+                        variant="primary"
+                        className="gap-2 text-sm"
+                        onClick={() => setCourseModal({ open: true, course: null })}
+                      >
+                        <Plus size={16} /> Criar curso
+                      </Button>
+                    </div>
+                  ) : (
+                    <CourseTable
+                      courses={courses}
+                      onEdit={course =>
+                        setCourseModal({ open: true, course })
+                      }
+                      onDelete={course =>
+                        setDeleteModal({ open: true, course })
+                      }
+                      onView={handleViewCourse}
+                    />
+                  )}
                 </div>
               </div>
             </div>
