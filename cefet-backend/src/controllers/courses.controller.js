@@ -1,5 +1,7 @@
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
+const User = require('../models/User')
+const School = require('../models/School')
 
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
@@ -81,6 +83,298 @@ const getCourse = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getCourseStats = async (req, res, next) => {
+  try {
+
+    // =========================
+    // CURSO
+    // =========================
+
+    const { id: courseId } = req.params;
+
+    const course = await Course.findById(
+      courseId,
+      'title maxSlots enrolledCount'
+    );
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Curso não encontrado',
+      });
+    }
+
+
+    // =========================
+    // PERÍODO PARA FILTRO
+    // =========================
+
+    const { period = '6m' } = req.query;
+
+    const periodMap = {
+      '1m': 1,
+      '3m': 3,
+      '6m': 6,
+      '1y': 12,
+    };
+
+    const monthsBack = periodMap[period] || 6;
+
+    const startDate = new Date();
+
+    startDate.setMonth(startDate.getMonth() - monthsBack);
+    startDate.setDate(1);
+
+
+    // =========================
+    // MÉTRICAS DO CURSO
+    // =========================
+
+    const totalEnrollments = await Enrollment.countDocuments({
+      course: courseId,
+    });
+
+    const occupancy = course.maxSlots
+      ? Math.round(
+          (course.enrolledCount / course.maxSlots) * 100
+        )
+      : 0;
+
+
+    // =========================
+    // INSCRIÇÕES POR MÊS
+    // =========================
+
+    const enrollmentsByMonth = await Enrollment.aggregate([
+      {
+        $match: {
+          course: course._id,
+          createdAt: { $gte: startDate },
+        },
+      },
+
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+          },
+
+          count: { $sum: 1 },
+        },
+      },
+
+      {
+        $sort: {
+          '_id.year': 1,
+          '_id.month': 1,
+        },
+      },
+    ]);
+
+    const months = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
+
+    const chartData = enrollmentsByMonth.map(item => ({
+      month: months[item._id.month - 1],
+      count: item.count,
+    }));
+
+
+    // =========================
+    // ESTATÍSTICAS DE ESCOLAS
+    // =========================
+
+    const enrollments = await Enrollment.find({
+      course: courseId,
+      createdAt: { $gte: startDate },
+    }).populate({
+      path: 'user',
+      select:
+        'gender schoolLevel incomeRange birthDate school',
+    });
+
+    const schoolStatsRaw = {};
+
+    enrollments.forEach(enrollment => {
+      const schoolId = enrollment.user?.school?.toString() || 'outras';
+
+      schoolStatsRaw[schoolId] =
+        (schoolStatsRaw[schoolId] || 0) + 1;
+    });
+
+    const schoolIds = Object.keys(schoolStatsRaw)
+      .filter(id => id !== 'outras');
+
+    const schools = await School.find(
+      { _id: { $in: schoolIds } },
+      'name'
+    );
+
+    const schoolNamesMap = {};
+
+    schools.forEach(school => {
+      schoolNamesMap[school._id.toString()] = school.name;
+    });
+
+    const schoolStats = Object.entries(schoolStatsRaw).map(
+      ([schoolId, count]) => ({
+        name:
+          schoolId === 'outras'
+            ? 'Outras'
+            : schoolNamesMap[schoolId] || 'Desconhecida',
+        count,
+      })
+    );
+
+
+    // =========================
+    // ESTATÍSTICAS DEMOGRÁFICAS
+    // =========================
+
+    const genderStats = {
+      masculino: 0,
+      feminino: 0,
+      prefiro_nao_informar: 0,
+    };
+
+    const schoolLevelStats = {
+      ensino_fundamental: 0,
+      '1_ou_2_ano_em': 0,
+      ultimo_ano_em: 0,
+      ensino_medio_finalizado: 0,
+      eja: 0,
+    };
+
+    const incomeRangeStats = {
+      ate_1sm: 0,
+      '1_a_2sm': 0,
+      '2_a_3sm': 0,
+      '3_a_5sm': 0,
+      acima_5sm: 0,
+      prefiro_nao_informar: 0,
+    };
+
+    const ageStats = {
+      ate_14: 0,
+      de_15_a_17: 0,
+      de_18_a_21: 0,
+      de_22_a_25: 0,
+      acima_de_25: 0,
+    };
+
+
+    // =========================
+    // PROCESSAMENTO
+    // =========================
+
+    enrollments.forEach(enrollment => {
+      const user = enrollment.user;
+
+      if (!user) return;
+
+      const gender = user.gender;
+      const schoolLevel = user.schoolLevel;
+      const incomeRange = user.incomeRange;
+      const birthDate = user.birthDate;
+
+
+      // Gênero
+      if (genderStats[gender] !== undefined) {
+        genderStats[gender]++;
+      }
+
+
+      // Escolaridade
+      if (schoolLevelStats[schoolLevel] !== undefined) {
+        schoolLevelStats[schoolLevel]++;
+      }
+
+
+      // Faixa de renda
+      if (incomeRangeStats[incomeRange] !== undefined) {
+        incomeRangeStats[incomeRange]++;
+      }
+
+
+      // Idade
+      if (birthDate) {
+        const today = new Date();
+        const birth = new Date(birthDate);
+
+        let age =
+          today.getFullYear() - birth.getFullYear();
+
+        const monthDiff =
+          today.getMonth() - birth.getMonth();
+
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 &&
+            today.getDate() < birth.getDate())
+        ) {
+          age--;
+        }
+
+        if (age <= 14) {
+          ageStats.ate_14++;
+        } else if (age <= 17) {
+          ageStats.de_15_a_17++;
+        } else if (age <= 21) {
+          ageStats.de_18_a_21++;
+        } else if (age <= 25) {
+          ageStats.de_22_a_25++;
+        } else {
+          ageStats.acima_de_25++;
+        }
+      }
+    });
+
+
+    // =========================
+    // RESPOSTA
+    // =========================
+
+    res.json({
+      success: true,
+
+      data: {
+        course: {
+          _id: course._id,
+          title: course.title,
+          enrolledCount: course.enrolledCount,
+          maxSlots: course.maxSlots,
+          occupancy,
+        },
+
+        totalEnrollments,
+
+        enrollmentsByMonth: chartData,
+
+        genderStats,
+        schoolLevelStats,
+        incomeRangeStats,
+        ageStats,
+        schoolStats,
+      },
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
 const createCourse = async (req, res, next) => {
   try {
     const { title, description, startDate, endDate, modality, location, maxSlots, status, imageUrl, instructor } = req.body;
@@ -227,7 +521,7 @@ const changeCoursePhase = async (req, res, next) => {
 };
 
 module.exports = {
-  getCourses, getAllCourses, getCourse,
+  getCourses, getAllCourses, getCourse, getCourseStats,
   createCourse, updateCourse, deleteCourse,
   addAllowedProfessor, removeAllowedProfessor,
   changeCoursePhase,

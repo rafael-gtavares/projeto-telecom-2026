@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const {
-  getCourses, getAllCourses, getCourse,
+  getCourses, getAllCourses, getCourse, getCourseStats,
   createCourse, updateCourse, deleteCourse,
   addAllowedProfessor, removeAllowedProfessor,
   changeCoursePhase,
@@ -18,7 +18,8 @@ const gradesRouter = require('./grades.routes');
 
 router.get('/', optionalAuth, getCourses);
 router.get('/all', verifyJWT, requireRole('admin', 'professor'), getAllCourses);
-router.get('/:id', getCourse);
+router.get('/:id', verifyJWT, getCourse); // Obs.: Essa rota está deixando qualquer usuário autenticado acessar
+router.get('/:id/stats', verifyJWT, requireRole('admin', 'professor'), getCourseStats)
 router.post('/', verifyJWT, requireRole('admin', 'professor'), createCourse);
 router.put('/:id', verifyJWT, requireRole('admin', 'professor'), updateCourse);
 router.delete('/:id', verifyJWT, requireRole('admin', 'professor'), deleteCourse);
