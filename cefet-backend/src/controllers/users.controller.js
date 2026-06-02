@@ -47,6 +47,22 @@ const getUsers = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getUsersBase = async (req, res, next) => {
+  try {
+    const { search, role, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (search) filter.$or = [{ name: new RegExp(search, 'i') }, { email: new RegExp(search, 'i') }];
+    if (role) filter.role = role;
+
+    const users = await User.find(
+      { role: { $in: ['admin', 'professor'] } },
+      '_id name email role'
+    )
+    const total = await User.countDocuments({ role: { $in: ['admin', 'professor'] } });
+    res.json({ success: true, data: { users, total } });
+  } catch (err) { next(err); }
+}
+
 const updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
@@ -64,4 +80,4 @@ const updateUserRole = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getMe, updateMe, getUsers, updateUserRole };
+module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole };

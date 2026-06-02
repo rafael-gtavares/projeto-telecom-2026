@@ -16,7 +16,7 @@ import {
   getCourseGradesAPI, createGradeAPI, updateGradeAPI, deleteGradeAPI,
   addAllowedProfessorAPI, removeAllowedProfessorAPI,
 } from '../api/courses'
-import { getUsersAPI } from '../api/users'
+import { getUsersBaseAPI } from '../api/users'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
@@ -262,27 +262,40 @@ const AdminCourse = () => {
   // --- Handlers Config ---
   useEffect(() => {
     if (activeTab !== 'config') return
-    setConfigUsersLoading(true)
-    Promise.all([
-      getUsersAPI({ role: 'professor' }),
-      getUsersAPI({ role: 'admin' }),
-    ])
-      .then(([{ data: pd }, { data: ad }]) => {
-        setConfigUsers([
-          ...(pd.data?.users || []).map(u => ({ ...u, fetchedRole: 'professor' })),
-          ...(ad.data?.users || []).map(u => ({ ...u, fetchedRole: 'admin' })),
-        ])
-      })
-      .catch(() => showToast('Erro ao carregar usuários'))
-      .finally(() => setConfigUsersLoading(false))
-  }, [activeTab])
 
-  const STATUS_LABELS = {
-    draft: 'Rascunho',
-    published: 'Publicado',
-    em_andamento: 'Em Andamento',
-    closed: 'Encerrado',
-  }
+    setConfigUsersLoading(true)
+
+    getUsersBaseAPI()
+      .then(({ data }) => {
+        const users = [...data.data.users]
+
+        users.sort((a, b) => {
+          const aIsCreator =
+            course.professor?._id === a._id || course.professor === a._id
+
+          const bIsCreator =
+            course.professor?._id === b._id || course.professor === b._id
+
+          if (aIsCreator) return -1
+          if (bIsCreator) return 1
+          return 0
+        })
+
+        setConfigUsers(users)
+      })
+      .catch((err) => {
+        console.error('ERRO CONFIG USERS:', err)
+        showToast('Erro ao carregar usuários')
+      })
+      .finally(() => setConfigUsersLoading(false))
+  }, [activeTab, course?.professor])
+
+    const STATUS_LABELS = {
+      draft: 'Rascunho',
+      published: 'Publicado',
+      em_andamento: 'Em Andamento',
+      closed: 'Encerrado',
+    }
 
   const handleChangeStatus = (newStatus) => {
     if (newStatus === course.status) return
@@ -647,8 +660,8 @@ const AdminCourse = () => {
                         onClick={() => handleChangeStatus(opt.key)}
                         disabled={statusLoading || course.status === opt.key}
                         className={`p-3 rounded-xl border text-left transition-all disabled:opacity-60 ${course.status === opt.key
-                            ? 'border-primary bg-primary/5 cursor-default'
-                            : 'border-border hover:border-primary/50 bg-white cursor-pointer'
+                          ? 'border-primary bg-primary/5 cursor-default'
+                          : 'border-border hover:border-primary/50 bg-white cursor-pointer'
                           }`}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -680,8 +693,8 @@ const AdminCourse = () => {
                     <div className="space-y-2">
                       {configUsers.map(u => {
                         const isCreator = course.professor?._id === u._id || course.professor === u._id
-                        const hasAccess = isCreator || (course.allowedProfessors || []).some(p => p._id === u._id)
-                        const isAdmin = u.fetchedRole === 'admin'
+                        const isAdmin = u.role === 'admin'
+                        const hasAccess = isCreator || isAdmin || (course.allowedProfessors || []).some(p => p._id === u._id)
 
                         return (
                           <div key={u._id} className="flex items-center gap-3 p-3 card">
