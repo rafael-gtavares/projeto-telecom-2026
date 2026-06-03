@@ -1,7 +1,13 @@
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
-const User = require('../models/User')
-const School = require('../models/School')
+const School = require('../models/School');
+const Lesson = require('../models/Lesson');
+
+const {
+  validateSchedule,
+  getCoursePeriod,
+  generateLessons,
+} = require('../helpers/scheduleHelper');
 
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
@@ -136,8 +142,8 @@ const getCourseStats = async (req, res, next) => {
 
     const occupancy = course.maxSlots
       ? Math.round(
-          (course.enrolledCount / course.maxSlots) * 100
-        )
+        (course.enrolledCount / course.maxSlots) * 100
+      )
       : 0;
 
 
@@ -375,67 +381,280 @@ const getCourseStats = async (req, res, next) => {
     next(err);
   }
 };
+
 const createCourse = async (req, res, next) => {
   try {
-    const { title, description, startDate, endDate, modality, location, maxSlots, status, imageUrl, instructor } = req.body;
+    const {
+      title,
+      description,
+
+      scheduleType,
+      scheduleConfig,
+
+      modality,
+      location,
+
+      maxSlots,
+      status,
+      imageUrl,
+      instructor,
+
+      startDate,
+      endDate,
+    } = req.body;
+
+    validateSchedule({
+      scheduleType,
+      scheduleConfig,
+      startDate,
+      endDate,
+    });
+
+    const period = getCoursePeriod({
+      scheduleType,
+      scheduleConfig,
+      startDate,
+      endDate,
+    });
+
     const course = await Course.create({
-      title, description, startDate, endDate,
+      title,
+      description,
+
+      scheduleType,
+      scheduleConfig,
+
+      startDate: period.startDate,
+      endDate: period.endDate,
+
       modality: modality || 'presencial',
       location: location || '',
-      professor: req.user.id,   // SEMPRE o usuário logado — nunca aceita professor do body
+
+      professor: req.user.id,
+
       instructor: instructor || '',
-      maxSlots, status,
+
+      maxSlots,
+
+      status: status || 'draft',
+
       imageUrl: imageUrl || null,
     });
-    await course.populate('professor', 'name email');
-    res.status(201).json({ success: true, data: course });
-  } catch (err) { next(err); }
+
+    await generateLessons({
+      courseId: course._id,
+      scheduleType,
+      scheduleConfig,
+      startDate: period.startDate,
+      endDate: period.endDate,
+      modality,
+      location,
+      createdBy: req.user.id,
+    });
+
+    await course.populate(
+      'professor',
+      'name email'
+    );
+
+    res.status(201).json({
+      success: true,
+      data: course,
+    });
+
+  } catch (err) {
+    next(err);
+  }
 };
 
 const updateCourse = async (req, res, next) => {
   try {
     const course = await Course.findById(req.params.id);
-    if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
-    if (!course.hasManageAccess(req.user.id, req.user.role))
-      return res.status(403).json({ success: false, message: 'Sem permissão para editar este curso' });
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Curso não encontrado',
+      });
+    }
 
-    // Campos que NÃO podem ser alterados via update: professor, allowedProfessors (tem endpoint próprio)
-    const { professor: _, allowedProfessors: __, ...updates } = req.body;
+    if (!course.hasManageAccess(req.user.id, req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Sem permissão para editar este curso',
+      });
+    }
+
+    const {
+      professor,
+      allowedProfessors,
+
+      scheduleType,
+      scheduleConfig,
+
+      startDate,
+      endDate,
+
+      ...updates
+    } = req.body;
 
     const prevStatus = course.status;
+
+    const hasScheduleUpdate =
+      scheduleType !== undefined ||
+      scheduleConfig !== undefined ||
+      startDate !== undefined ||
+      endDate !== undefined;
+
+    if (hasScheduleUpdate) {
+
+      const finalScheduleType =
+        scheduleType || course.scheduleType;
+
+      const finalScheduleConfig =
+        scheduleConfig || course.scheduleConfig;
+
+      const finalStartDate =
+        startDate || course.startDate;
+
+      const finalEndDate =
+        endDate || course.endDate;
+
+      validateSchedule({
+        scheduleType: finalScheduleType,
+        scheduleConfig: finalScheduleConfig,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+      });
+
+      const period = getCoursePeriod({
+        scheduleType: finalScheduleType,
+        scheduleConfig: finalScheduleConfig,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+      });
+
+      updates.scheduleType =
+        finalScheduleType;
+
+      updates.scheduleConfig =
+        finalScheduleConfig;
+
+      updates.startDate =
+        period.startDate;
+
+      updates.endDate =
+        period.endDate;
+    }
+
+    const updated = await Course.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+      .populate('professor', 'name email')
+      .populate(
+        'allowedProfessors',
+        'name email role'
+      );
+
+    if (hasScheduleUpdate) {
+      await Lesson.deleteMany({
+        course: course._id,
+      });
+
+      await generateLessons({
+        courseId: updated._id,
+
+        scheduleType:
+          updated.scheduleType,
+
+        scheduleConfig:
+          updated.scheduleConfig,
+
+        startDate:
+          updated.startDate,
+
+        endDate:
+          updated.endDate,
+
+        modality:
+          updated.modality,
+
+        location:
+          updated.location,
+
+        createdBy:
+          req.user.id,
+      });
+    }
+
     const newStatus = updates.status;
 
-    const updated = await Course.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true })
-      .populate('professor', 'name email')
-      .populate('allowedProfessors', 'name email role');
-
-    // Sincroniza matrículas quando status muda
-    if (newStatus && newStatus !== prevStatus) {
+    if (
+      newStatus &&
+      newStatus !== prevStatus
+    ) {
       if (newStatus === 'em_andamento') {
-        // inscritos → ativos; se estava fechado (concluido), volta a ativo
         await Enrollment.updateMany(
-          { course: course._id, status: { $in: ['inscrito', 'concluido'] } },
-          { status: 'ativo' }
+          {
+            course: course._id,
+            status: {
+              $in: [
+                'inscrito',
+                'concluido',
+              ],
+            },
+          },
+          {
+            status: 'ativo',
+          }
         );
-      } else if (newStatus === 'published') {
-        // se estava fechado (concluido), volta para inscrito
-        if (prevStatus === 'closed') {
-          await Enrollment.updateMany(
-            { course: course._id, status: 'concluido' },
-            { status: 'inscrito' }
-          );
-        }
-      } else if (newStatus === 'closed') {
+      }
+
+      if (
+        newStatus === 'published' &&
+        prevStatus === 'closed'
+      ) {
         await Enrollment.updateMany(
-          { course: course._id, status: { $in: ['inscrito', 'ativo'] } },
-          { status: 'concluido' }
+          {
+            course: course._id,
+            status: 'concluido',
+          },
+          {
+            status: 'inscrito',
+          }
+        );
+      }
+
+      if (newStatus === 'closed') {
+        await Enrollment.updateMany(
+          {
+            course: course._id,
+            status: {
+              $in: [
+                'inscrito',
+                'ativo',
+              ],
+            },
+          },
+          {
+            status: 'concluido',
+          }
         );
       }
     }
 
-    res.json({ success: true, data: updated });
-  } catch (err) { next(err); }
+    res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 const deleteCourse = async (req, res, next) => {
