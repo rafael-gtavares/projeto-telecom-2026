@@ -10,8 +10,8 @@ export const Badge = ({ children, variant = 'default', className = '' }) => {
     blue: 'bg-surface-hover text-primary',
   }
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}>
-      {children}
+    <span className={`capitalize inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}>
+      { children }
     </span>
   )
 }

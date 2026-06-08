@@ -339,6 +339,7 @@ const AdminCourse = () => {
   }
 
   if (loading || !course) return <div className="flex justify-center p-12"><Spinner /></div>
+  
 
   return (
     <div className="min-h-screen bg-surface-page pb-16">

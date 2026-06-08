@@ -36,7 +36,7 @@ const WeeklyScheduleFields = ({ config, onChange }) => {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <Input label="Data de início *" type="date" value={startDate} onChange={setField('startDate')} />
-        <Input label="Data de término *" type="date" value={endDate}   onChange={setField('endDate')}   />
+        <Input label="Data de término *" type="date" value={endDate} onChange={setField('endDate')} />
       </div>
 
       <div>
@@ -74,7 +74,7 @@ const WeeklyScheduleFields = ({ config, onChange }) => {
                 </span>
                 <div className="grid grid-cols-2 gap-3 flex-1">
                   <Input label="Início" type="time" value={startTime} onChange={setWeekdayTime(weekday, 'startTime')} />
-                  <Input label="Fim"    type="time" value={endTime}   onChange={setWeekdayTime(weekday, 'endTime')}   />
+                  <Input label="Fim" type="time" value={endTime} onChange={setWeekdayTime(weekday, 'endTime')} />
                 </div>
               </div>
             )

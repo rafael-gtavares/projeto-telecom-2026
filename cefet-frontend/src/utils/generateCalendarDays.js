@@ -21,7 +21,15 @@ export const generateCalendarDays = (calendarDate, lessons = []) => {
   // Dias do mês
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = new Date(year, month, d).toDateString()
-    const dayLessons = lessons.filter(l => new Date(l.date).toDateString() === dateStr)
+    const dayLessons = lessons.filter(l => {
+      const lessonDate = new Date(l.date)
+
+      return (
+        lessonDate.getUTCFullYear() === year &&
+        lessonDate.getUTCMonth() === month &&
+        lessonDate.getUTCDate() === d
+      )
+    })
     cells.push({ day: d, date: new Date(year, month, d), lessonCount: dayLessons.length, lessons: dayLessons })
   }
 

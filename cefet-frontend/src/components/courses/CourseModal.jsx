@@ -9,6 +9,7 @@ import {
   WeeklyScheduleFields,
   CustomScheduleFields,
 } from './schedule/index'
+import { formatDateForInput } from '../../utils/formatDate'
 
 const MODALITY_OPTIONS = [
   { value: 'presencial', label: 'Presencial' },
@@ -67,8 +68,8 @@ const parseCourseToForm = (course) => {
       : INITIAL_SINGLE
   } else if (type === 'weekly') {
     base.weeklyConfig = {
-      startDate: course.startDate || '',
-      endDate: course.endDate || '',
+      startDate: formatDateForInput(course.startDate) || '',
+      endDate: formatDateForInput(course.endDate) || '',
       weekdays: cfg.map((c) => ({
         weekday: c.weekday,
         startTime: c.startTime || '',

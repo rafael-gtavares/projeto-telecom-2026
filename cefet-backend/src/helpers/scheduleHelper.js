@@ -164,7 +164,7 @@ const generateLessons = async ({
     let lessonNumber = 1;
 
     while (current <= finalDate) {
-      const weekday = current.getDay();
+      const weekday = current.getUTCDay();
 
       const schedule = scheduleConfig.find(
         item => item.weekday === weekday
@@ -183,7 +183,7 @@ const generateLessons = async ({
         });
       }
 
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
   }
 
