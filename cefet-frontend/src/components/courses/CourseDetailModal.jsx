@@ -47,6 +47,81 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   // Lógica para verificar se o curso dura mais de um dia
   const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
 
+  const renderScheduleInfo = () => {
+    switch (course.scheduleType) {
+      case 'single':
+        return (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-text-primary">
+              {formatDate(course.scheduleConfig[0]?.date)}
+            </p>
+            <p className="text-sm text-text-secondary">
+              {course.scheduleConfig[0]?.startTime} às {course.scheduleConfig[0]?.endTime}
+            </p>
+          </div>
+        )
+
+      case 'custom':
+        return (
+          <div className="space-y-3">
+            {course.scheduleConfig.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-white rounded-lg border border-border"
+              >
+                <span className="text-sm font-medium text-text-primary">
+                  {formatDate(item.date)}
+                </span>
+
+                <span className="text-sm text-text-secondary">
+                  {item.startTime} às {item.endTime}
+                </span>
+              </div>
+            ))}
+          </div>
+        )
+
+      case 'weekly': {
+        const weekdays = {
+          0: 'Domingo',
+          1: 'Segunda-feira',
+          2: 'Terça-feira',
+          3: 'Quarta-feira',
+          4: 'Quinta-feira',
+          5: 'Sexta-feira',
+          6: 'Sábado'
+        }
+
+        return (
+          <div className="space-y-3">
+            {course.scheduleConfig.map((item, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-white rounded-lg border border-border"
+              >
+                <span className="text-sm font-medium text-text-primary">
+                  {(item.weekday == 0 || item.weekday == 6) ? 'Todo ' : 'Toda '}
+                  {weekdays[item.weekday]}
+                </span>
+
+                <span className="text-sm text-text-secondary">
+                  {item.startTime} às {item.endTime}
+                </span>
+              </div>
+            ))}
+
+            <div className="text-xs text-text-muted mt-2">
+              Repetições entre {formatDate(course.startDate)} e {formatDate(course.endDate)}
+            </div>
+          </div>
+        )
+      }
+
+      default:
+        return null
+    }
+  }
+
   const handleEnroll = async () => {
     try {
       setActionLoading(true)
@@ -150,6 +225,18 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                 {course.location || 'A definir'}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Cronograma */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
+            <Calendar size={16} />
+            Cronograma
+          </h3>
+
+          <div className="bg-surface-hover p-4 rounded-xl border border-border">
+            {renderScheduleInfo()}
           </div>
         </div>
 
