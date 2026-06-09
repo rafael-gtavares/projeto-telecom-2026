@@ -12,15 +12,26 @@ import { formatModality } from '../utils/formatModality'
 
 const tabs = [
   { value: 'inscritos', label: 'Inscritos' },
-  { value: 'concluido', label: 'Concluídos' },
+  { value: 'em_andamento', label: 'Em andamento' },
+  { value: 'concluidos', label: 'Concluídos' },
 ]
 
 const statusBadge = {
-  inscrito: { variant: 'blue', label: 'Aguardando Início' },
-  ativo: { variant: 'success', label: 'Cursando' },
-  concluido: { variant: 'gray', label: 'Concluído' },
-}
+  published: {
+    variant: 'blue',
+    label: 'Aguardando Início',
+  },
 
+  em_andamento: {
+    variant: 'warning',
+    label: 'Em Andamento',
+  },
+
+  closed: {
+    variant: 'success',
+    label: 'Concluído',
+  },
+}
 
 const MyCourses = () => {
   const { user } = useAuth()
@@ -49,9 +60,22 @@ const MyCourses = () => {
     fetchEnrollments()
   }, [])
 
-  const filtered = enrollments.filter(e => {
-    if (activeTab === 'inscritos') return e.status === 'inscrito' || e.status === 'ativo'
-    return e.status === activeTab
+  const filtered = enrollments.filter(({ course }) => {
+    if (!course) return false
+
+    if (activeTab === 'inscritos') {
+      return course.status === 'published'
+    }
+
+    if (activeTab === 'em_andamento') {
+      return course.status === 'em_andamento'
+    }
+
+    if (activeTab === 'concluidos') {
+      return course.status === 'closed'
+    }
+
+    return false
   })
 
   const handleConfirmCancel = async () => {
@@ -120,7 +144,7 @@ const MyCourses = () => {
                 <div className="grid grid-cols-1 gap-4">
                   {filtered.map(({ _id, course, status }) => {
                     if (!course) return null
-                    const { variant, label } = statusBadge[status] || {}
+                    const { variant, label } = statusBadge[course.status] || {}
                     const mainLocation = course.location || 'A definir'
 
                     return (
@@ -199,7 +223,7 @@ const MyCourses = () => {
                             </Button>
                           )}
 
-                          {status !== 'concluido' && (
+                          {status !== 'closed' && (
                             <Button
                               variant="ghost"
                               className="text-[13px] py-2 px-4 w-full border border-error/20"
@@ -219,7 +243,7 @@ const MyCourses = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-6">
                   {filtered.map(({ _id, course, status }) => {
                     if (!course) return null
-                    const { variant, label } = statusBadge[status] || {}
+                    const { variant, label } = statusBadge[course.status] || {}
 
                     return (
                       <div key={_id} className="group flex flex-col bg-white border border-border rounded-xl overflow-hidden hover:shadow-md hover:border-primary/30 transition-all">
@@ -270,13 +294,14 @@ const MyCourses = () => {
 
                           {/* Ações */}
                           <div className="flex flex-col gap-2 pt-3 border-t border-border">
-                            {(status === 'ativo' || status === 'concluido') ? (
+                            {(course.status === 'em_andamento' ||
+                              course.status === 'closed') ? (
                               <Button
                                 variant="primary"
                                 className="w-full text-sm py-2"
                                 onClick={() => navigate(`/meu-curso/${course._id}`)}
                               >
-                                {status === 'concluido' ? 'Ver curso' : 'Acessar curso'}
+                                {status === 'closed' ? 'Ver curso' : 'Acessar curso'}
                                 <ChevronRight size={14} />
                               </Button>
                             ) : (
@@ -288,7 +313,7 @@ const MyCourses = () => {
                                 Ver Detalhes
                               </Button>
                             )}
-                            {status !== 'concluido' && (
+                            {status !== 'closed' && (
                               <button
                                 onClick={() => setCancelModal({ open: true, enrollment: { _id, course } })}
                                 className="w-full text-xs text-error/70 hover:text-error transition-colors py-1"

@@ -9,6 +9,10 @@ const {
   generateLessons,
 } = require('../helpers/scheduleHelper');
 
+const {
+  updateCourseStatuses,
+} = require('../helpers/courseStatusHelper');
+
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
   try {
@@ -54,6 +58,8 @@ const getCourses = async (req, res, next) => {
 // Listagem para o painel admin/professor — respeita visibilidade por dono
 const getAllCourses = async (req, res, next) => {
   try {
+    await updateCourseStatuses();
+
     const { status, page = 1, limit = 50 } = req.query;
     const filter = {};
 
@@ -81,6 +87,8 @@ const getAllCourses = async (req, res, next) => {
 
 const getCourse = async (req, res, next) => {
   try {
+    await updateCourseStatuses();
+
     const course = await Course.findById(req.params.id)
       .populate('professor', 'name email')
       .populate('allowedProfessors', 'name email role');
@@ -91,6 +99,7 @@ const getCourse = async (req, res, next) => {
 
 const getCourseStats = async (req, res, next) => {
   try {
+    await updateCourseStatuses();
 
     // =========================
     // CURSO

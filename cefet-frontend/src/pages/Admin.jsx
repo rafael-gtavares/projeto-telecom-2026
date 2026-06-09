@@ -519,8 +519,9 @@ const Admin = () => {
                     className="input-field text-sm py-2.5 w-auto"
                   >
                     <option value="all">Todos os cursos</option>
-                    <option value="published">Publicados</option>
                     <option value="draft">Rascunhos</option>
+                    <option value="published">Publicados</option>
+                    <option value="em_andamento">Em andamento</option>
                     <option value="closed">Encerrados</option>
                   </select>
 
