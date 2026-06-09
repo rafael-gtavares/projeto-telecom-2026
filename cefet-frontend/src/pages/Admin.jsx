@@ -193,9 +193,8 @@ const Admin = () => {
 
   }, [tab, role, statusFilter])
 
-  // useEffect dedicado para busca de usuários com debounce
   useEffect(() => {
-    if (tab !== 'configuracoes' || role !== 'admin') return
+    if (tab !== 'usuarios' || role !== 'admin') return
 
     setLoad('users', true)
 
@@ -423,8 +422,8 @@ const Admin = () => {
                   <DashboardMetrics stats={stats} />
 
                   {/* ======================================================
-      ESTATÍSTICAS GERAIS
-  ====================================================== */}
+                    ESTATÍSTICAS GERAIS
+                ====================================================== */}
 
                   <div className="mt-8 mb-4">
 
@@ -584,14 +583,13 @@ const Admin = () => {
 
 
           {/* ======================================================
-              CONFIGURAÇÕES
+              USUÁRIOS
           ====================================================== */}
 
-          {tab === 'configuracoes' && role === 'admin' && (
+          {tab === 'usuarios' && role === 'admin' && (
 
             <div className="animate-fadeIn space-y-8">
 
-              {/* ── SEÇÃO: PERMISSÕES ── */}
               <div>
                 <h1 className="text-xl font-bold text-text-primary mb-1">Configurações</h1>
                 <p className="text-text-muted text-sm mb-6">
@@ -656,11 +654,16 @@ const Admin = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* ── DIVISOR ── */}
-              <div className="border-t border-border" />
+          {/* ======================================================
+              ESCOLAS
+          ====================================================== */}
 
-              {/* ── SEÇÃO: ESCOLAS ── */}
+          {tab === 'escolas' && role === 'admin' && (
+
+            <div className="animate-fadeIn space-y-8">
               <div className="card p-5 md:p-6">
                 <SchoolsManager />
               </div>
