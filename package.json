@@ -1,0 +1,21 @@
+{
+  "name": "projeto-telecom-2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portal CEFET/RJ — backend (Express/MongoDB) e frontend (React/Vite) em um monorepo",
+  "workspaces": [
+    "cefet-backend",
+    "cefet-frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n back,front -c blue,green \"npm:dev:back\" \"npm:dev:front\"",
+    "dev:back": "npm run dev -w cefet-backend",
+    "dev:front": "npm run dev -w cefet-frontend",
+    "start": "npm run start -w cefet-backend",
+    "build": "npm run build -w cefet-frontend",
+    "preview": "npm run preview -w cefet-frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
