@@ -113,7 +113,7 @@ VITE_API_URL=http://localhost:3000
 
 ## Endpoints da API
 
-### Autenticação — `/api/auth`
+### Autenticação — `/auth`
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -126,7 +126,7 @@ VITE_API_URL=http://localhost:3000
 | POST | `/reset-password?token=` | Redefinir senha |
 | GET | `/validate-reset-token?token=` | Validar token de reset |
 
-### Cursos — `/api/courses`
+### Cursos — `/courses`
 
 | Método | Rota | Acesso |
 |---|---|---|
@@ -136,7 +136,7 @@ VITE_API_URL=http://localhost:3000
 | PUT | `/:id` | Admin / Professor dono |
 | DELETE | `/:id` | Admin / Professor dono |
 
-### Aulas — `/api/courses/:courseId/lessons`
+### Aulas — `/courses/:courseId/lessons`
 
 | Método | Rota | Acesso |
 |---|---|---|
@@ -145,7 +145,7 @@ VITE_API_URL=http://localhost:3000
 | PUT | `/:lessonId` | Admin / Professor dono |
 | DELETE | `/:lessonId` | Admin / Professor dono |
 
-### Materiais — `/api/courses/:courseId/materials`
+### Materiais — `/courses/:courseId/materials`
 
 | Método | Rota | Acesso |
 |---|---|---|
@@ -154,7 +154,7 @@ VITE_API_URL=http://localhost:3000
 | PUT | `/:materialId` | Admin / Professor dono |
 | DELETE | `/:materialId` | Admin / Professor dono |
 
-### Notas — `/api/courses/:courseId/grades`
+### Notas — `/courses/:courseId/grades`
 
 | Método | Rota | Acesso |
 |---|---|---|
@@ -164,7 +164,7 @@ VITE_API_URL=http://localhost:3000
 | PUT | `/:gradeId` | Admin / Professor dono |
 | DELETE | `/:gradeId` | Admin / Professor dono |
 
-### Inscrições — `/api/enrollments`
+### Inscrições — `/enrollments`
 
 | Método | Rota | Acesso |
 |---|---|---|
@@ -173,7 +173,7 @@ VITE_API_URL=http://localhost:3000
 | GET | `/check/:courseId` | Aluno logado (verificar inscrição) |
 | DELETE | `/:courseId` | Aluno logado (cancelar) |
 
-### Usuários — `/api/users`
+### Usuários — `/users`
 
 | Método | Rota | Acesso |
 |---|---|---|
@@ -182,13 +182,13 @@ VITE_API_URL=http://localhost:3000
 | GET | `/` | Admin |
 | PUT | `/:id/role` | Admin |
 
-### Escolas — `/api/schools`
+### Escolas — `/schools`
 
 | Método | Rota | Acesso |
 |---|---|---|
 | GET | `/` | Logado |
 
-### Admin / Métricas — `/api/admin`
+### Admin / Métricas — `/admin`
 
 | Método | Rota | Acesso |
 |---|---|---|

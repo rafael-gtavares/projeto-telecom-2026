@@ -29,12 +29,22 @@ const registerLimiter = rateLimit({
   message: { success: false, message: 'Muitos cadastros deste IP. Tente novamente em 1 hora.' },
 });
 
+// Limita ações sensíveis de e-mail (reset/verificação): máx 5 por IP a cada 15 min.
+// Complementa o throttle por usuário (60s) já existente nos controllers.
+const sensitiveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Muitas solicitações deste IP. Tente novamente em alguns minutos.' },
+});
+
 router.post('/register', registerLimiter, register);
 router.get('/verify-email', verifyEmail);            // GET /auth/verify-email?token=xxx
-router.post('/resend-verification', resendVerification);
+router.post('/resend-verification', sensitiveLimiter, resendVerification);
 router.post('/login', loginLimiter, login);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);       // POST /auth/reset-password?token=xxx
+router.post('/forgot-password', sensitiveLimiter, forgotPassword);
+router.post('/reset-password', sensitiveLimiter, resetPassword);       // POST /auth/reset-password?token=xxx
 router.get('/validate-reset-token', validateResetToken); // GET /auth/validate-reset-token?token=xxx
 router.post('/refresh', refresh);
 

@@ -12,7 +12,9 @@ const {
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
   try {
-    const { status, modality, page = 1, limit = 12 } = req.query;
+    const { status, modality, page = 1 } = req.query;
+    // Teto de paginação para evitar abuso (ex.: limit=999999)
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 100);
     const filter = {};
 
     if (req.user?.role === 'aluno' || !req.user) {
@@ -28,15 +30,16 @@ const getCourses = async (req, res, next) => {
       .populate('professor', 'name email')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(limit);
 
     const total = await Course.countDocuments(filter);
 
     // Se o usuário estiver autenticado, verifica inscrição em lote (evita N+1 no frontend)
+    // Inscrição existente = inscrito (o cancelamento remove o registro), alinhado ao checkEnrollment
     let enrolledIds = new Set();
     if (req.user?.id) {
       const enrollments = await Enrollment.find(
-        { user: req.user.id, course: { $in: courses.map(c => c._id) }, status: { $in: ['inscrito', 'ativo'] } },
+        { user: req.user.id, course: { $in: courses.map(c => c._id) } },
         'course'
       );
       enrolledIds = new Set(enrollments.map(e => e.course.toString()));
@@ -54,7 +57,8 @@ const getCourses = async (req, res, next) => {
 // Listagem para o painel admin/professor — respeita visibilidade por dono
 const getAllCourses = async (req, res, next) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status, page = 1 } = req.query;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
     const filter = {};
 
     if (status && status !== 'all') filter.status = status;
@@ -72,10 +76,10 @@ const getAllCourses = async (req, res, next) => {
       .populate('professor', 'name email')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(limit);
 
     const total = await Course.countDocuments(filter);
-    res.json({ success: true, data: { courses, total, page: Number(page), limit: Number(limit) } });
+    res.json({ success: true, data: { courses, total, page: Number(page), limit } });
   } catch (err) { next(err); }
 };
 
@@ -85,6 +89,13 @@ const getCourse = async (req, res, next) => {
       .populate('professor', 'name email')
       .populate('allowedProfessors', 'name email role');
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
+
+    // Rascunhos (draft) são privados: só quem gerencia o curso pode vê-los.
+    // Cursos published/em_andamento/closed seguem acessíveis (aluno inscrito precisa deles).
+    if (course.status === 'draft' && !course.hasManageAccess(req.user.id, req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Sem permissão para acessar este curso' });
+    }
+
     res.json({ success: true, data: course });
   } catch (err) { next(err); }
 };
@@ -486,17 +497,29 @@ const updateCourse = async (req, res, next) => {
     }
 
     const {
-      professor,
-      allowedProfessors,
-
       scheduleType,
       scheduleConfig,
-
       startDate,
       endDate,
-
-      ...updates
     } = req.body;
+
+    // Whitelist de campos editáveis — evita mass-assignment de campos sensíveis
+    // (enrolledCount, phase, professor, allowedProfessors, etc.)
+    const ALLOWED_FIELDS = [
+      'title',
+      'description',
+      'modality',
+      'location',
+      'maxSlots',
+      'status',
+      'imageUrl',
+      'instructor',
+    ];
+
+    const updates = {};
+    for (const field of ALLOWED_FIELDS) {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    }
 
     const prevStatus = course.status;
 
@@ -718,7 +741,7 @@ const changeCoursePhase = async (req, res, next) => {
   try {
     const { phase } = req.body;
     const valid = ['aguardando_inicio', 'em_andamento', 'encerrado'];
-    if (!valid.includes(phase)) return res.status(400).json({ message: 'Fase inválida' });
+    if (!valid.includes(phase)) return res.status(400).json({ success: false, message: 'Fase inválida' });
 
     const course = req.course;
     course.phase = phase;
@@ -735,7 +758,7 @@ const changeCoursePhase = async (req, res, next) => {
 
     await course.save();
     const populated = await Course.findById(course._id).populate('professor', 'name email').populate('allowedProfessors', 'name email');
-    res.json({ data: populated });
+    res.json({ success: true, data: populated });
   } catch (err) { next(err); }
 };
 
