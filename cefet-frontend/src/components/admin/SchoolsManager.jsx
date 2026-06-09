@@ -109,12 +109,6 @@ const SchoolsManager = () => {
     <div>
       {/* Cabeçalho da seção */}
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <div>
-          <h2 className="text-base font-semibold text-text-primary">Escolas cadastradas</h2>
-          <p className="text-xs text-text-muted mt-0.5">
-            Estas escolas ficam disponíveis no formulário de cadastro e perfil dos usuários.
-          </p>
-        </div>
         <Button
           variant="primary"
           className="gap-2 text-sm py-2 px-4"
@@ -150,11 +144,10 @@ const SchoolsManager = () => {
           {filtered.map(school => (
             <div
               key={school._id}
-              className={`flex items-center gap-3 p-3 border rounded-card transition-all ${
-                school.active
-                  ? 'border-border hover:border-primary bg-white'
-                  : 'border-border bg-surface-page opacity-60'
-              }`}
+              className={`flex items-center gap-3 p-3 border rounded-card transition-all ${school.active
+                ? 'border-border hover:border-primary bg-white'
+                : 'border-border bg-surface-page opacity-60'
+                }`}
             >
               <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
                 <School size={14} className="text-primary" />
