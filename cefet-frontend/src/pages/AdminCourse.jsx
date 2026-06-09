@@ -270,12 +270,8 @@ const AdminCourse = () => {
         const users = [...data.data.users]
 
         users.sort((a, b) => {
-          const aIsCreator =
-            course.professor?._id === a._id || course.professor === a._id
-
-          const bIsCreator =
-            course.professor?._id === b._id || course.professor === b._id
-
+          const aIsCreator = course.professor?._id === a._id || course.professor === a._id
+          const bIsCreator = course.professor?._id === b._id || course.professor === b._id
           if (aIsCreator) return -1
           if (bIsCreator) return 1
           return 0
@@ -290,12 +286,12 @@ const AdminCourse = () => {
       .finally(() => setConfigUsersLoading(false))
   }, [activeTab, course?.professor])
 
-    const STATUS_LABELS = {
-      draft: 'Rascunho',
-      published: 'Publicado',
-      em_andamento: 'Em Andamento',
-      closed: 'Encerrado',
-    }
+  const STATUS_LABELS = {
+    draft: 'Rascunho',
+    published: 'Publicado',
+    em_andamento: 'Em Andamento',
+    closed: 'Encerrado',
+  }
 
   const handleChangeStatus = (newStatus) => {
     if (newStatus === course.status) return
@@ -339,7 +335,6 @@ const AdminCourse = () => {
   }
 
   if (loading || !course) return <div className="flex justify-center p-12"><Spinner /></div>
-  
 
   return (
     <div className="min-h-screen bg-surface-page pb-16">
@@ -373,7 +368,7 @@ const AdminCourse = () => {
           </div>
         </div>
 
-        {/* Abas + conteúdo: sem gap entre eles */}
+        {/* Abas + conteúdo */}
         <div>
           <div className="border-b border-border bg-white px-4 sticky top-0 z-10 rounded-t-card">
             <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
@@ -389,6 +384,18 @@ const AdminCourse = () => {
                   <Button variant="primary" className="gap-2 text-sm" onClick={() => setLessonModal({ open: true, lesson: null })}>
                     <Plus size={15} /> Nova aula
                   </Button>
+                </div>
+
+                {/* Período do curso */}
+                <div className="grid grid-cols-2 gap-4 p-3 bg-surface-page rounded-card">
+                  <div>
+                    <p className="text-xs text-text-muted mb-0.5">Início do curso</p>
+                    <p className="text-sm font-semibold text-text-primary">{formatDate(course.startDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-text-muted mb-0.5">Término do curso</p>
+                    <p className="text-sm font-semibold text-text-primary">{formatDate(course.endDate)}</p>
+                  </div>
                 </div>
 
                 <div className="card p-0 overflow-hidden">
@@ -414,45 +421,105 @@ const AdminCourse = () => {
                     </div>
                     <div className="grid grid-cols-7 gap-y-1">
                       {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
-                        const today = day && date?.toDateString() === new Date().toDateString()
-                        const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
-                        const hasLessons = lessonCount > 0
+                        const today       = day && date?.toDateString() === new Date().toDateString()
+                        const isSelected  = day && selectedCalendarDay?.toDateString() === date?.toDateString()
+                        const hasLessons  = lessonCount > 0
+                        // Comparação UTC-safe: parseUTCDate garante que course.startDate/endDate
+                        // sejam interpretadas como datas locais, igual ao que já é feito nas listas.
+                        const isStart     = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
+                        const isEnd       = day && course.endDate   && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
+                        const isMilestone = isStart || isEnd
+
                         return (
                           <div key={idx}
-                            onClick={() => day && hasLessons && setSelectedCalendarDay(isSelected ? null : date)}
+                            onClick={() => day && (hasLessons || isMilestone) && setSelectedCalendarDay(isSelected ? null : date)}
                             className={`
-                            flex flex-col items-center justify-start py-1.5 rounded-xl text-sm transition-all select-none
-                            ${!day ? '' : hasLessons ? 'cursor-pointer' : 'cursor-default'}
-                            ${isSelected ? 'bg-primary' : today ? 'bg-surface-blue' : hasLessons ? 'hover:bg-surface-hover' : ''}
-                          `}
+                              flex flex-col items-center justify-start py-1.5 rounded-xl text-sm transition-all select-none
+                              ${!day ? '' : (hasLessons || isMilestone) ? 'cursor-pointer' : 'cursor-default'}
+                              ${isSelected
+                                ? 'bg-primary'
+                                : isStart && isEnd
+                                  ? 'bg-success/15 ring-2 ring-inset ring-success/40'
+                                  : isStart
+                                    ? 'bg-success/15 ring-2 ring-inset ring-success/50'
+                                    : isEnd
+                                      ? 'bg-warning/15 ring-2 ring-inset ring-warning/50'
+                                      : today
+                                        ? 'bg-surface-blue'
+                                        : hasLessons
+                                          ? 'hover:bg-surface-hover'
+                                          : ''}
+                            `}
                           >
-                            <span className={`font-semibold leading-none text-sm ${isSelected ? 'text-white' : today ? 'text-primary' : 'text-text-primary'
-                              } ${!day ? 'invisible' : ''}`}>
+                            <span className={`font-semibold leading-none text-sm ${
+                              isSelected        ? 'text-white'
+                              : isStart && isEnd ? 'text-success'
+                              : isStart          ? 'text-success'
+                              : isEnd            ? 'text-warning'
+                              : today            ? 'text-primary'
+                              : 'text-text-primary'
+                            } ${!day ? 'invisible' : ''}`}>
                               {day || '0'}
                             </span>
-                            {hasLessons && (
-                              <div className="flex gap-0.5 mt-1">
-                                {Array.from({ length: Math.min(lessonCount, 3) }).map((_, i) => (
+                            {(hasLessons || isMilestone) && (
+                              <div className="flex gap-0.5 mt-1 items-center justify-around">
+                                {hasLessons && Array.from({ length: Math.min(lessonCount, 3) }).map((_, i) => (
                                   <span key={i} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : 'bg-primary'}`} />
                                 ))}
+                                {isStart && !isSelected && (
+                                  <span className="w-1 h-1 rounded-full bg-success" title="Início do curso" />
+                                )}
+                                {isEnd && !isStart && !isSelected && (
+                                  <span className="w-1 h-1 rounded-full bg-warning" title="Término do curso" />
+                                )}
                               </div>
                             )}
                           </div>
                         )
                       })}
                     </div>
+
+                    {/* Legenda */}
+                    <div className="flex flex-wrap gap-10 mt-3 pt-3 border-t border-border justify-center">
+                      <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                        <span className="w-2 h-2 rounded-full bg-primary inline-block" /> Aulas
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                        <span className="w-2 h-2 rounded-full bg-success inline-block" /> Início
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                        <span className="w-2 h-2 rounded-full bg-warning inline-block" /> Término
+                      </span>
+                    </div>
                   </div>
 
                   {/* Painel do dia selecionado */}
                   {selectedCalendarDay && (() => {
                     const dayLessons = lessons.filter(l =>
-                      new Date(l.date).toDateString() === selectedCalendarDay.toDateString()
+                      parseUTCDate(l.date).toDateString() === selectedCalendarDay.toDateString()
                     )
+                    const dayIsStart = course.startDate && selectedCalendarDay.toDateString() === parseUTCDate(course.startDate).toDateString()
+                    const dayIsEnd   = course.endDate   && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
                     return (
                       <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
                         <p className="text-xs font-bold text-text-muted uppercase">
                           {selectedCalendarDay.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                         </p>
+
+                        {/* Marcadores de início / término */}
+                        {dayIsStart && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/20">
+                            <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
+                            <p className="text-xs font-semibold text-success">Início do curso</p>
+                          </div>
+                        )}
+                        {dayIsEnd && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20">
+                            <span className="w-2 h-2 rounded-full bg-warning flex-shrink-0" />
+                            <p className="text-xs font-semibold text-warning">Término do curso</p>
+                          </div>
+                        )}
+
                         {dayLessons.map(lesson => (
                           <div key={lesson._id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-hover border border-border">
                             <div className="flex-shrink-0 w-10 text-center">
@@ -487,6 +554,7 @@ const AdminCourse = () => {
                   })()}
                 </div>
 
+                {/* Lista de todas as aulas */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-text-primary">Todas as aulas</h3>
                   {lessons.length === 0 ? (
@@ -737,7 +805,7 @@ const AdminCourse = () => {
             )}
 
           </div>
-        </div>{/* fecha wrapper abas+conteúdo */}
+        </div>
       </div>
 
       {/* --- Modais do Curso --- */}

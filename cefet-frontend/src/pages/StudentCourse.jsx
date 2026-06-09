@@ -5,7 +5,7 @@ import Header from '../components/layout/Header'
 import { Tabs, Spinner } from '../components/ui/index'
 import Toast from '../components/ui/Toast'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI } from '../api/courses'
-import { formatDate } from '../utils/formatDate'
+import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
 
@@ -64,7 +64,6 @@ const StudentCourse = () => {
 
   const nextMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))
   const prevMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))
-
 
   if (loading || !course) return (
     <>
@@ -173,7 +172,7 @@ const StudentCourse = () => {
                   </div>
                 </div>
 
-                {/* Calendário — mesmo visual do painel do professor */}
+                {/* Calendário */}
                 <div className="card p-0 overflow-hidden">
                   {/* Header do mês */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-page">
@@ -197,11 +196,13 @@ const StudentCourse = () => {
                     </div>
                     <div className="grid grid-cols-7 gap-y-1">
                       {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
-                        const today      = day && date?.toDateString() === new Date().toDateString()
-                        const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
-                        const hasLessons = lessonCount > 0
-                        const isStart    = day && course.startDate && date?.toDateString() === new Date(course.startDate).toDateString()
-                        const isEnd      = day && course.endDate   && date?.toDateString() === new Date(course.endDate).toDateString()
+                        const today       = day && date?.toDateString() === new Date().toDateString()
+                        const isSelected  = day && selectedCalendarDay?.toDateString() === date?.toDateString()
+                        const hasLessons  = lessonCount > 0
+                        // Comparação UTC-safe: parseUTCDate interpreta course.startDate/endDate
+                        // como data local, evitando o desvio de fuso horário.
+                        const isStart     = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
+                        const isEnd       = day && course.endDate   && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
                         const isMilestone = isStart || isEnd
 
                         return (
@@ -227,17 +228,16 @@ const StudentCourse = () => {
                             `}
                           >
                             <span className={`font-semibold leading-none text-sm ${
-                              isSelected ? 'text-white'
+                              isSelected         ? 'text-white'
                               : isStart && isEnd ? 'text-success'
-                              : isStart  ? 'text-success'
-                              : isEnd    ? 'text-warning'
-                              : today    ? 'text-primary'
+                              : isStart          ? 'text-success'
+                              : isEnd            ? 'text-warning'
+                              : today            ? 'text-primary'
                               : 'text-text-primary'
                             } ${!day ? 'invisible' : ''}`}>
                               {day || '0'}
                             </span>
 
-                            {/* Indicadores: dots de aulas + marcadores de início/fim */}
                             {(hasLessons || isMilestone) && (
                               <div className="flex gap-0.5 mt-1 items-center">
                                 {hasLessons && Array.from({ length: Math.min(lessonCount, 3) }).map((_, i) => (
@@ -257,7 +257,7 @@ const StudentCourse = () => {
                     </div>
 
                     {/* Legenda */}
-                    <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t border-border justify-center">
+                    <div className="flex flex-wrap gap-8 mt-3 pt-3 border-t border-border justify-center">
                       <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
                         <span className="w-2 h-2 rounded-full bg-primary inline-block" /> Aulas
                       </span>
@@ -273,10 +273,10 @@ const StudentCourse = () => {
                   {/* Painel do dia selecionado */}
                   {selectedCalendarDay && (() => {
                     const dayLessons = lessons.filter(l =>
-                      new Date(l.date).toDateString() === selectedCalendarDay.toDateString()
+                      parseUTCDate(l.date).toDateString() === selectedCalendarDay.toDateString()
                     )
-                    const dayIsStart = course.startDate && selectedCalendarDay.toDateString() === new Date(course.startDate).toDateString()
-                    const dayIsEnd   = course.endDate   && selectedCalendarDay.toDateString() === new Date(course.endDate).toDateString()
+                    const dayIsStart = course.startDate && selectedCalendarDay.toDateString() === parseUTCDate(course.startDate).toDateString()
+                    const dayIsEnd   = course.endDate   && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
                     return (
                       <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
                         <p className="text-xs font-bold text-text-muted uppercase">
@@ -296,6 +296,7 @@ const StudentCourse = () => {
                             <p className="text-xs font-semibold text-warning">Término do curso</p>
                           </div>
                         )}
+
                         {dayLessons.map(lesson => (
                           <div key={lesson._id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-hover border border-border">
                             <div className="flex-shrink-0 w-10 text-center">
@@ -329,8 +330,8 @@ const StudentCourse = () => {
                   lessons.map(lesson => (
                     <div key={lesson._id} className="card p-4 flex gap-4 items-start">
                       <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-primary">
-                          {new Date(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                        <span className="text-xs font-bold text-primary text-center">
+                          {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
