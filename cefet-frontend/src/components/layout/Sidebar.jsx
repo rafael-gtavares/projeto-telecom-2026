@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Settings, GraduationCap, LogOut, Home } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Settings, GraduationCap, LogOut, Home, Users, School } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Avatar, Badge } from '../ui/index'
 import { getRoleLabel } from '../../utils/formatDate'
@@ -9,7 +9,8 @@ const navItems = [
   { tab: '../', label: 'Home', icon: Home },
   { tab: '', label: 'Dashboard', icon: LayoutDashboard },
   { tab: 'cursos', label: 'Cursos', icon: BookOpen },
-  { tab: 'configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
+  { tab: 'usuarios', label: 'Usuários', icon: Users, adminOnly: true },
+  { tab: 'escolas', label: 'Escolas', icon: School, adminOnly: true },
 ]
 
 const Sidebar = ({ onLogout }) => {

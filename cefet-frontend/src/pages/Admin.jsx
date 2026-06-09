@@ -193,9 +193,8 @@ const Admin = () => {
 
   }, [tab, role, statusFilter])
 
-  // useEffect dedicado para busca de usuários com debounce
   useEffect(() => {
-    if (tab !== 'configuracoes' || role !== 'admin') return
+    if (tab !== 'usuarios' || role !== 'admin') return
 
     setLoad('users', true)
 
@@ -397,9 +396,11 @@ const Admin = () => {
 
             <div className="animate-fadeIn">
 
-              <h1 className="text-xl font-bold text-text-primary mb-6">
-                Dashboard
-              </h1>
+              <div className="mb-6">
+                <h1 className="text-xl font-bold text-text-primary">
+                  Dashboard
+                </h1>
+              </div>
 
 
               {loading.stats ? (
@@ -423,8 +424,8 @@ const Admin = () => {
                   <DashboardMetrics stats={stats} />
 
                   {/* ======================================================
-      ESTATÍSTICAS GERAIS
-  ====================================================== */}
+                    ESTATÍSTICAS GERAIS
+                ====================================================== */}
 
                   <div className="mt-8 mb-4">
 
@@ -502,11 +503,13 @@ const Admin = () => {
           {tab === 'cursos' && (
             <div className="animate-fadeIn">
 
-              <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+              <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
 
-                <h1 className="text-xl font-bold text-text-primary">
-                  Cursos
-                </h1>
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-text-primary">
+                    Cursos
+                  </h1>
+                </div>
 
                 {/* Select e botão agrupados à direita */}
                 <div className="flex items-center gap-3">
@@ -584,23 +587,17 @@ const Admin = () => {
 
 
           {/* ======================================================
-              CONFIGURAÇÕES
+              USUÁRIOS
           ====================================================== */}
 
-          {tab === 'configuracoes' && role === 'admin' && (
+          {tab === 'usuarios' && role === 'admin' && (
 
             <div className="animate-fadeIn space-y-8">
 
-              {/* ── SEÇÃO: PERMISSÕES ── */}
-              <div>
-                <h1 className="text-xl font-bold text-text-primary mb-1">Configurações</h1>
-                <p className="text-text-muted text-sm mb-6">
-                  Gerencie permissões de usuários e escolas cadastradas na plataforma.
-                </p>
-
-                <h2 className="text-base font-semibold text-text-primary mb-4">
-                  Usuários & Permissões
-                </h2>
+              <div className="flex flex-col justify-between flex-wrap">
+                <h1 className="text-xl font-bold text-text-primary mb-6">
+                  Usuários
+                </h1>
 
                 <div className="card overflow-hidden mb-2">
 
@@ -656,11 +653,19 @@ const Admin = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* ── DIVISOR ── */}
-              <div className="border-t border-border" />
+          {/* ======================================================
+              ESCOLAS
+          ====================================================== */}
 
-              {/* ── SEÇÃO: ESCOLAS ── */}
+          {tab === 'escolas' && role === 'admin' && (
+
+            <div className="animate-fadeIn">
+              <h1 className="text-xl font-bold text-text-primary mb-6">
+                Escolas
+              </h1>
               <div className="card p-5 md:p-6">
                 <SchoolsManager />
               </div>
