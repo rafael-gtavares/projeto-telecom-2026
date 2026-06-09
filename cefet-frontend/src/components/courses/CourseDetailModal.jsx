@@ -44,19 +44,28 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
   const occupancyPercent = Math.min(100, (course.enrolledCount / course.maxSlots) * 100)
-  // Lógica para verificar se o curso dura mais de um dia
   const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
 
   const renderScheduleInfo = () => {
+    const config = Array.isArray(course.scheduleConfig) ? course.scheduleConfig : []
+
+    if (!config.length) {
+      return (
+        <p className="text-sm text-text-secondary">
+          {formatDate(course.startDate) || 'Cronograma a definir.'}
+        </p>
+      )
+    }
+
     switch (course.scheduleType) {
       case 'single':
         return (
           <div className="space-y-2">
             <p className="text-sm font-semibold text-text-primary">
-              {formatDate(course.scheduleConfig[0]?.date)}
+              {formatDate(config[0]?.date)}
             </p>
             <p className="text-sm text-text-secondary">
-              {course.scheduleConfig[0]?.startTime} às {course.scheduleConfig[0]?.endTime}
+              {config[0]?.startTime} às {config[0]?.endTime}
             </p>
           </div>
         )
@@ -64,7 +73,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       case 'custom':
         return (
           <div className="space-y-3">
-            {course.scheduleConfig.map((item, index) => (
+            {config.map((item, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-white rounded-lg border border-border"
@@ -94,7 +103,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
 
         return (
           <div className="space-y-3">
-            {course.scheduleConfig.map((item, index) => (
+            {config.map((item, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-white rounded-lg border border-border"

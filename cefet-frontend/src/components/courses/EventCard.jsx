@@ -1,15 +1,13 @@
-import { useState } from 'react'
 import { Calendar, Clock, User, Users, CheckCircle, MapPin } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { formatDate } from '../../utils/formatDate'
 import { formatModality } from '../../utils/formatModality'
 
-// Usa tokens do design system — sem hex hardcoded
 const CARD_GRADIENT = 'from-primary to-primary-light'
 
 const EventCard = ({ course, onOpenModal }) => {
-  const [isEnrolled, setIsEnrolled] = useState(course.isEnrolled ?? false)
+  const isEnrolled = course.isEnrolled ?? false
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
