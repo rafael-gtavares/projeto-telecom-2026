@@ -10,7 +10,7 @@ const getMe = async (req, res, next) => {
 
 const updateMe = async (req, res, next) => {
   try {
-    const { name, birthDate, gender, schoolLevel, incomeRange, password, school } = req.body;
+    const { name, birthDate, gender, schoolLevel, incomeRange, password, currentPassword, school } = req.body;
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
 
@@ -19,7 +19,17 @@ const updateMe = async (req, res, next) => {
     if (gender) user.gender = gender;
     if (schoolLevel !== undefined) user.schoolLevel = schoolLevel;
     if (incomeRange) user.incomeRange = incomeRange;
-    if (password) user.password = password;
+
+    // Troca de senha exige a senha atual (evita sequestro de conta via token roubado)
+    if (password) {
+      if (!currentPassword)
+        return res.status(400).json({ success: false, message: 'Informe a senha atual para alterá-la' });
+      const ok = await user.comparePassword(currentPassword);
+      if (!ok)
+        return res.status(401).json({ success: false, message: 'Senha atual incorreta' });
+      user.password = password;
+    }
+
     if (school !== undefined) user.school = school || null;
 
     await user.save();
@@ -32,7 +42,8 @@ const updateMe = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const { search, role, page = 1, limit = 20 } = req.query;
+    const { search, role, page = 1 } = req.query;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
     const filter = {};
     if (search) filter.$or = [{ name: new RegExp(search, 'i') }, { email: new RegExp(search, 'i') }];
     if (role) filter.role = role;
@@ -41,27 +52,21 @@ const getUsers = async (req, res, next) => {
       .populate('school', 'name city')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit));
+      .limit(limit);
     const total = await User.countDocuments(filter);
     res.json({ success: true, data: { users, total } });
   } catch (err) { next(err); }
 };
 
+// Lista enxuta de admins/professores (usada em seletores) — sem filtros/paginação
 const getUsersBase = async (req, res, next) => {
   try {
-    const { search, role, page = 1, limit = 20 } = req.query;
-    const filter = {};
-    if (search) filter.$or = [{ name: new RegExp(search, 'i') }, { email: new RegExp(search, 'i') }];
-    if (role) filter.role = role;
-
-    const users = await User.find(
-      { role: { $in: ['admin', 'professor'] } },
-      '_id name email role'
-    )
-    const total = await User.countDocuments({ role: { $in: ['admin', 'professor'] } });
+    const roleFilter = { role: { $in: ['admin', 'professor'] } };
+    const users = await User.find(roleFilter, '_id name email role');
+    const total = await User.countDocuments(roleFilter);
     res.json({ success: true, data: { users, total } });
   } catch (err) { next(err); }
-}
+};
 
 const updateUserRole = async (req, res, next) => {
   try {

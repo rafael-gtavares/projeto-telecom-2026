@@ -38,7 +38,7 @@ const MyProfile = () => {
     school: user?.school?._id || user?.school || '',
   })
   const { schools, loading: schoolsLoading } = useSchools()
-  const [passwords, setPasswords] = useState({ password: '', confirm: '' })
+  const [passwords, setPasswords] = useState({ current: '', password: '', confirm: '' })
   const [showPassSection, setShowPassSection] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -54,16 +54,18 @@ const MyProfile = () => {
     setError(''); setSuccess('')
     const payload = { ...form }
     if (showPassSection && passwords.password) {
+      if (!passwords.current) { setError('Informe sua senha atual'); return }
       if (passwords.password !== passwords.confirm) { setError('As senhas não coincidem'); return }
       if (passwords.password.length < 6) { setError('Mínimo 6 caracteres'); return }
       payload.password = passwords.password
+      payload.currentPassword = passwords.current
     }
     setLoading(true)
     try {
       const { data } = await updateMeAPI(payload)
       updateUser(data.data)
       setSuccess('Perfil atualizado com sucesso!')
-      setPasswords({ password: '', confirm: '' })
+      setPasswords({ current: '', password: '', confirm: '' })
     } catch (err) {
       setError(err.response?.data?.message || 'Erro ao salvar alterações')
     } finally {
@@ -175,6 +177,14 @@ const MyProfile = () => {
                 </button>
                 {showPassSection && (
                   <div className="px-4 pb-4 space-y-3 border-t border-border pt-4">
+                    <Input
+                      label="Senha atual"
+                      type={showPass ? 'text' : 'password'}
+                      placeholder="Sua senha atual"
+                      value={passwords.current}
+                      onChange={e => setPasswords(p => ({ ...p, current: e.target.value }))}
+                      icon={Lock}
+                    />
                     <Input
                       label="Nova senha"
                       type={showPass ? 'text' : 'password'}

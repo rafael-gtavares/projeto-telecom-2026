@@ -1,12 +1,14 @@
 import { Link, useParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Settings, Home } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Home, Users, School } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
+// Espelha a Sidebar (desktop): admin tem Usuários e Escolas como abas separadas
 const items = [
   { tab: '../', label: 'Home', icon: Home },
-  { tab: '', label: 'Dashboard', icon: LayoutDashboard },
+  { tab: '', label: 'Painel', icon: LayoutDashboard },
   { tab: 'cursos', label: 'Cursos', icon: BookOpen },
-  { tab: 'configuracoes', label: 'Config.', icon: Settings, adminOnly: true },
+  { tab: 'usuarios', label: 'Usuários', icon: Users, adminOnly: true },
+  { tab: 'escolas', label: 'Escolas', icon: School, adminOnly: true },
 ]
 
 const BottomNav = () => {

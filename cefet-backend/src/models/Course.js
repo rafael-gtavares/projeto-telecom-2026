@@ -24,10 +24,10 @@ const courseSchema = new mongoose.Schema({
     required: true,
   },
 
-  // Configuração da agenda
+  // Configuração da agenda (sempre um array — evita null que quebrava o front)
   scheduleConfig: {
     type: mongoose.Schema.Types.Mixed,
-    default: null,
+    default: () => [],
   },
 
   // Primeira e última aula do curso

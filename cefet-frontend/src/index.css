@@ -8,6 +8,17 @@
   input, textarea, select { outline: none; }
 }
 
+@layer utilities {
+  /* Esconde a barra de rolagem mantendo a rolagem funcional (usado nas Tabs no mobile) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;      /* IE e Edge legado */
+    scrollbar-width: none;          /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;                  /* Chrome, Safari, Edge */
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply bg-primary text-white font-semibold px-6 py-3 rounded-btn hover:bg-primary-dark active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;

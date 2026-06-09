@@ -55,9 +55,7 @@ import { useAuth } from '../context/AuthContext'
 
 // APIs
 import {
-  getCoursesAPI,
   getAllCoursesAPI,
-  getCourseStatsAPI,
   createCourseAPI,
   updateCourseAPI,
   deleteCourseAPI

@@ -31,12 +31,12 @@ export const Spinner = ({ size = 'md' }) => {
 }
 
 export const Tabs = ({ tabs, active, onChange }) => (
-  <div className="flex gap-1 border-b border-border pb-0 scrollbar-hide">
+  <div className="flex gap-1 border-b border-border pb-0 overflow-x-auto scrollbar-hide">
     {tabs.map((tab) => (
       <button
         key={tab.value}
         onClick={() => onChange(tab.value)}
-        className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-all border-b-2 -mb-px ${
+        className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap shrink-0 transition-all border-b-2 -mb-px ${
           active === tab.value
             ? 'border-primary text-primary'
             : 'border-transparent text-text-secondary hover:text-text-primary'
