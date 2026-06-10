@@ -1,5 +1,6 @@
 const School = require('../models/School');
 const User = require('../models/User');
+const escapeRegex = require('../helpers/escapeRegex');
 
 // GET /schools — lista todas as escolas ativas (público: usado no cadastro e perfil)
 const getSchools = async (req, res, next) => {
@@ -29,7 +30,7 @@ const createSchool = async (req, res, next) => {
 
     // Verifica duplicata (case insensitive)
     const exists = await School.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+      name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, 'i') },
       city: city?.trim() || '',
     });
     if (exists)

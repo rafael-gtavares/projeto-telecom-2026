@@ -36,7 +36,11 @@ const updateLesson = async (req, res, next) => {
     const lesson = await Lesson.findOne({ _id: req.params.lessonId, course: req.params.courseId });
     if (!lesson) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
 
-    Object.assign(lesson, req.body);
+    // Whitelist de campos editáveis — nunca permite alterar course/createdBy via body
+    const ALLOWED_FIELDS = ['title', 'description', 'date', 'startTime', 'endTime', 'modality', 'location', 'meetingUrl'];
+    for (const field of ALLOWED_FIELDS) {
+      if (req.body[field] !== undefined) lesson[field] = req.body[field];
+    }
     await lesson.save();
     res.json({ success: true, data: lesson });
   } catch (err) { next(err); }

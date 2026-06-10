@@ -16,6 +16,6 @@
     "preview": "npm run preview -w cefet-frontend"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^10.0.3"
   }
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Trash2, GraduationCap, Users, BookOpen, BarChart2, Settings, Plus, ChevronLeft, ChevronRight, Video, FileText, FileQuestion, Link, File, Search, X, ChevronRight as ChevronRightIcon, CheckCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { Tabs, Spinner, Badge, Avatar } from '../components/ui/index'
+import { Tabs, Spinner, Badge, Avatar, ViewToggle } from '../components/ui/index'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Toast from '../components/ui/Toast'
@@ -53,6 +53,12 @@ const AdminCourse = () => {
   const [lessonModal, setLessonModal] = useState({ open: false, lesson: null })
   const [lessonSaveLoading, setLessonSaveLoading] = useState(false)
   const [lessonForm, setLessonForm] = useState({ title: '', date: '', modality: 'presencial', startTime: '', endTime: '', location: '', meetingUrl: '', description: '' })
+  const [lessonsView, setLessonsView] = useState(() => localStorage.getItem('adminCourseLessonsView') || 'list')
+
+  const toggleLessonsView = (mode) => {
+    setLessonsView(mode)
+    localStorage.setItem('adminCourseLessonsView', mode)
+  }
 
   // Alunos e Notas
   const [students, setStudents] = useState([])
@@ -556,10 +562,14 @@ const AdminCourse = () => {
 
                 {/* Lista de todas as aulas */}
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-text-primary">Todas as aulas</h3>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-text-primary">Todas as aulas</h3>
+                    {lessons.length > 0 && <ViewToggle value={lessonsView} onChange={toggleLessonsView} />}
+                  </div>
                   {lessons.length === 0 ? (
                     <div className="text-center py-10 text-text-muted text-sm">Nenhuma aula cadastrada ainda.</div>
-                  ) : (
+                  ) : lessonsView === 'list' ? (
+                    /* ── MODO LISTA ── */
                     lessons.map(lesson => (
                       <div key={lesson._id} className="card p-4 flex gap-4 items-start">
                         <div className="text-center w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
@@ -590,6 +600,42 @@ const AdminCourse = () => {
                         </div>
                       </div>
                     ))
+                  ) : (
+                    /* ── MODO GRID (CARDS) ── */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {lessons.map(lesson => (
+                        <div key={lesson._id} className="card p-4 flex flex-col">
+                          <div className="flex items-start gap-3">
+                            <div className="text-center w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
+                              <span className="text-xs font-bold text-primary">
+                                {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-text-primary text-sm leading-tight">{lesson.title}</h4>
+                              <span className="text-xs text-text-muted">{lesson.startTime} – {lesson.endTime}</span>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button onClick={() => setLessonModal({ open: true, lesson })}
+                                className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+                                <Edit2 size={14} />
+                              </button>
+                              <button onClick={() => handleDeleteLesson(lesson._id)}
+                                className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-3">
+                            <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'}>
+                              {lesson.modality}
+                            </Badge>
+                            {lesson.location && <span className="text-xs text-text-muted">{lesson.location}</span>}
+                          </div>
+                          {lesson.description && <p className="text-xs text-text-secondary mt-2 line-clamp-2">{lesson.description}</p>}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

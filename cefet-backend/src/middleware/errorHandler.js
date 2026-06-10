@@ -19,10 +19,15 @@ const errorHandler = (err, req, res, next) => {
   // Demais erros: loga o stack e devolve o status apropriado
   console.error(err.stack);
   const status = err.status || 500;
-  res.status(status).json({
-    success: false,
-    message: err.message || 'Erro interno do servidor',
-  });
+
+  // Em 500 sob produção, não expõe a mensagem interna (pode vazar detalhes
+  // de implementação/stack). Erros 4xx intencionais mantêm sua mensagem.
+  const isServerError = status >= 500;
+  const message = isServerError && process.env.NODE_ENV === 'production'
+    ? 'Erro interno do servidor'
+    : (err.message || 'Erro interno do servidor');
+
+  res.status(status).json({ success: false, message });
 };
 
 module.exports = errorHandler;

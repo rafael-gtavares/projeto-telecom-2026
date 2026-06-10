@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const escapeRegex = require('../helpers/escapeRegex');
 
 const getMe = async (req, res, next) => {
   try {
@@ -45,7 +46,10 @@ const getUsers = async (req, res, next) => {
     const { search, role, page = 1 } = req.query;
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
     const filter = {};
-    if (search) filter.$or = [{ name: new RegExp(search, 'i') }, { email: new RegExp(search, 'i') }];
+    if (search) {
+      const safe = escapeRegex(search);
+      filter.$or = [{ name: new RegExp(safe, 'i') }, { email: new RegExp(safe, 'i') }];
+    }
     if (role) filter.role = role;
 
     const users = await User.find(filter, '-password')

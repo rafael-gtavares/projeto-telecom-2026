@@ -35,7 +35,11 @@ const updateMaterial = async (req, res, next) => {
     const material = await Material.findOne({ _id: req.params.materialId, course: req.params.courseId });
     if (!material) return res.status(404).json({ success: false, message: 'Material não encontrado' });
 
-    Object.assign(material, req.body);
+    // Whitelist de campos editáveis — nunca permite alterar course/createdBy via body
+    const ALLOWED_FIELDS = ['title', 'description', 'type', 'content', 'lesson', 'order'];
+    for (const field of ALLOWED_FIELDS) {
+      if (req.body[field] !== undefined) material[field] = req.body[field];
+    }
     await material.save();
     res.json({ success: true, data: material });
   } catch (err) { next(err); }

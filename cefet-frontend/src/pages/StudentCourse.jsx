@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users } from 'lucide-react'
 import Header from '../components/layout/Header'
-import { Tabs, Spinner } from '../components/ui/index'
+import { Tabs, Spinner, ViewToggle } from '../components/ui/index'
 import Toast from '../components/ui/Toast'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI } from '../api/courses'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
@@ -29,6 +29,12 @@ const StudentCourse = () => {
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '' })
+  const [lessonsView, setLessonsView] = useState(() => localStorage.getItem('studentCourseLessonsView') || 'list')
+
+  const toggleLessonsView = (mode) => {
+    setLessonsView(mode)
+    localStorage.setItem('studentCourseLessonsView', mode)
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -323,10 +329,14 @@ const StudentCourse = () => {
                 </div>
 
                 {/* Lista de todas as aulas */}
-                <h3 className="font-semibold text-text-primary text-sm">Todas as aulas</h3>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-semibold text-text-primary text-sm">Todas as aulas</h3>
+                  {lessons.length > 0 && <ViewToggle value={lessonsView} onChange={toggleLessonsView} />}
+                </div>
                 {lessons.length === 0 ? (
                   <p className="text-sm text-text-muted text-center py-6">Nenhuma aula cadastrada ainda.</p>
-                ) : (
+                ) : lessonsView === 'list' ? (
+                  /* ── MODO LISTA ── */
                   lessons.map(lesson => (
                     <div key={lesson._id} className="card p-4 flex gap-4 items-start">
                       <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
@@ -346,6 +356,31 @@ const StudentCourse = () => {
                       </div>
                     </div>
                   ))
+                ) : (
+                  /* ── MODO GRID (CARDS) ── */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {lessons.map(lesson => (
+                      <div key={lesson._id} className="card p-4 flex flex-col">
+                        <div className="flex items-start gap-3">
+                          <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-primary text-center">
+                              {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-text-primary text-sm leading-tight">{lesson.title}</p>
+                            <p className="text-xs text-text-muted mt-0.5">{lesson.startTime} – {lesson.endTime} · {lesson.modality}</p>
+                          </div>
+                        </div>
+                        {lesson.location && <p className="text-xs text-text-muted mt-2">{lesson.location}</p>}
+                        {lesson.meetingUrl && (
+                          <a href={lesson.meetingUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline block mt-1">Acessar aula online</a>
+                        )}
+                        {lesson.description && <p className="text-xs text-text-secondary mt-2 line-clamp-2">{lesson.description}</p>}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}

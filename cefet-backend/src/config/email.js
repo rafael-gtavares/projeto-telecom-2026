@@ -22,9 +22,10 @@ const createTransporter = () => {
     port,
     secure: port === 465, // true apenas para porta 465 (SSL), false para 587 e 2525
     auth: { user, pass },
-    // Necessário para Mailtrap e alguns provedores em desenvolvimento
+    // Em produção valida o certificado TLS (evita man-in-the-middle).
+    // Em dev, alguns provedores (Mailtrap) usam certificados que falham a validação.
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: process.env.NODE_ENV === 'production',
     },
   });
 };

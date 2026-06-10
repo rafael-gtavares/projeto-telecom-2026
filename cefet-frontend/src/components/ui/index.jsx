@@ -1,3 +1,4 @@
+import { LayoutList, LayoutGrid } from 'lucide-react'
 import { getInitials } from '../../utils/formatDate'
 
 export const Badge = ({ children, variant = 'default', className = '' }) => {
@@ -29,6 +30,31 @@ export const Spinner = ({ size = 'md' }) => {
   const s = { sm: 'w-4 h-4', md: 'w-8 h-8', lg: 'w-12 h-12' }[size]
   return <div className={`${s} border-2 border-primary border-t-transparent rounded-full animate-spin`} />
 }
+
+// Alterna entre visualização em lista e em cards. Usado em Meus Cursos,
+// AdminCourse (aba Aulas) e StudentCourse (aba Cronograma).
+export const ViewToggle = ({ value, onChange }) => (
+  <div className="flex items-center gap-1 flex-shrink-0 p-1 bg-surface-page rounded-lg border border-border">
+    <button
+      type="button"
+      onClick={() => onChange('list')}
+      title="Visualização em lista"
+      aria-pressed={value === 'list'}
+      className={`p-1.5 rounded-md transition-all ${value === 'list' ? 'bg-white shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}
+    >
+      <LayoutList size={16} />
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange('grid')}
+      title="Visualização em cards"
+      aria-pressed={value === 'grid'}
+      className={`p-1.5 rounded-md transition-all ${value === 'grid' ? 'bg-white shadow-sm text-primary' : 'text-text-muted hover:text-text-primary'}`}
+    >
+      <LayoutGrid size={16} />
+    </button>
+  </div>
+)
 
 export const Tabs = ({ tabs, active, onChange }) => (
   <div className="flex gap-1 border-b border-border pb-0 overflow-x-auto scrollbar-hide">
