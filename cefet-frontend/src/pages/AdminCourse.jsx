@@ -197,12 +197,20 @@ const AdminCourse = () => {
         title: materialModal.material.title || '',
         type: materialModal.material.type || 'leitura',
         content: materialModal.material.content || '',
-        description: materialModal.material.description || ''
+        description: materialModal.material.description || '',
+        file: null
       })
     } else {
       setMaterialForm({ title: '', type: 'leitura', content: '', description: '' })
     }
   }, [materialModal.open])
+
+  const handleFileChange = (e) => {
+    setMaterialForm(f => ({
+      ...f,
+      file: e.target.files[0]
+    }))
+  }
 
   const handleSaveMaterial = async () => {
     if (!materialForm.title) return
@@ -427,13 +435,13 @@ const AdminCourse = () => {
                     </div>
                     <div className="grid grid-cols-7 gap-y-1">
                       {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
-                        const today       = day && date?.toDateString() === new Date().toDateString()
-                        const isSelected  = day && selectedCalendarDay?.toDateString() === date?.toDateString()
-                        const hasLessons  = lessonCount > 0
+                        const today = day && date?.toDateString() === new Date().toDateString()
+                        const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
+                        const hasLessons = lessonCount > 0
                         // Comparação UTC-safe: parseUTCDate garante que course.startDate/endDate
                         // sejam interpretadas como datas locais, igual ao que já é feito nas listas.
-                        const isStart     = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
-                        const isEnd       = day && course.endDate   && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
+                        const isStart = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
+                        const isEnd = day && course.endDate && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
                         const isMilestone = isStart || isEnd
 
                         return (
@@ -457,14 +465,13 @@ const AdminCourse = () => {
                                           : ''}
                             `}
                           >
-                            <span className={`font-semibold leading-none text-sm ${
-                              isSelected        ? 'text-white'
+                            <span className={`font-semibold leading-none text-sm ${isSelected ? 'text-white'
                               : isStart && isEnd ? 'text-success'
-                              : isStart          ? 'text-success'
-                              : isEnd            ? 'text-warning'
-                              : today            ? 'text-primary'
-                              : 'text-text-primary'
-                            } ${!day ? 'invisible' : ''}`}>
+                                : isStart ? 'text-success'
+                                  : isEnd ? 'text-warning'
+                                    : today ? 'text-primary'
+                                      : 'text-text-primary'
+                              } ${!day ? 'invisible' : ''}`}>
                               {day || '0'}
                             </span>
                             {(hasLessons || isMilestone) && (
@@ -505,7 +512,7 @@ const AdminCourse = () => {
                       parseUTCDate(l.date).toDateString() === selectedCalendarDay.toDateString()
                     )
                     const dayIsStart = course.startDate && selectedCalendarDay.toDateString() === parseUTCDate(course.startDate).toDateString()
-                    const dayIsEnd   = course.endDate   && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
+                    const dayIsEnd = course.endDate && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
                     return (
                       <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
                         <p className="text-xs font-bold text-text-muted uppercase">
@@ -1002,41 +1009,152 @@ const AdminCourse = () => {
       <Toast show={toast.show} message={toast.message} onClose={() => setToast({ show: false, message: '' })} />
 
       {/* --- Modais de Material --- */}
-      <Modal open={materialModal.open} onClose={() => setMaterialModal({ open: false, material: null })} title={materialModal.material ? 'Editar material' : 'Novo material'} size="md">
+      <Modal
+        open={materialModal.open}
+        onClose={() => setMaterialModal({ open: false, material: null })}
+        title={materialModal.material ? 'Editar material' : 'Novo material'}
+        size="md"
+      >
         <div className="space-y-4">
-          <Input label="Título *" value={materialForm.title} onChange={e => setMaterialForm(f => ({ ...f, title: e.target.value }))} />
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Tipo *</label>
-            <select value={materialForm.type} onChange={e => setMaterialForm(f => ({ ...f, type: e.target.value }))} className="input-field w-full">
-              <option value="leitura">Leitura</option>
-              <option value="video">Vídeo</option>
-              <option value="exercicio">Exercício</option>
-              <option value="prova">Prova</option>
-              <option value="link">Link externo</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
+          <Input
+            label="Título *"
+            value={materialForm.title}
+            onChange={e =>
+              setMaterialForm(f => ({
+                ...f,
+                title: e.target.value
+              }))
+            }
+          />
+
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              {materialForm.type === 'leitura' ? 'Conteúdo (texto)' :
-                materialForm.type === 'video' ? 'URL do vídeo' :
-                  materialForm.type === 'link' ? 'URL do link' : 'Conteúdo / URL'}
+              Tipo *
             </label>
+
+            <select
+              value={materialForm.type}
+              onChange={e =>
+                setMaterialForm(f => ({
+                  ...f,
+                  type: e.target.value
+                }))
+              }
+              className="input-field w-full"
+            >
+              <option value="leitura">Leitura</option>
+              <option value="arquivo">Arquivo</option>
+              <option value="link-externo">Link Externo</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              {materialForm.type === 'leitura'
+                ? 'Conteúdo (texto)'
+                : materialForm.type === 'arquivo'
+                  ? 'Arquivo'
+                  : 'URL do link'}
+            </label>
+
             {materialForm.type === 'leitura' ? (
-              <textarea value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} rows={5} className="input-field w-full resize-none" placeholder="Digite o conteúdo de leitura..." />
+              <textarea
+                value={materialForm.content}
+                onChange={e =>
+                  setMaterialForm(f => ({
+                    ...f,
+                    content: e.target.value
+                  }))
+                }
+                rows={5}
+                className="input-field w-full resize-none"
+                placeholder="Digite o conteúdo de leitura..."
+              />
+            ) : materialForm.type === 'link-externo' ? (
+              <input
+                type="url"
+                value={materialForm.content}
+                onChange={e =>
+                  setMaterialForm(f => ({
+                    ...f,
+                    content: e.target.value
+                  }))
+                }
+                className="input-field w-full"
+                placeholder="https://..."
+              />
             ) : (
-              <input type="url" value={materialForm.content} onChange={e => setMaterialForm(f => ({ ...f, content: e.target.value }))} className="input-field w-full" placeholder="https://..." />
+              <div>
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-surface-secondary transition-colors">
+                  <div className="text-center">
+                    <p className="font-medium">
+                      Clique para selecionar um arquivo
+                    </p>
+
+                    <p className="text-sm text-text-secondary mt-1">
+                      PDF, DOCX, PPTX, ZIP...
+                    </p>
+                  </div>
+
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </label>
+
+                {materialForm.file && (
+                  <div className="mt-2 text-sm text-text-secondary">
+                    Arquivo selecionado:{' '}
+                    <span className="font-medium">
+                      {materialForm.file.name}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Descrição</label>
-            <textarea value={materialForm.description} onChange={e => setMaterialForm(f => ({ ...f, description: e.target.value }))} rows={2} className="input-field w-full resize-none" />
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              Descrição
+            </label>
+
+            <textarea
+              value={materialForm.description}
+              onChange={e =>
+                setMaterialForm(f => ({
+                  ...f,
+                  description: e.target.value
+                }))
+              }
+              rows={2}
+              className="input-field w-full resize-none"
+              placeholder="Descrição opcional..."
+            />
           </div>
+
           <div className="flex gap-3">
-            <Button variant="primary" className="flex-1" onClick={handleSaveMaterial} loading={materialSaveLoading}>
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={handleSaveMaterial}
+              loading={materialSaveLoading}
+            >
               {materialModal.material ? 'Salvar' : 'Criar material'}
             </Button>
-            <Button variant="secondary" onClick={() => setMaterialModal({ open: false, material: null })}>Cancelar</Button>
+
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setMaterialModal({
+                  open: false,
+                  material: null
+                })
+              }
+            >
+              Cancelar
+            </Button>
           </div>
         </div>
       </Modal>

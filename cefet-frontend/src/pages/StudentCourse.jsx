@@ -451,7 +451,7 @@ const StudentCourse = () => {
                       <div key={g._id} className="flex items-center gap-4 p-3 card">
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-text-primary text-sm">{g.title}</p>
-                          <p className="text-xs text-text-muted">{g.type}</p>
+                          <p className="text-xs text-text-muted capitalize">{g.type}</p>
                           {g.feedback && <p className="text-xs text-text-secondary mt-1 italic">"{g.feedback}"</p>}
                         </div>
                         <div className="flex-shrink-0 text-right">
