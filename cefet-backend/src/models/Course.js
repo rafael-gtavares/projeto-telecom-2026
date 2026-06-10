@@ -101,6 +101,32 @@ const courseSchema = new mongoose.Schema({
     default: null,
   },
 
+  materials: [
+    {
+      title: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+
+      type: {
+        type: String,
+        enum: [
+          'text',
+          'link',
+          'file',
+        ],
+        required: true,
+      },
+
+      content: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+    },
+  ],
+
   status: {
     type: String,
     enum: [

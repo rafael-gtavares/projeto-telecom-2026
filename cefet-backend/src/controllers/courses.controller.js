@@ -34,7 +34,8 @@ const getCourses = async (req, res, next) => {
       .populate('professor', 'name email')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .select('-materials');
 
     const total = await Course.countDocuments(filter);
 
@@ -83,7 +84,8 @@ const getAllCourses = async (req, res, next) => {
       .populate('professor', 'name email')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .select('-materials');
 
     const total = await Course.countDocuments(filter);
     res.json({ success: true, data: { courses, total, page: Number(page), limit } });
@@ -419,6 +421,7 @@ const createCourse = async (req, res, next) => {
       status,
       imageUrl,
       instructor,
+      materials,
 
       startDate,
       endDate,
@@ -454,6 +457,8 @@ const createCourse = async (req, res, next) => {
       professor: req.user.id,
 
       instructor: instructor || '',
+
+      materials: materials || [],
 
       maxSlots,
 
@@ -524,6 +529,7 @@ const updateCourse = async (req, res, next) => {
       'status',
       'imageUrl',
       'instructor',
+      'materials'
     ];
 
     const updates = {};
