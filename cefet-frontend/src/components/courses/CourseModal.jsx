@@ -10,6 +10,7 @@ import {
   CustomScheduleFields,
 } from './schedule/index'
 import { formatDateForInput } from '../../utils/formatDate'
+import { uploadFileAPI } from '../../api/upload'
 
 const MODALITY_OPTIONS = [
   { value: 'presencial', label: 'Presencial' },
@@ -33,6 +34,8 @@ const INITIAL = {
   maxSlots: '',
   status: 'published',
   imageUrl: '',
+  imageType: 'upload',
+  imageFile: null,
   scheduleType: 'single',
   // campos de schedule
   singleConfig: INITIAL_SINGLE,
@@ -174,11 +177,26 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     form.maxSlots &&
     isScheduleValid(form)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!isFormValid) return
-    onSave(buildPayload(form))
-  }
 
+    let payload = buildPayload(form)
+
+    if (form.imageType === 'upload' && form.imageFile) {
+      const formData = new FormData()
+
+      formData.append('file', form.imageFile)
+
+      const { data } = await uploadFileAPI(formData)
+
+      payload.imageUrl = data.url
+    }
+
+    delete payload.imageFile
+    delete payload.imageType
+
+    onSave(payload)
+  }
   const showLocation = ['presencial', 'semi_presencial', 'palestra', 'workshop', 'outro'].includes(form.modality)
 
   return (
@@ -290,36 +308,96 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
           </div>
         </div>
 
-        {/* Imagem por URL */}
+        {/* Imagem de capa */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1.5">Imagem de capa (URL)</label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Link size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+          <label className="block text-sm font-medium text-text-secondary mb-1.5">
+            Imagem de capa
+          </label>
+
+          <select
+            value={form.imageType}
+            onChange={e =>
+              setForm(f => ({
+                ...f,
+                imageType: e.target.value,
+                imageUrl: '',
+                imageFile: null
+              }))
+            }
+            className="input-field w-full"
+          >
+            <option value="upload">Upload de imagem</option>
+            <option value="link">Link externo</option>
+          </select>
+
+          <div className="mt-3">
+            {form.imageType === 'link' ? (
               <input
                 type="url"
                 value={form.imageUrl}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                onChange={e => {
+                  setForm(f => ({
+                    ...f,
+                    imageUrl: e.target.value
+                  }))
+
                   setPreview(e.target.value || null)
                 }}
                 placeholder="https://exemplo.com/imagem.jpg"
-                className="input-field pl-9"
+                className="input-field w-full"
               />
-            </div>
-            {form.imageUrl && (
-              <button
-                type="button"
-                onClick={() => { setForm((f) => ({ ...f, imageUrl: '' })); setPreview(null) }}
-                className="p-3 rounded-btn border border-border text-text-muted hover:text-error hover:border-error transition-colors"
-              >
-                <X size={16} />
-              </button>
+            ) : (
+              <div>
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-surface-secondary transition-colors">
+                  <div className="text-center">
+                    <p className="font-medium">
+                      Clique para selecionar uma imagem
+                    </p>
+
+                    <p className="text-sm text-text-secondary mt-1">
+                      JPG, PNG ou WEBP
+                    </p>
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+
+                      if (!file) return
+
+                      setForm(f => ({
+                        ...f,
+                        imageFile: file
+                      }))
+
+                      setPreview(URL.createObjectURL(file))
+                    }}
+                  />
+                </label>
+
+                {form.imageFile && (
+                  <div className="mt-2 text-sm text-text-secondary">
+                    Imagem selecionada:{' '}
+                    <span className="font-medium">
+                      {form.imageFile.name}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
+
           {preview && (
             <div className="mt-3 overflow-hidden rounded-card">
-              <img src={preview} alt="preview" className="w-full h-36 object-cover" onError={() => setPreview(null)} />
+              <img
+                src={preview}
+                alt="preview"
+                className="w-full h-36 object-cover"
+                onError={() => setPreview(null)}
+              />
             </div>
           )}
         </div>
