@@ -12,6 +12,7 @@ const getMaterials = async (req, res, next) => {
 // POST /courses/:courseId/materials
 const createMaterial = async (req, res, next) => {
   try {
+    console.log(req.body)
     const { title, description, type, content, lesson, order } = req.body;
     if (!title || !type)
       return res.status(400).json({ success: false, message: 'Título e tipo são obrigatórios' });

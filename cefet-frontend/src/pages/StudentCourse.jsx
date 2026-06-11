@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users } from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive} from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Spinner, ViewToggle } from '../components/ui/index'
 import Toast from '../components/ui/Toast'
@@ -202,13 +202,13 @@ const StudentCourse = () => {
                     </div>
                     <div className="grid grid-cols-7 gap-y-1">
                       {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
-                        const today       = day && date?.toDateString() === new Date().toDateString()
-                        const isSelected  = day && selectedCalendarDay?.toDateString() === date?.toDateString()
-                        const hasLessons  = lessonCount > 0
+                        const today = day && date?.toDateString() === new Date().toDateString()
+                        const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
+                        const hasLessons = lessonCount > 0
                         // Comparação UTC-safe: parseUTCDate interpreta course.startDate/endDate
                         // como data local, evitando o desvio de fuso horário.
-                        const isStart     = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
-                        const isEnd       = day && course.endDate   && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
+                        const isStart = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
+                        const isEnd = day && course.endDate && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
                         const isMilestone = isStart || isEnd
 
                         return (
@@ -233,14 +233,13 @@ const StudentCourse = () => {
                                           : ''}
                             `}
                           >
-                            <span className={`font-semibold leading-none text-sm ${
-                              isSelected         ? 'text-white'
-                              : isStart && isEnd ? 'text-success'
-                              : isStart          ? 'text-success'
-                              : isEnd            ? 'text-warning'
-                              : today            ? 'text-primary'
-                              : 'text-text-primary'
-                            } ${!day ? 'invisible' : ''}`}>
+                            <span className={`font-semibold leading-none text-sm ${isSelected ? 'text-white'
+                                : isStart && isEnd ? 'text-success'
+                                  : isStart ? 'text-success'
+                                    : isEnd ? 'text-warning'
+                                      : today ? 'text-primary'
+                                        : 'text-text-primary'
+                              } ${!day ? 'invisible' : ''}`}>
                               {day || '0'}
                             </span>
 
@@ -282,7 +281,7 @@ const StudentCourse = () => {
                       parseUTCDate(l.date).toDateString() === selectedCalendarDay.toDateString()
                     )
                     const dayIsStart = course.startDate && selectedCalendarDay.toDateString() === parseUTCDate(course.startDate).toDateString()
-                    const dayIsEnd   = course.endDate   && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
+                    const dayIsEnd = course.endDate && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
                     return (
                       <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
                         <p className="text-xs font-bold text-text-muted uppercase">
@@ -395,13 +394,10 @@ const StudentCourse = () => {
                 ) : (
                   materials.map(mat => {
                     const typeIcon = {
-                      leitura: <BookOpen size={16} />,
-                      video: <Video size={16} />,
-                      exercicio: <FileText size={16} />,
-                      prova: <FileQuestion size={16} />,
+                      text: <BookOpen size={16} />,
                       link: <LinkIcon size={16} />,
-                      outro: <File size={16} />,
-                    }[mat.type] || <File size={16} />
+                      file: <FileArchive size={16} />
+                    }[mat.type] || <BookOpen size={16} />
 
                     return (
                       <div key={mat._id} className="card p-4">
@@ -412,12 +408,12 @@ const StudentCourse = () => {
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-text-primary text-sm">{mat.title}</h4>
                             {mat.description && <p className="text-xs text-text-secondary mt-0.5">{mat.description}</p>}
-                            {mat.type === 'leitura' && mat.content && (
+                            {mat.type === 'text' && mat.content && (
                               <div className="mt-2 p-3 bg-surface-page rounded-lg text-sm text-text-secondary leading-relaxed max-h-48 overflow-y-auto">
                                 {mat.content}
                               </div>
                             )}
-                            {['video', 'link', 'exercicio', 'prova'].includes(mat.type) && mat.content && (
+                            {['file', 'link'].includes(mat.type) && mat.content && (
                               <a href={mat.content} target="_blank" rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1.5 mt-2 text-sm text-primary font-medium hover:underline">
                                 Acessar material →

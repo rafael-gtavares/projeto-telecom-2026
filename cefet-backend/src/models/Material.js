@@ -8,7 +8,7 @@ const materialSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   type: {
     type: String,
-    enum: ['leitura', 'video', 'exercicio', 'prova', 'link', 'outro'],
+    enum: ['text', 'link', 'file'],
     required: true,
   },
   content: { type: String, default: '' },  // texto de leitura, URL de vídeo, link externo

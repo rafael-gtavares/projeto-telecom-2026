@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Trash2, GraduationCap, Users, BookOpen, BarChart2, Settings, Plus, ChevronLeft, ChevronRight, Video, FileText, FileQuestion, Link, File, Search, X, ChevronRight as ChevronRightIcon, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Edit2, Trash2, GraduationCap, Users, BookOpen, BarChart2, Settings, Plus, ChevronLeft, ChevronRight, Video, FileText, FileQuestion, FileArchive, Link, File, Search, X, ChevronRight as ChevronRightIcon, CheckCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Tabs, Spinner, Badge, Avatar, ViewToggle } from '../components/ui/index'
 import Button from '../components/ui/Button'
@@ -17,6 +17,7 @@ import {
   addAllowedProfessorAPI, removeAllowedProfessorAPI,
 } from '../api/courses'
 import { getUsersBaseAPI } from '../api/users'
+import { uploadFileAPI } from '../api/upload'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
@@ -72,7 +73,7 @@ const AdminCourse = () => {
   const [materials, setMaterials] = useState([])
   const [materialModal, setMaterialModal] = useState({ open: false, material: null })
   const [materialSaveLoading, setMaterialSaveLoading] = useState(false)
-  const [materialForm, setMaterialForm] = useState({ title: '', type: 'leitura', content: '', description: '' })
+  const [materialForm, setMaterialForm] = useState({ title: '', type: 'text', content: '', description: '' })
 
   // Config (Acesso ao curso + status)
   const [configUsers, setConfigUsers] = useState([])
@@ -195,13 +196,13 @@ const AdminCourse = () => {
     if (materialModal.open && materialModal.material) {
       setMaterialForm({
         title: materialModal.material.title || '',
-        type: materialModal.material.type || 'leitura',
+        type: materialModal.material.type || 'text',
         content: materialModal.material.content || '',
         description: materialModal.material.description || '',
         file: null
       })
     } else {
-      setMaterialForm({ title: '', type: 'leitura', content: '', description: '' })
+      setMaterialForm({ title: '', type: 'text', content: '', description: '' })
     }
   }, [materialModal.open])
 
@@ -214,18 +215,54 @@ const AdminCourse = () => {
 
   const handleSaveMaterial = async () => {
     if (!materialForm.title) return
+
     setMaterialSaveLoading(true)
+
     try {
+      let payload = { ...materialForm }
+
+      if (materialForm.type === 'file' && materialForm.file) {
+        const formData = new FormData()
+
+        formData.append('file', materialForm.file)
+
+        const { data } = await uploadFileAPI(formData)
+
+        payload.content = data.url
+      }
+
       if (materialModal.material) {
-        const { data } = await updateMaterialAPI(courseId, materialModal.material._id, materialForm)
-        setMaterials(prev => prev.map(m => m._id === data.data._id ? data.data : m))
+        const { data } = await updateMaterialAPI(
+          courseId,
+          materialModal.material._id,
+          payload
+        )
+
+        setMaterials(prev =>
+          prev.map(m =>
+            m._id === data.data._id ? data.data : m
+          )
+        )
       } else {
-        const { data } = await createMaterialAPI(courseId, materialForm)
+        delete payload.file
+        const { data } = await createMaterialAPI(
+          courseId,
+          payload
+        )
+
         setMaterials(prev => [...prev, data.data])
       }
-      setMaterialModal({ open: false, material: null })
-    } catch (err) { showToast('Erro ao salvar material') }
-    finally { setMaterialSaveLoading(false) }
+
+      setMaterialModal({
+        open: false,
+        material: null
+      })
+    } catch (err) {
+      showToast('Erro ao salvar material')
+      console.error(JSON.stringify(err.response?.data, null, 2))
+    } finally {
+      setMaterialSaveLoading(false)
+    }
   }
 
   const handleDeleteMaterial = (id) => {
@@ -352,7 +389,7 @@ const AdminCourse = () => {
 
   return (
     <div className="min-h-screen bg-surface-page pb-16">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
 
         {/* Header da página */}
         <button onClick={() => navigate('/admin/cursos')}
@@ -696,13 +733,10 @@ const AdminCourse = () => {
                   <div className="space-y-3">
                     {materials.map(mat => {
                       const typeIcon = {
-                        leitura: <BookOpen size={16} />,
-                        video: <Video size={16} />,
-                        exercicio: <FileText size={16} />,
-                        prova: <FileQuestion size={16} />,
+                        text: <BookOpen size={16} />,
                         link: <Link size={16} />,
-                        outro: <File size={16} />,
-                      }[mat.type] || <File size={16} />
+                        file: <FileArchive size={16} />
+                      }[mat.type] || <BookOpen size={16} />
 
                       return (
                         <div key={mat._id} className="card p-4 flex gap-4 items-start">
@@ -714,10 +748,20 @@ const AdminCourse = () => {
                             <Badge variant="gray" className="text-xs mt-1">{mat.type}</Badge>
                             {mat.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{mat.description}</p>}
                             {mat.content && (
-                              <a href={mat.content} target="_blank" rel="noopener noreferrer"
-                                className="text-xs text-primary hover:underline mt-1 block truncate">
-                                {mat.content}
-                              </a>
+                              mat.type === 'text' ? (
+                                <p className="text-xs italic text-text-muted mt-2 line-clamp-3">
+                                  "{mat.content}"
+                                </p>
+                              ) : (
+                                <a
+                                  href={mat.content}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-primary hover:underline mt-1 block truncate"
+                                >
+                                  {mat.content}
+                                </a>
+                              )
                             )}
                           </div>
                           <div className="flex gap-1 flex-shrink-0">
@@ -1042,22 +1086,22 @@ const AdminCourse = () => {
               }
               className="input-field w-full"
             >
-              <option value="leitura">Leitura</option>
-              <option value="arquivo">Arquivo</option>
-              <option value="link-externo">Link Externo</option>
+              <option value="text">Leitura</option>
+              <option value="file">Arquivo</option>
+              <option value="link">Link Externo</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              {materialForm.type === 'leitura'
+              {materialForm.type === 'text'
                 ? 'Conteúdo (texto)'
-                : materialForm.type === 'arquivo'
+                : materialForm.type === 'file'
                   ? 'Arquivo'
                   : 'URL do link'}
             </label>
 
-            {materialForm.type === 'leitura' ? (
+            {materialForm.type === 'text' ? (
               <textarea
                 value={materialForm.content}
                 onChange={e =>
@@ -1070,7 +1114,7 @@ const AdminCourse = () => {
                 className="input-field w-full resize-none"
                 placeholder="Digite o conteúdo de leitura..."
               />
-            ) : materialForm.type === 'link-externo' ? (
+            ) : materialForm.type === 'link' ? (
               <input
                 type="url"
                 value={materialForm.content}
