@@ -1,5 +1,20 @@
-import { Instagram } from 'lucide-react'
+import { Instagram, Youtube, Facebook, Linkedin } from 'lucide-react'
 import LogoSVG from '../../assets/cefetrj-logo'
+
+// O lucide-react não tem o logo atual do X (ex-Twitter), então usamos um SVG inline.
+const XIcon = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.66l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+  </svg>
+)
+
+const socials = [
+  { label: 'YouTube do CEFET/RJ', href: 'https://www.youtube.com/@CefetRJ_oficial', Icon: Youtube },
+  { label: 'Facebook do CEFET/RJ', href: 'https://www.facebook.com/cefetrjoficial/?locale=pt_BR', Icon: Facebook },
+  { label: 'LinkedIn do CEFET/RJ', href: 'https://br.linkedin.com/school/cefetrjoficial/', Icon: Linkedin },
+  { label: 'X do CEFET/RJ', href: 'https://x.com/cefet_rj', Icon: XIcon },
+  { label: 'Instagram do CEFET/RJ', href: 'https://www.instagram.com/cefet_rj', Icon: Instagram },
+]
 
 const Footer = () => (
   <footer className="bg-primary-dark text-white py-12">
@@ -14,7 +29,15 @@ const Footer = () => (
           </p>
 
           <p className="text-white/80 text-sm font-medium">
-            Rafael Martins &amp; Rafael Tavares
+            <a
+              href="https://rafaelrmartins.github.io/portfolio/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white underline-offset-2 hover:underline transition-colors"
+            >
+              Rafael Martins
+            </a>
+            {' '}&amp; Rafael Tavares
           </p>
 
           <p className="text-white/30 text-[10px]">
@@ -40,15 +63,20 @@ const Footer = () => (
             Redes sociais
           </p>
 
-          <a
-            href="https://www.instagram.com/cefet_rj"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Instagram do CEFET/RJ"
-            className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:border-white/40 transition-colors"
-          >
-            <Instagram size={16} />
-          </a>
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-[160px]">
+            {socials.map(({ label, href, Icon }) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                className="w-9 h-9 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 hover:border-white/40 transition-colors"
+              >
+                <Icon size={16} />
+              </a>
+            ))}
+          </div>
         </div>
 
       </div>
