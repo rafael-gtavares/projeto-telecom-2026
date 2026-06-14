@@ -143,9 +143,11 @@ const login = async (req, res, next) => {
         code: 'EMAIL_NOT_VERIFIED',
       });
 
-    const payload = { id: user._id, role: user.role };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload, rememberMe);
+    const accessToken = signAccessToken({ id: user._id, role: user.role });
+    const refreshToken = signRefreshToken(
+      { id: user._id, role: user.role, tokenVersion: user.tokenVersion },
+      rememberMe
+    );
 
     res.json({ success: true, data: { accessToken, refreshToken, user: user.toPublic() } });
   } catch (err) { next(err); }
@@ -226,6 +228,8 @@ const resetPassword = async (req, res, next) => {
     user.password = password; // o pre-save hook do model fará o hash
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
+    // Revoga todas as sessões existentes (segurança: recuperação de conta)
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     res.json({ success: true, message: 'Senha redefinida com sucesso! Agora você pode fazer login.' });
@@ -264,6 +268,10 @@ const refresh = async (req, res, next) => {
     const user = await User.findById(decoded.id);
     if (!user)
       return res.status(401).json({ success: false, message: 'Usuário não encontrado' });
+
+    // Sessão revogada (ex.: senha redefinida) — invalida refresh tokens antigos
+    if ((decoded.tokenVersion ?? 0) !== (user.tokenVersion ?? 0))
+      return res.status(401).json({ success: false, message: 'Sessão expirada. Faça login novamente.' });
 
     const accessToken = signAccessToken({ id: user._id, role: user.role });
     res.json({ success: true, data: { accessToken } });

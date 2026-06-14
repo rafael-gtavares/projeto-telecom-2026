@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema({
   },
   role: { type: String, enum: ['aluno', 'professor', 'admin'], default: 'aluno' },
   avatar: { type: String, default: null },
+
+  // Versão da sessão: incrementar invalida todos os refresh tokens já emitidos
+  // (usado ao redefinir a senha — revoga sessões possivelmente comprometidas).
+  tokenVersion: { type: Number, default: 0 },
   // Verificação de e-mail
   isEmailVerified: { type: Boolean, default: false },
   emailVerificationToken: { type: String, default: null },
