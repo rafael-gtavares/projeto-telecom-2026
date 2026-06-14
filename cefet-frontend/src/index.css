@@ -17,6 +17,16 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;                  /* Chrome, Safari, Edge */
   }
+
+  /* Barras de equalizador dos cards de vidro da hero (efeito de fluxo de dados) */
+  @keyframes eq {
+    0%, 100% { transform: scaleY(0.35); }
+    50%      { transform: scaleY(1); }
+  }
+  .eq-bar {
+    transform-origin: bottom;
+    animation: eq 1s ease-in-out infinite;
+  }
 }
 
 @layer components {

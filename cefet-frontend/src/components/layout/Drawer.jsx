@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink as RouterNavLink, useNavigate } from 'react-router-dom'
 import { X, GraduationCap, BookOpen, UserCircle, LogOut, ShieldCheck, LayoutDashboard, Users, Home } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { Avatar, Badge } from '../ui/index'
@@ -6,15 +6,27 @@ import Button from '../ui/Button'
 import { getRoleLabel } from '../../utils/formatDate'
 import LogoSVG from '../../assets/cefetrj-logo'
 
-const NavLink = ({ to, icon: Icon, children, onClick }) => (
-  <Link
+// Item do menu com destaque da página ativa (barra lateral + fundo + cor primária)
+const NavLink = ({ to, icon: Icon, children, onClick, end }) => (
+  <RouterNavLink
     to={to}
+    end={end}
     onClick={onClick}
-    className="flex items-center gap-3 px-5 py-3.5 text-text-primary hover:bg-surface-hover hover:text-primary transition-colors text-[15px]"
+    className={({ isActive }) =>
+      `flex items-center gap-3 px-5 py-3.5 border-l-[3px] transition-colors text-[15px] ${
+        isActive
+          ? 'border-primary bg-surface-hover text-primary font-semibold'
+          : 'border-transparent text-text-primary hover:bg-surface-hover hover:text-primary'
+      }`
+    }
   >
-    <Icon size={18} className="text-text-muted" />
-    {children}
-  </Link>
+    {({ isActive }) => (
+      <>
+        <Icon size={18} className={isActive ? 'text-primary' : 'text-text-muted'} />
+        {children}
+      </>
+    )}
+  </RouterNavLink>
 )
 
 const Drawer = ({ open, onClose }) => {
@@ -48,7 +60,7 @@ const Drawer = ({ open, onClose }) => {
         )}
 
         <nav className="flex-1 overflow-y-auto py-2">
-          <NavLink to="/" icon={Home} onClick={close}>Início</NavLink>
+          <NavLink to="/" icon={Home} onClick={close} end>Início</NavLink>
           {!isAuthenticated && (
             <>
               <a href="#cursos" onClick={close} className="flex items-center gap-3 px-5 py-3.5 text-text-primary hover:bg-surface-hover transition-colors text-[15px]">

@@ -5,6 +5,8 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import EventCard from '../components/courses/EventCard'
 import CourseDetailModal from '../components/courses/CourseDetailModal'
+import HeroBackground from '../components/home/HeroBackground'
+import HeroTransmitter from '../components/home/HeroTransmitter'
 import Toast from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
@@ -20,8 +22,26 @@ const features = [
   { icon: Globe, title: 'Tecnologia de Ponta', desc: 'Laboratórios equipados e currículo atualizado com as tendências tecnológicas globais.' },
 ]
 
+// Destaques exibidos na hero (mesmos pilares da seção "Por que escolher")
+const heroHighlights = [
+  { icon: Zap, label: 'Ensino de excelência' },
+  { icon: Briefcase, label: 'Conexão com o mercado' },
+  { icon: Globe, label: 'Tecnologia de ponta' },
+]
+
 const Home = () => {
   const { isAuthenticated } = useAuth()
+  // Elementos decorativos da hero (transmissor + campo de partículas) só no desktop.
+  // No mobile o foco é o conteúdo — sem custo de canvas/animação.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    const onChange = (e) => setIsDesktop(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
   const [courses, setCourses] = useState([])
   const [toast, setToast] = useState({ show: false, message: '' })
   const [selectedCourse, setSelectedCourse] = useState(null)
@@ -80,23 +100,41 @@ const Home = () => {
       <Header />
 
       {/* Hero */}
-      <section className="pt-[80px] md:pt-[100px] pb-16 bg-gradient-to-br from-surface-page via-surface-blue to-surface-page overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 md:px-8">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
-            <div className="animate-fadeIn flex flex-col items-center">
-              <span className="inline-block bg-surface-hover text-primary text-xs font-semibold px-3 py-1 rounded-full mb-4">
+      <section className="relative pt-[88px] md:pt-[110px] pb-16 md:pb-24 bg-gradient-to-br from-surface-page via-surface-blue to-surface-page overflow-hidden">
+        {/* Decoração de fundo (glows) */}
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+          <div className="absolute -top-24 -right-24 w-[26rem] h-[26rem] rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute top-40 -left-24 w-80 h-80 rounded-full bg-primary-lighter/10 blur-3xl" />
+        </div>
+
+        {/* Campo de rede interativo (desktop apenas — puramente decorativo) */}
+        {isDesktop && <HeroBackground />}
+
+        <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-8 items-center md:min-h-[480px]">
+            <div className="animate-fadeIn flex flex-col items-center md:items-start text-center md:text-left">
+              <span className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-primary/15 text-primary text-xs font-semibold px-3.5 py-1.5 rounded-full mb-5 shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
                 CEFET/RJ — Telecomunicações
               </span>
-              <h1 className="text-3xl md:text-5xl font-bold text-text-primary leading-tight mb-4 text-center">
+
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-text-primary leading-[1.1] tracking-tight mb-5">
                 Transforme o mundo através das{' '}
-                <span className="text-primary">conexões</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary-light to-primary-lighter">
+                  conexões
+                </span>
               </h1>
-              <p className="text-text-secondary text-base md:text-lg leading-relaxed mb-8 max-w-lg text-center">
+
+              <p className="text-text-secondary text-base md:text-lg leading-relaxed mb-8 max-w-lg">
                 O curso de Telecomunicações do CEFET/RJ prepara você para dominar as tecnologias que conectam pessoas, empresas e o futuro. Seja o profissional que o mercado busca.
               </p>
-              <div className="flex flex-wrap gap-3 justify-center md:justify-start w-full">
+
+              <div className="flex flex-wrap gap-3 justify-center md:justify-start w-full mb-8">
                 <a href="#cursos">
-                  <Button variant="primary" className="gap-2 min-w-[140px]">
+                  <Button variant="primary" className="gap-2 min-w-[150px] shadow-hover hover:shadow-lg">
                     Ver Cursos <ArrowRight size={16} />
                   </Button>
                 </a>
@@ -104,30 +142,23 @@ const Home = () => {
                   <Button variant="secondary" className="min-w-[120px]">Saiba Mais</Button>
                 </a>
               </div>
+
+              {/* Destaques */}
+              <div className="flex flex-wrap gap-x-6 gap-y-2.5 justify-center md:justify-start">
+                {heroHighlights.map(({ icon: Icon, label }) => (
+                  <span key={label} className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary">
+                    <Icon size={15} className="text-primary" /> {label}
+                  </span>
+                ))}
+              </div>
             </div>
 
-            {/* SVG Illustration */}
-            <div className="hidden md:flex items-center justify-center">
-              <svg viewBox="0 0 420 340" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-md">
-                <circle cx="210" cy="170" r="60" fill="#E3F0FF" />
-                <circle cx="210" cy="170" r="38" fill="#1565C0" fillOpacity="0.12" />
-                <circle cx="210" cy="170" r="20" fill="#1565C0" fillOpacity="0.9" />
-                {[[80, 60], [340, 60], [60, 280], [360, 270], [190, 310], [230, 40]].map(([x, y], i) => (
-                  <g key={i}>
-                    <line x1="210" y1="170" x2={x} y2={y} stroke="#1565C0" strokeWidth="1.5" strokeOpacity="0.25" strokeDasharray="6 4" />
-                    <circle cx={x} cy={y} r="12" fill="#1976D2" fillOpacity="0.15" stroke="#1565C0" strokeWidth="1.5" strokeOpacity="0.5" />
-                    <circle cx={x} cy={y} r="5" fill="#42A5F5" />
-                  </g>
-                ))}
-                {[[130, 100], [290, 100], [140, 240], [280, 240]].map(([x, y], i) => (
-                  <g key={`s${i}`}>
-                    <circle cx={x} cy={y} r="7" fill="#90CAF9" fillOpacity="0.7" />
-                    <circle cx={x} cy={y} r="3" fill="#1565C0" fillOpacity="0.5" />
-                  </g>
-                ))}
-                <circle cx="210" cy="170" r="7" fill="white" />
-              </svg>
-            </div>
+            {/* Transmissor (logo CEFET) — apenas no desktop (decorativo) */}
+            {isDesktop && (
+              <div className="flex justify-end">
+                <HeroTransmitter />
+              </div>
+            )}
           </div>
         </div>
       </section>

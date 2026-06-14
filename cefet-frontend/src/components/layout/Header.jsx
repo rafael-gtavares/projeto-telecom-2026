@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { BookOpen, Home, Menu, UserCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import Drawer from './Drawer'
@@ -8,7 +8,13 @@ import Button from '../ui/Button'
 import { LogOut } from 'lucide-react'
 import { getRoleLabel } from '../../utils/formatDate'
 
-
+// Item de navegação com indicador da página ativa (sublinhado animado em cor primária)
+const navItemClass = ({ isActive }) =>
+  `relative text-base font-medium transition-colors py-1 after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:rounded-full after:bg-primary after:transition-all after:duration-200 ${
+    isActive
+      ? 'text-primary after:w-full'
+      : 'text-text-primary hover:text-primary after:w-0 hover:after:w-full'
+  }`
 
 const Header = () => {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -41,29 +47,31 @@ const Header = () => {
           >
             <Menu size={26} />
           </button>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-7">
             {isAuthenticated ? (
               <>
-                <Link
-                  to={'/'}
+                <NavLink
+                  to="/"
+                  end
+                  className={navItemClass}
                   onClick={(e) => {
                     if (window.location.pathname === '/') {
                       e.preventDefault();
                       window.scrollTo({ top: 0 });
                     }
                   }}
-                >Início</Link>
-                <Link to='/meus-cursos'>Meus Cursos</Link>
-                <Link to="/meu-perfil">Meu Perfil</Link>
+                >Início</NavLink>
+                <NavLink to="/meus-cursos" className={navItemClass}>Meus Cursos</NavLink>
+                <NavLink to="/meu-perfil" className={navItemClass}>Meu Perfil</NavLink>
                 {(role === 'admin' || role === 'professor') && (
-                  <Link to="/admin">
+                  <NavLink to="/admin" className={navItemClass}>
                     Painel {getRoleLabel(role)}
-                  </Link>
+                  </NavLink>
                 )}
               </>
             ) : (
               <>
-                <a href="#cursos" className="text-text-primary hover:text-primary transition-colors text-base font-medium">Cursos e Eventos</a>
+                <a href="#cursos" className="relative text-base font-medium text-text-primary hover:text-primary transition-colors py-1 after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:rounded-full after:bg-primary after:transition-all after:duration-200 hover:after:w-full">Cursos e Eventos</a>
               </>
             )}
           </nav>
