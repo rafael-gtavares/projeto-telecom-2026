@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Link, MapPin, User, AlertTriangle } from 'lucide-react'
+import { X, Link, MapPin, User, Info } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -276,18 +276,30 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
 
         {/* Agenda */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-text-primary">Agenda de aulas</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm font-semibold text-text-primary">Agenda de aulas</h3>
 
-          {/* Aviso na edição: as aulas serão recriadas conforme o novo cronograma */}
-          {course && (
-            <div className="flex items-start gap-2 bg-warning-light border border-warning/20 text-warning-text text-xs rounded-lg px-3 py-2.5">
-              <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
-              <span>
-                Ao salvar, o cronograma é atualizado: aulas de <strong>datas mantidas são preservadas</strong>{' '}
-                (com todo o conteúdo), datas removidas são excluídas e datas novas são criadas.
+            {/* Info na edição: só aparece ao interagir com o ícone (hover/foco) */}
+            {course && (
+              <span className="relative group inline-flex">
+                <button
+                  type="button"
+                  tabIndex={0}
+                  aria-label="Como o cronograma é atualizado"
+                  className="text-text-muted hover:text-primary focus:text-primary focus:outline-none transition-colors"
+                >
+                  <Info size={15} />
+                </button>
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-lg bg-text-primary px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+                >
+                  Ao salvar, o cronograma é atualizado: aulas de datas mantidas são preservadas
+                  (com todo o conteúdo), datas removidas são excluídas e datas novas são criadas.
+                </span>
               </span>
-            </div>
-          )}
+            )}
+          </div>
 
           <ScheduleTypePicker
             value={form.scheduleType}
