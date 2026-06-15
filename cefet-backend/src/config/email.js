@@ -1,22 +1,26 @@
-const { Brevo } = require('@getbrevo/brevo');
-
-const brevo = new Brevo({
-  apiKey: process.env.BREVO_API_KEY,
-});
-
 const sendEmail = async (to, name, subject, html) => {
-  try {
-    const info = await brevo.transactionalEmails.sendTransacEmail({
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
       to: [{ email: to, name }],
       sender: { email: process.env.MAIL_FROM, name: 'CEFET/RJ' },
       subject,
       htmlContent: html,
-    });
-    console.log('✅ E-mail enviado:', info.messageId);
-  } catch (err) {
-    console.error('❌ Erro ao enviar e-mail:', err.message);
-    throw err;
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    console.error('❌ Erro ao enviar e-mail:', err);
+    throw new Error(err.message || 'Erro ao enviar e-mail');
   }
+
+  const data = await response.json();
+  console.log('✅ E-mail enviado:', data.messageId);
 };
 
 const sendVerificationEmail = async (to, name, token) => {
