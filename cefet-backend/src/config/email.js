@@ -1,4 +1,5 @@
-const { ApiClient, TransactionalEmailsApi, SendSmtpEmail } = require('@getbrevo/brevo');
+const SibApiV3Sdk = require('@getbrevo/brevo');
+console.log(Object.keys(SibApiV3Sdk)); // vai mostrar o que o pacote exporta de verdade
 
 const client = ApiClient.instance;
 client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
