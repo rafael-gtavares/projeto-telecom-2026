@@ -1,5 +1,17 @@
 const Lesson = require('../models/Lesson');
 
+const LESSON_MODALITY = {
+  presencial: 'presencial',
+  ead: 'online',
+  online: 'online',
+  semi_presencial: 'hibrido',
+  hibrido: 'hibrido',
+  palestra: 'presencial',
+  workshop: 'presencial',
+  outro: 'presencial',
+};
+const toLessonModality = (m) => LESSON_MODALITY[m] || 'presencial';
+
 const validateSchedule = ({
   scheduleType,
   scheduleConfig = [],
@@ -23,6 +35,10 @@ const validateSchedule = ({
 
     if (!lesson?.startTime || !lesson?.endTime) {
       throw new Error('Horário da aula é obrigatório');
+    }
+
+    if (lesson.startTime >= lesson.endTime) {
+      throw new Error('O horário de início deve ser anterior ao de término');
     }
 
     return;
@@ -50,6 +66,12 @@ const validateSchedule = ({
           'Todos os horários devem ser informados'
         );
       }
+
+      if (item.startTime >= item.endTime) {
+        throw new Error(
+          'O horário de início deve ser anterior ao de término'
+        );
+      }
     });
 
     return;
@@ -66,6 +88,12 @@ const validateSchedule = ({
       if (!item.startTime || !item.endTime) {
         throw new Error(
           'Todos os horários devem ser informados'
+        );
+      }
+
+      if (item.startTime >= item.endTime) {
+        throw new Error(
+          'O horário de início deve ser anterior ao de término'
         );
       }
     });
@@ -115,7 +143,8 @@ const getCoursePeriod = ({
   throw new Error('Tipo de agenda inválido');
 };
 
-const generateLessons = async ({
+// Monta (sem inserir) a lista de aulas que o cronograma deve ter.
+const buildLessons = ({
   courseId,
   scheduleType,
   scheduleConfig = [],
@@ -126,6 +155,7 @@ const generateLessons = async ({
   createdBy,
 }) => {
   const lessons = [];
+  const lessonModality = toLessonModality(modality);
 
   if (scheduleType === 'single') {
     const lesson = scheduleConfig[0];
@@ -136,7 +166,7 @@ const generateLessons = async ({
       date: new Date(lesson.date),
       startTime: lesson.startTime,
       endTime: lesson.endTime,
-      modality,
+      modality: lessonModality,
       location,
       createdBy,
     });
@@ -150,7 +180,7 @@ const generateLessons = async ({
         date: new Date(lesson.date),
         startTime: lesson.startTime,
         endTime: lesson.endTime,
-        modality,
+        modality: lessonModality,
         location,
         createdBy,
       });
@@ -177,7 +207,7 @@ const generateLessons = async ({
           date: new Date(current),
           startTime: schedule.startTime,
           endTime: schedule.endTime,
-          modality,
+          modality: lessonModality,
           location,
           createdBy,
         });
@@ -187,15 +217,21 @@ const generateLessons = async ({
     }
   }
 
+  return lessons;
+};
+
+// Gera (e insere) as aulas do cronograma — usado na criação do curso.
+const generateLessons = async (params) => {
+  const lessons = buildLessons(params);
   if (lessons.length > 0) {
     await Lesson.insertMany(lessons);
   }
-
   return lessons;
 };
 
 module.exports = {
   validateSchedule,
   getCoursePeriod,
+  buildLessons,
   generateLessons,
 };

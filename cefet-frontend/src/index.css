@@ -18,6 +18,31 @@
     display: none;                  /* Chrome, Safari, Edge */
   }
 
+  /* Conteúdo Markdown renderizado (aulas) */
+  .md-content { @apply text-text-secondary text-sm leading-relaxed; }
+  .md-content > :first-child { margin-top: 0; }
+  .md-content h1 { @apply text-2xl font-bold text-text-primary mt-6 mb-3; }
+  .md-content h2 { @apply text-xl font-bold text-text-primary mt-6 mb-3; }
+  .md-content h3 { @apply text-lg font-semibold text-text-primary mt-5 mb-2; }
+  .md-content p { @apply my-3; }
+  .md-content a { @apply text-primary hover:underline; }
+  .md-content strong { @apply font-bold text-text-primary; }
+  .md-content em { @apply italic; }
+  .md-content ul { @apply list-disc pl-6 my-3 space-y-1; }
+  .md-content ol { @apply list-decimal pl-6 my-3 space-y-1; }
+  .md-content li { @apply pl-1; }
+  .md-content blockquote { @apply border-l-4 border-primary/30 pl-4 italic text-text-muted my-4; }
+  .md-content code { @apply bg-surface-hover text-primary px-1.5 py-0.5 rounded text-[0.85em] font-mono; }
+  .md-content pre { @apply bg-text-primary text-white p-4 rounded-card overflow-x-auto my-4; }
+  .md-content pre code { @apply bg-transparent text-white p-0; }
+  .md-content img { @apply rounded-card my-4 max-w-full h-auto border border-border; }
+  .md-content hr { @apply border-border my-6; }
+  .md-content table { @apply w-full my-4 text-sm border-collapse; }
+  .md-content th, .md-content td { @apply border border-border px-3 py-2 text-left; }
+  .md-content th { @apply bg-surface-page font-semibold text-text-primary; }
+  .md-content ul.contains-task-list { @apply list-none pl-0; }
+  .md-content .task-list-item { @apply flex items-center gap-2; }
+
   /* Barras de equalizador dos cards de vidro da hero (efeito de fluxo de dados) */
   @keyframes eq {
     0%, 100% { transform: scaleY(0.35); }

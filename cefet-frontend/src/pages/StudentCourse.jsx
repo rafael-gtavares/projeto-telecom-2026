@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive} from 'lucide-react'
 import Header from '../components/layout/Header'
-import { Tabs, Spinner, ViewToggle } from '../components/ui/index'
+import { Tabs, Spinner, ViewToggle, Badge } from '../components/ui/index'
+import Modal from '../components/ui/Modal'
 import Toast from '../components/ui/Toast'
+import MarkdownPreview from '../components/markdown/MarkdownPreview'
+import ExerciseRunner from '../components/exercises/ExerciseRunner'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI } from '../api/courses'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
@@ -15,6 +18,41 @@ const tabs = [
   { value: 'material', label: 'Material' },
   { value: 'notas', label: 'Minhas notas' },
 ]
+
+// Card de aula reutilizado nas listas de próximas/anteriores.
+// isToday → destaque (aula do dia); past → esmaecido; onClick → abre o conteúdo.
+const LessonCard = ({ lesson, isToday = false, past = false, onClick }) => {
+  const hasContent = !!lesson.content?.trim()
+  return (
+    <div
+      onClick={onClick}
+      className={`card p-4 flex gap-4 items-start transition-all ${
+        onClick ? 'cursor-pointer hover:shadow-hover hover:border-primary/40' : ''
+      } ${isToday ? 'ring-2 ring-primary border-primary bg-surface-blue' : ''} ${past ? 'opacity-60' : ''}`}
+    >
+      <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
+        <span className="text-xs font-bold text-primary text-center">
+          {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-semibold text-text-primary text-sm">{lesson.title}</p>
+          {isToday && <Badge variant="blue">Hoje</Badge>}
+          {hasContent && <Badge variant="success">Conteúdo</Badge>}
+        </div>
+        <p className="text-xs text-text-muted mt-0.5">{lesson.startTime} – {lesson.endTime} · {lesson.modality}</p>
+        {lesson.location && <p className="text-xs text-text-muted">{lesson.location}</p>}
+        {lesson.meetingUrl && (
+          <a href={lesson.meetingUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+            className="text-xs text-primary hover:underline block mt-0.5">Acessar aula online</a>
+        )}
+        {lesson.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
+      </div>
+      {onClick && <ChevronRight size={16} className="text-text-muted flex-shrink-0 self-center" />}
+    </div>
+  )
+}
 
 const StudentCourse = () => {
   const { courseId } = useParams()
@@ -30,6 +68,15 @@ const StudentCourse = () => {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '' })
   const [lessonsView, setLessonsView] = useState(() => localStorage.getItem('studentCourseLessonsView') || 'list')
+  // Filtro do cronograma: 'upcoming' (próximas) ou 'past' (anteriores)
+  const [scheduleFilter, setScheduleFilter] = useState('upcoming')
+  // Aula aberta para ver o conteúdo / quiz aberto (outra tela)
+  const [viewLesson, setViewLesson] = useState(null)
+  const [quizLesson, setQuizLesson] = useState(null)
+
+  const openLesson = (lesson) => setViewLesson(lesson)
+  const startQuiz = () => { setQuizLesson(viewLesson); setViewLesson(null) }
+  const backToContent = () => { setViewLesson(quizLesson); setQuizLesson(null) }
 
   const toggleLessonsView = (mode) => {
     setLessonsView(mode)
@@ -327,60 +374,77 @@ const StudentCourse = () => {
                   })()}
                 </div>
 
-                {/* Lista de todas as aulas */}
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-semibold text-text-primary text-sm">Todas as aulas</h3>
-                  {lessons.length > 0 && <ViewToggle value={lessonsView} onChange={toggleLessonsView} />}
-                </div>
+                {/* Lista de aulas — menu para escolher próximas ou anteriores */}
                 {lessons.length === 0 ? (
                   <p className="text-sm text-text-muted text-center py-6">Nenhuma aula cadastrada ainda.</p>
-                ) : lessonsView === 'list' ? (
-                  /* ── MODO LISTA ── */
-                  lessons.map(lesson => (
-                    <div key={lesson._id} className="card p-4 flex gap-4 items-start">
-                      <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-primary text-center">
-                          {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-text-primary text-sm">{lesson.title}</p>
-                        <p className="text-xs text-text-muted mt-0.5">{lesson.startTime} – {lesson.endTime} · {lesson.modality}</p>
-                        {lesson.location && <p className="text-xs text-text-muted">{lesson.location}</p>}
-                        {lesson.meetingUrl && (
-                          <a href={lesson.meetingUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline block mt-0.5">Acessar aula online</a>
-                        )}
-                        {lesson.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  /* ── MODO GRID (CARDS) ── */
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {lessons.map(lesson => (
-                      <div key={lesson._id} className="card p-4 flex flex-col">
-                        <div className="flex items-start gap-3">
-                          <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-primary text-center">
-                              {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-text-primary text-sm leading-tight">{lesson.title}</p>
-                            <p className="text-xs text-text-muted mt-0.5">{lesson.startTime} – {lesson.endTime} · {lesson.modality}</p>
-                          </div>
+                ) : (() => {
+                  const today = new Date(); today.setHours(0, 0, 0, 0)
+                  const dayOf = (d) => { const x = parseUTCDate(d); x.setHours(0, 0, 0, 0); return x }
+                  const upcoming = lessons
+                    .filter(l => dayOf(l.date) >= today)
+                    .sort((a, b) => parseUTCDate(a.date) - parseUTCDate(b.date))
+                  const past = lessons
+                    .filter(l => dayOf(l.date) < today)
+                    .sort((a, b) => parseUTCDate(b.date) - parseUTCDate(a.date))
+                  const isToday = (l) => dayOf(l.date).getTime() === today.getTime()
+                  const containerClass = lessonsView === 'grid'
+                    ? 'grid grid-cols-1 sm:grid-cols-2 gap-3'
+                    : 'space-y-3'
+
+                  const list = scheduleFilter === 'upcoming' ? upcoming : past
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Cabeçalho: seletor próximas/anteriores + alternância lista/cards */}
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-1 p-1 bg-surface-page rounded-lg border border-border">
+                          <button
+                            type="button"
+                            onClick={() => setScheduleFilter('upcoming')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                              scheduleFilter === 'upcoming'
+                                ? 'bg-white shadow-sm text-primary'
+                                : 'text-text-muted hover:text-text-primary'
+                            }`}
+                          >
+                            Próximas{upcoming.length > 0 ? ` (${upcoming.length})` : ''}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setScheduleFilter('past')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                              scheduleFilter === 'past'
+                                ? 'bg-white shadow-sm text-primary'
+                                : 'text-text-muted hover:text-text-primary'
+                            }`}
+                          >
+                            Anteriores{past.length > 0 ? ` (${past.length})` : ''}
+                          </button>
                         </div>
-                        {lesson.location && <p className="text-xs text-text-muted mt-2">{lesson.location}</p>}
-                        {lesson.meetingUrl && (
-                          <a href={lesson.meetingUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline block mt-1">Acessar aula online</a>
-                        )}
-                        {lesson.description && <p className="text-xs text-text-secondary mt-2 line-clamp-2">{lesson.description}</p>}
+
+                        <ViewToggle value={lessonsView} onChange={toggleLessonsView} />
                       </div>
-                    ))}
-                  </div>
-                )}
+
+                      {list.length === 0 ? (
+                        <p className="text-sm text-text-muted text-center py-6">
+                          {scheduleFilter === 'upcoming' ? 'Nenhuma aula futura.' : 'Nenhuma aula anterior.'}
+                        </p>
+                      ) : (
+                        <div className={containerClass}>
+                          {list.map(l => (
+                            <LessonCard
+                              key={l._id}
+                              lesson={l}
+                              isToday={scheduleFilter === 'upcoming' && isToday(l)}
+                              past={scheduleFilter === 'past'}
+                              onClick={() => openLesson(l)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
@@ -464,6 +528,52 @@ const StudentCourse = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de conteúdo da aula */}
+      <Modal open={!!viewLesson} onClose={() => setViewLesson(null)} title={viewLesson?.title || 'Aula'} size="lg">
+        {viewLesson && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+              <span className="capitalize">
+                {parseUTCDate(viewLesson.date).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
+              </span>
+              <span>{viewLesson.startTime} – {viewLesson.endTime}</span>
+              {viewLesson.location && <span>{viewLesson.location}</span>}
+            </div>
+
+            {viewLesson.meetingUrl && (
+              <a href={viewLesson.meetingUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline">
+                <Video size={15} /> Acessar aula online
+              </a>
+            )}
+
+            <hr className="border-border" />
+
+            {viewLesson.content?.trim() ? (
+              <MarkdownPreview content={viewLesson.content} />
+            ) : (
+              <p className="text-sm text-text-muted italic py-4 text-center">
+                O conteúdo desta aula ainda não foi publicado.
+              </p>
+            )}
+
+            {/* Exercícios (autoavaliação) — abrem em outra tela */}
+            {viewLesson.exercises?.length > 0 && (
+              <div className="pt-2 border-t border-border">
+                <button onClick={startQuiz} className="btn-primary w-full">
+                  <FileQuestion size={16} /> Fazer exercício ({viewLesson.exercises.length} {viewLesson.exercises.length === 1 ? 'questão' : 'questões'})
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal do quiz (uma questão por vez) */}
+      <Modal open={!!quizLesson} onClose={backToContent} title={`Exercícios — ${quizLesson?.title || 'Aula'}`} size="lg">
+        {quizLesson && <ExerciseRunner questions={quizLesson.exercises} onExit={backToContent} />}
+      </Modal>
     </div>
   )
 }

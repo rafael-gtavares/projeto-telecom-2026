@@ -7,10 +7,12 @@ import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Toast from '../components/ui/Toast'
 import CourseModal from '../components/courses/CourseModal'
+import MarkdownEditor from '../components/markdown/MarkdownEditor'
+import ExerciseBuilder, { blankQuestion } from '../components/exercises/ExerciseBuilder'
 import Input from '../components/ui/Input'
 import {
   getCourseAPI, updateCourseAPI, deleteCourseAPI,
-  getLessonsAPI, createLessonAPI, updateLessonAPI, deleteLessonAPI,
+  getLessonsAPI, updateLessonAPI, deleteLessonAPI,
   getMaterialsAPI, createMaterialAPI, updateMaterialAPI, deleteMaterialAPI,
   getCourseStudentsAPI,
   getCourseGradesAPI, createGradeAPI, updateGradeAPI, deleteGradeAPI,
@@ -56,9 +58,66 @@ const AdminCourse = () => {
   const [lessonForm, setLessonForm] = useState({ title: '', date: '', modality: 'presencial', startTime: '', endTime: '', location: '', meetingUrl: '', description: '' })
   const [lessonsView, setLessonsView] = useState(() => localStorage.getItem('adminCourseLessonsView') || 'list')
 
+  // Conteúdo da aula (Markdown)
+  const [contentModal, setContentModal] = useState({ open: false, lesson: null })
+  const [contentDraft, setContentDraft] = useState('')
+  const [contentSaving, setContentSaving] = useState(false)
+
+  // Exercícios da aula (múltipla escolha)
+  const [exerciseModal, setExerciseModal] = useState({ open: false, lesson: null })
+  const [exerciseDraft, setExerciseDraft] = useState([])
+  const [exerciseSaving, setExerciseSaving] = useState(false)
+
   const toggleLessonsView = (mode) => {
     setLessonsView(mode)
     localStorage.setItem('adminCourseLessonsView', mode)
+  }
+
+  const openContent = (lesson) => {
+    setContentDraft(lesson.content || '')
+    setContentModal({ open: true, lesson })
+  }
+
+  const handleSaveContent = async () => {
+    setContentSaving(true)
+    try {
+      const { data } = await updateLessonAPI(courseId, contentModal.lesson._id, { content: contentDraft })
+      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
+      setContentModal({ open: false, lesson: null })
+      showToast('Conteúdo salvo')
+    } catch { showToast('Erro ao salvar conteúdo') }
+    finally { setContentSaving(false) }
+  }
+
+  const openExercises = (lesson) => {
+    setExerciseDraft((lesson.exercises || []).map(q => ({
+      _key: crypto.randomUUID(),
+      question: q.question || '',
+      options: q.options?.length ? [...q.options] : ['', ''],
+      correctIndex: q.correctIndex ?? 0,
+    })))
+    setExerciseModal({ open: true, lesson })
+  }
+
+  const handleSaveExercises = async () => {
+    for (const q of exerciseDraft) {
+      if (!q.question.trim()) { showToast('Toda questão precisa de um enunciado'); return }
+      if (q.options.length < 2) { showToast('Cada questão precisa de ao menos 2 alternativas'); return }
+      if (q.options.some(o => !o.trim())) { showToast('Preencha todas as alternativas'); return }
+    }
+    const exercises = exerciseDraft.map(q => ({
+      question: q.question.trim(),
+      options: q.options.map(o => o.trim()),
+      correctIndex: q.correctIndex,
+    }))
+    setExerciseSaving(true)
+    try {
+      const { data } = await updateLessonAPI(courseId, exerciseModal.lesson._id, { exercises })
+      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
+      setExerciseModal({ open: false, lesson: null })
+      showToast('Exercícios salvos')
+    } catch { showToast('Erro ao salvar exercícios') }
+    finally { setExerciseSaving(false) }
   }
 
   // Alunos e Notas
@@ -127,6 +186,11 @@ const AdminCourse = () => {
     try {
       const { data } = await updateCourseAPI(course._id, payload)
       setCourse(data.data)
+      // Editar o cronograma reconcilia as aulas no backend (cria/remove).
+      // Recarrega a lista para refletir na hora, sem precisar de F5.
+      const { data: lData } = await getLessonsAPI(courseId)
+      setLessons(lData.data)
+      setSelectedCalendarDay(null)
       setEditModal(false)
     } catch (err) { showToast('Erro ao salvar curso') }
     finally { setSaveLoading(false) }
@@ -161,15 +225,14 @@ const AdminCourse = () => {
 
   const handleSaveLesson = async () => {
     if (!lessonForm.title || !lessonForm.date || !lessonForm.startTime || !lessonForm.endTime) return
+    if (lessonForm.startTime >= lessonForm.endTime) {
+      showToast('O horário de início deve ser anterior ao de término')
+      return
+    }
     setLessonSaveLoading(true)
     try {
-      if (lessonModal.lesson) {
-        const { data } = await updateLessonAPI(courseId, lessonModal.lesson._id, lessonForm)
-        setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
-      } else {
-        const { data } = await createLessonAPI(courseId, lessonForm)
-        setLessons(prev => [...prev, data.data].sort((a, b) => new Date(a.date) - new Date(b.date)))
-      }
+      const { data } = await updateLessonAPI(courseId, lessonModal.lesson._id, lessonForm)
+      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
       setLessonModal({ open: false, lesson: null })
     } catch (err) { showToast('Erro ao salvar aula') }
     finally { setLessonSaveLoading(false) }
@@ -431,11 +494,8 @@ const AdminCourse = () => {
             {activeTab === 'aulas' && (
               <div className="p-4 md:p-6 space-y-6">
 
-                <div className="flex justify-end">
-                  <Button variant="primary" className="gap-2 text-sm" onClick={() => setLessonModal({ open: true, lesson: null })}>
-                    <Plus size={15} /> Nova aula
-                  </Button>
-                </div>
+                {/* As aulas são geradas automaticamente pelo cronograma do curso
+                    (tipo de agenda). Aqui só é possível ajustar/excluir as existentes. */}
 
                 {/* Período do curso */}
                 <div className="grid grid-cols-2 gap-4 p-3 bg-surface-page rounded-card">
@@ -633,11 +693,19 @@ const AdminCourse = () => {
                           {lesson.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
-                          <button onClick={() => setLessonModal({ open: true, lesson })}
+                          <button onClick={() => openContent(lesson)} title="Conteúdo da aula"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+                            <FileText size={14} />
+                          </button>
+                          <button onClick={() => openExercises(lesson)} title="Exercícios da aula"
+                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+                            <FileQuestion size={14} />
+                          </button>
+                          <button onClick={() => setLessonModal({ open: true, lesson })} title="Editar aula"
                             className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
                             <Edit2 size={14} />
                           </button>
-                          <button onClick={() => handleDeleteLesson(lesson._id)}
+                          <button onClick={() => handleDeleteLesson(lesson._id)} title="Excluir aula"
                             className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
                             <Trash2 size={14} />
                           </button>
@@ -660,11 +728,19 @@ const AdminCourse = () => {
                               <span className="text-xs text-text-muted">{lesson.startTime} – {lesson.endTime}</span>
                             </div>
                             <div className="flex gap-1 flex-shrink-0">
-                              <button onClick={() => setLessonModal({ open: true, lesson })}
+                              <button onClick={() => openContent(lesson)} title="Conteúdo da aula"
+                                className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+                                <FileText size={14} />
+                              </button>
+                              <button onClick={() => openExercises(lesson)} title="Exercícios da aula"
+                                className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+                                <FileQuestion size={14} />
+                              </button>
+                              <button onClick={() => setLessonModal({ open: true, lesson })} title="Editar aula"
                                 className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
                                 <Edit2 size={14} />
                               </button>
-                              <button onClick={() => handleDeleteLesson(lesson._id)}
+                              <button onClick={() => handleDeleteLesson(lesson._id)} title="Excluir aula"
                                 className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
                                 <Trash2 size={14} />
                               </button>
@@ -913,6 +989,54 @@ const AdminCourse = () => {
         onSave={handleSaveCourse}
         loading={saveLoading}
       />
+
+      {/* --- Modal de Conteúdo da Aula (Markdown) --- */}
+      <Modal
+        open={contentModal.open}
+        onClose={() => !contentSaving && setContentModal({ open: false, lesson: null })}
+        title={`Conteúdo — ${contentModal.lesson?.title || 'Aula'}`}
+        size="xl"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-text-muted">
+            Escreva o conteúdo da aula em Markdown. Use a barra de ferramentas, cole links do YouTube
+            (viram player) e imagens. A pré-visualização mostra como o aluno verá.
+          </p>
+          <MarkdownEditor value={contentDraft} onChange={setContentDraft} />
+          <div className="flex gap-3 pt-2">
+            <Button variant="primary" className="flex-1" onClick={handleSaveContent} loading={contentSaving}>
+              Salvar conteúdo
+            </Button>
+            <Button variant="secondary" onClick={() => setContentModal({ open: false, lesson: null })} disabled={contentSaving}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* --- Modal de Exercícios da Aula (múltipla escolha) --- */}
+      <Modal
+        open={exerciseModal.open}
+        onClose={() => !exerciseSaving && setExerciseModal({ open: false, lesson: null })}
+        title={`Exercícios — ${exerciseModal.lesson?.title || 'Aula'}`}
+        size="xl"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-text-muted">
+            Crie questões de múltipla escolha. O aluno responde no fim do conteúdo e vê na hora os
+            acertos/erros (autoavaliação — nada é salvo).
+          </p>
+          <ExerciseBuilder value={exerciseDraft} onChange={setExerciseDraft} />
+          <div className="flex gap-3 pt-2">
+            <Button variant="primary" className="flex-1" onClick={handleSaveExercises} loading={exerciseSaving}>
+              Salvar exercícios
+            </Button>
+            <Button variant="secondary" onClick={() => setExerciseModal({ open: false, lesson: null })} disabled={exerciseSaving}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={deleteModal} onClose={() => setDeleteModal(false)} title="Excluir curso" size="sm">
         <p className="text-text-secondary text-sm mb-5">

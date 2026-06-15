@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Link, MapPin, User } from 'lucide-react'
+import { X, Link, MapPin, User, AlertTriangle } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -152,6 +152,23 @@ const isScheduleValid = (form) => {
   return false
 }
 
+// Verifica que o horário de início é anterior ao de término em cada aula.
+// Retorna a mensagem de erro ou '' se estiver tudo certo.
+const getTimeError = (form) => {
+  const invalid = (s, e) => s && e && s >= e
+  if (form.scheduleType === 'single') {
+    const c = form.singleConfig[0]
+    if (invalid(c.startTime, c.endTime)) return 'O horário de início deve ser anterior ao de término.'
+  } else if (form.scheduleType === 'weekly') {
+    if (form.weeklyConfig.weekdays.some((w) => invalid(w.startTime, w.endTime)))
+      return 'O horário de início deve ser anterior ao de término.'
+  } else if (form.scheduleType === 'custom') {
+    if (form.customConfig.some((c) => invalid(c.startTime, c.endTime)))
+      return 'O horário de início deve ser anterior ao de término.'
+  }
+  return ''
+}
+
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 const CourseModal = ({ open, onClose, onSave, course, loading }) => {
@@ -171,11 +188,14 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
+  const timeError = getTimeError(form)
+
   const isFormValid =
     form.title.trim() &&
     form.description.trim() &&
     form.maxSlots &&
-    isScheduleValid(form)
+    isScheduleValid(form) &&
+    !timeError
 
   const handleSubmit = async () => {
     if (!isFormValid) return
@@ -258,6 +278,17 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-text-primary">Agenda de aulas</h3>
 
+          {/* Aviso na edição: as aulas serão recriadas conforme o novo cronograma */}
+          {course && (
+            <div className="flex items-start gap-2 bg-warning-light border border-warning/20 text-warning-text text-xs rounded-lg px-3 py-2.5">
+              <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" />
+              <span>
+                Ao salvar, o cronograma é atualizado: aulas de <strong>datas mantidas são preservadas</strong>{' '}
+                (com todo o conteúdo), datas removidas são excluídas e datas novas são criadas.
+              </span>
+            </div>
+          )}
+
           <ScheduleTypePicker
             value={form.scheduleType}
             onChange={(type) => setForm((f) => ({ ...f, scheduleType: type }))}
@@ -282,6 +313,14 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
               config={form.customConfig}
               onChange={(cfg) => setForm((f) => ({ ...f, customConfig: cfg }))}
             />
+          )}
+
+          {/* Erro de validação de horário (início ≥ término) */}
+          {timeError && (
+            <div className="flex items-center gap-2 bg-error-light border border-error/20 text-error text-xs rounded-lg px-3 py-2.5">
+              <AlertTriangle size={15} className="flex-shrink-0" />
+              {timeError}
+            </div>
           )}
         </div>
 

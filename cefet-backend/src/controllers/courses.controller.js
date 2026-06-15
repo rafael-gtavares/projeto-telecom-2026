@@ -6,6 +6,7 @@ const Lesson = require('../models/Lesson');
 const {
   validateSchedule,
   getCoursePeriod,
+  buildLessons,
   generateLessons,
 } = require('../helpers/scheduleHelper');
 
@@ -601,34 +602,38 @@ const updateCourse = async (req, res, next) => {
       );
 
     if (hasScheduleUpdate) {
-      await Lesson.deleteMany({
-        course: course._id,
-      });
-
-      await generateLessons({
+      // Reconciliação por DATA: aulas de datas mantidas são preservadas
+      // intactas (conteúdo/edições), datas removidas são excluídas e datas
+      // novas são criadas. Evita reescrever aulas já editadas ao só adicionar
+      // uma data nova.
+      const desired = buildLessons({
         courseId: updated._id,
-
-        scheduleType:
-          updated.scheduleType,
-
-        scheduleConfig:
-          updated.scheduleConfig,
-
-        startDate:
-          updated.startDate,
-
-        endDate:
-          updated.endDate,
-
-        modality:
-          updated.modality,
-
-        location:
-          updated.location,
-
-        createdBy:
-          req.user.id,
+        scheduleType: updated.scheduleType,
+        scheduleConfig: updated.scheduleConfig,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+        modality: updated.modality,
+        location: updated.location,
+        createdBy: req.user.id,
       });
+
+      const dateKey = (d) => new Date(d).toISOString().slice(0, 10);
+
+      const existing = await Lesson.find({ course: course._id });
+      const existingKeys = new Set(existing.map((l) => dateKey(l.date)));
+      const desiredKeys = new Set(desired.map((l) => dateKey(l.date)));
+
+      // Remove aulas cujas datas saíram do novo cronograma
+      const toDelete = existing.filter((l) => !desiredKeys.has(dateKey(l.date)));
+      if (toDelete.length) {
+        await Lesson.deleteMany({ _id: { $in: toDelete.map((l) => l._id) } });
+      }
+
+      // Cria apenas as aulas das datas novas (as existentes ficam intactas)
+      const toInsert = desired.filter((l) => !existingKeys.has(dateKey(l.date)));
+      if (toInsert.length) {
+        await Lesson.insertMany(toInsert);
+      }
     }
 
     const newStatus = updates.status;

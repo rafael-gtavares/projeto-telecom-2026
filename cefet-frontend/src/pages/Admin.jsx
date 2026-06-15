@@ -97,6 +97,7 @@ const Admin = () => {
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [courseSearch, setCourseSearch] = useState('')
 
   const [courseModal, setCourseModal] = useState({
     open: false,
@@ -130,6 +131,15 @@ const Admin = () => {
       [key]: value
     }))
   }
+
+  // Filtro de busca de cursos (por título ou instrutor), feito no cliente
+  const filteredCourses = courseSearch.trim()
+    ? courses.filter(c => {
+        const q = courseSearch.trim().toLowerCase()
+        return (c.title || '').toLowerCase().includes(q) ||
+               (c.instructor || '').toLowerCase().includes(q)
+      })
+    : courses
 
 
   // ======================================================
@@ -174,7 +184,7 @@ const Admin = () => {
       setLoad('courses', true)
 
       // envia o filtro de status (pode ser 'all', 'published', 'draft', 'closed')
-      getAllCoursesAPI({ limit: 50, status: statusFilter })
+      getAllCoursesAPI({ limit: 100, status: statusFilter })
 
         .then(response => {
           setCourses(response.data.data.courses)
@@ -542,6 +552,22 @@ const Admin = () => {
 
               <div className="card overflow-hidden">
 
+                {/* Barra de busca de cursos */}
+                <div className="p-4 border-b border-border">
+                  <div className="relative">
+                    <Search
+                      size={15}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+                    />
+                    <input
+                      placeholder="Buscar curso por título ou instrutor..."
+                      value={courseSearch}
+                      onChange={e => setCourseSearch(e.target.value)}
+                      className="input-field pl-9 text-sm py-2.5 w-full"
+                    />
+                  </div>
+                </div>
+
                 <div className="p-4 md:p-6">
 
                   {loading.courses ? (
@@ -550,26 +576,30 @@ const Admin = () => {
                       <Spinner />
                     </div>
 
-                  ) : courses.length === 0 ? (
+                  ) : filteredCourses.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <BookOpen size={36} className="text-text-muted mb-3" />
                       <p className="font-semibold text-text-primary mb-1">Nenhum curso encontrado</p>
                       <p className="text-sm text-text-muted mb-5">
-                        {statusFilter === 'all'
-                          ? 'Crie seu primeiro curso para começar.'
-                          : 'Nenhum curso com este status.'}
+                        {courseSearch.trim()
+                          ? 'Nenhum curso corresponde à busca.'
+                          : statusFilter === 'all'
+                            ? 'Crie seu primeiro curso para começar.'
+                            : 'Nenhum curso com este status.'}
                       </p>
-                      <Button
-                        variant="primary"
-                        className="gap-2 text-sm"
-                        onClick={() => setCourseModal({ open: true, course: null })}
-                      >
-                        <Plus size={16} /> Criar curso
-                      </Button>
+                      {!courseSearch.trim() && (
+                        <Button
+                          variant="primary"
+                          className="gap-2 text-sm"
+                          onClick={() => setCourseModal({ open: true, course: null })}
+                        >
+                          <Plus size={16} /> Criar curso
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <CourseTable
-                      courses={courses}
+                      courses={filteredCourses}
                       onEdit={course =>
                         setCourseModal({ open: true, course })
                       }

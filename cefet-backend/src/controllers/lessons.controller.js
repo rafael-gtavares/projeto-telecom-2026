@@ -36,8 +36,23 @@ const updateLesson = async (req, res, next) => {
     const lesson = await Lesson.findOne({ _id: req.params.lessonId, course: req.params.courseId });
     if (!lesson) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
 
+    // Valida os exercícios (quando enviados)
+    if (req.body.exercises !== undefined) {
+      if (!Array.isArray(req.body.exercises))
+        return res.status(400).json({ success: false, message: 'Exercícios em formato inválido' });
+      for (const q of req.body.exercises) {
+        const opts = Array.isArray(q.options) ? q.options.filter(o => o && o.trim()) : [];
+        if (!q.question || !q.question.trim())
+          return res.status(400).json({ success: false, message: 'Toda questão precisa de um enunciado' });
+        if (opts.length < 2)
+          return res.status(400).json({ success: false, message: 'Cada questão precisa de ao menos 2 alternativas' });
+        if (typeof q.correctIndex !== 'number' || q.correctIndex < 0 || q.correctIndex >= opts.length)
+          return res.status(400).json({ success: false, message: 'Selecione uma alternativa correta válida' });
+      }
+    }
+
     // Whitelist de campos editáveis — nunca permite alterar course/createdBy via body
-    const ALLOWED_FIELDS = ['title', 'description', 'date', 'startTime', 'endTime', 'modality', 'location', 'meetingUrl'];
+    const ALLOWED_FIELDS = ['title', 'description', 'date', 'startTime', 'endTime', 'modality', 'location', 'meetingUrl', 'content', 'exercises'];
     for (const field of ALLOWED_FIELDS) {
       if (req.body[field] !== undefined) lesson[field] = req.body[field];
     }
