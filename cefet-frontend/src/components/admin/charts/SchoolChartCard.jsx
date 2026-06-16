@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { School } from 'lucide-react'
 
 // Paleta de cores usando as cores do design system
@@ -11,6 +11,8 @@ const COLORS = [
   '#5C6880', // text-secondary
   '#1A1A2E', // text-primary
   '#9EA8B8', // text-muted
+  '#64B5F6',
+  '#283593',
 ]
 
 const CustomTooltip = ({ active, payload }) => {
@@ -48,40 +50,59 @@ const SchoolChartCard = ({ data }) => {
           <p className="text-sm">Nenhum dado disponível</p>
         </div>
       ) : (
-        <>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                dataKey="count"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                innerRadius={40}
-                paddingAngle={2}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                formatter={(value) => (
-                  <span className="text-xs text-text-secondary">{value}</span>
-                )}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          {/* Donut — tamanho fixo, não disputa espaço com a legenda */}
+          <div className="w-[180px] h-[180px] flex-shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  innerRadius={48}
+                  paddingAngle={2}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-          <p className="text-xs text-text-muted text-center mt-1">
-            Total: {total} aluno{total !== 1 ? 's' : ''}
-          </p>
-        </>
+          {/* Legenda própria — cada escola em uma linha, com rolagem se houver muitas */}
+          <ul className="flex-1 w-full min-w-0 space-y-1.5 max-h-[180px] overflow-y-auto pr-1 scrollbar-hide">
+            {chartData.map((entry, index) => {
+              const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0
+              return (
+                <li key={index} className="flex items-center gap-2 text-xs">
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="flex-1 min-w-0 truncate text-text-secondary" title={entry.name}>
+                    {entry.name}
+                  </span>
+                  <span className="flex-shrink-0 font-semibold text-text-primary tabular-nums">
+                    {entry.count}
+                  </span>
+                  <span className="flex-shrink-0 text-text-muted tabular-nums w-9 text-right">
+                    {pct}%
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
+
+      <p className="text-xs text-text-muted text-center mt-3 pt-3 border-t border-border">
+        Total: {total} aluno{total !== 1 ? 's' : ''}
+      </p>
     </div>
   )
 }

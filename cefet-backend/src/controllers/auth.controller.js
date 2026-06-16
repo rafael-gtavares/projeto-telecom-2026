@@ -1,21 +1,55 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const School = require('../models/School');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../config/jwt');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../config/email');
+
+// Opções permitidas (devem refletir os enums do model User)
+const ALLOWED_GENDERS = ['masculino', 'feminino', 'prefiro_nao_informar'];
+const ALLOWED_SCHOOL_LEVELS = ['ensino_fundamental', '1_ou_2_ano_em', 'ultimo_ano_em', 'ensino_medio_finalizado', 'eja'];
+const ALLOWED_INCOME = ['ate_1sm', '1_a_2sm', '2_a_3sm', '3_a_5sm', 'acima_5sm', 'prefiro_nao_informar'];
 
 // ─── REGISTER ───────────────────────────────────────────────────────────────
 const register = async (req, res, next) => {
   try {
     const { name, email, password, birthDate, gender, schoolLevel, incomeRange, school } = req.body;
-    if (!name || !email || !password)
+
+    // Campos obrigatórios
+    if (!name || !name.trim() || !email || !password)
       return res.status(400).json({ success: false, message: 'Nome, e-mail e senha são obrigatórios' });
+    if (password.length < 6)
+      return res.status(400).json({ success: false, message: 'A senha deve ter ao menos 6 caracteres' });
+
+    // Data de nascimento: obrigatória, válida
+    if (!birthDate || isNaN(Date.parse(birthDate)) || new Date(birthDate) > new Date())
+      return res.status(400).json({ success: false, message: 'Data de nascimento inválida' });
+
+    // Selects: precisam ser uma das opções permitidas
+    if (!ALLOWED_GENDERS.includes(gender))
+      return res.status(400).json({ success: false, message: 'Selecione um sexo válido' });
+    if (!ALLOWED_SCHOOL_LEVELS.includes(schoolLevel))
+      return res.status(400).json({ success: false, message: 'Selecione um nível escolar válido' });
+    if (!ALLOWED_INCOME.includes(incomeRange))
+      return res.status(400).json({ success: false, message: 'Selecione uma faixa de renda válida' });
+
+    // Escola: "Outra" (null / 'outra' / vazio) é aceito. Se vier um id, precisa existir e estar ativa.
+    let schoolId = null;
+    if (school && school !== 'outra') {
+      if (!mongoose.Types.ObjectId.isValid(school))
+        return res.status(400).json({ success: false, message: 'Escola de origem inválida' });
+      const found = await School.findOne({ _id: school, active: true });
+      if (!found)
+        return res.status(400).json({ success: false, message: 'Escola de origem inválida' });
+      schoolId = found._id;
+    }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ success: false, message: 'E-mail já cadastrado' });
 
     const user = await User.create({
       name, email, password, birthDate, gender, schoolLevel, incomeRange,
-      school: school || null,
+      school: schoolId,
       isEmailVerified: false,
     });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info } from 'lucide-react'
+import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Badge, Spinner } from '../ui/index'
@@ -9,10 +9,11 @@ import { useAuth } from '../../context/AuthContext'
 import { enrollAPI, checkEnrollmentAPI, cancelEnrollmentAPI } from '../../api/courses'
 import { formatDate } from '../../utils/formatDate'
 
-const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess }) => {
+const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange }) => {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [enrollmentStatus, setEnrollmentStatus] = useState(null)
+  const [waitlistPosition, setWaitlistPosition] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [toast, setToast] = useState({ show: false, message: '' })
@@ -30,7 +31,12 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       try {
         setEnrollmentStatus('loading')
         const { data } = await checkEnrollmentAPI(course._id)
-        setEnrollmentStatus(data.data.enrolled ? 'enrolled' : 'not_enrolled')
+        if (data.data.waitlisted) {
+          setWaitlistPosition(data.data.waitlistPosition)
+          setEnrollmentStatus('waitlisted')
+        } else {
+          setEnrollmentStatus(data.data.enrolled ? 'enrolled' : 'not_enrolled')
+        }
       } catch (error) {
         setEnrollmentStatus('not_enrolled')
       }
@@ -134,9 +140,17 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const handleEnroll = async () => {
     try {
       setActionLoading(true)
-      await enrollAPI(course._id)
-      onEnrollSuccess(course._id)
-      onClose()
+      const { data } = await enrollAPI(course._id)
+      if (data.waitlisted) {
+        // Curso cheio — entrou na fila de espera
+        setWaitlistPosition(data.waitlistPosition)
+        setEnrollmentStatus('waitlisted')
+        onWaitlistChange?.(course._id, true)
+        setToast({ show: true, message: `Você entrou na fila de espera — ${data.waitlistPosition}º da fila` })
+      } else {
+        onEnrollSuccess(course._id, { enrolledCount: data.enrolledCount })
+        onClose()
+      }
     } catch (err) {
       setToast({ show: true, message: err.response?.data?.message || 'Erro ao se inscrever' })
     } finally {
@@ -147,11 +161,27 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const handleCancel = async () => {
     try {
       setActionLoading(true)
-      await cancelEnrollmentAPI(course._id)
-      onCancelSuccess(course._id)
+      const { data } = await cancelEnrollmentAPI(course._id)
+      onCancelSuccess(course._id, { enrolledCount: data.enrolledCount })
       onClose()
     } catch (err) {
       setToast({ show: true, message: err.response?.data?.message || 'Erro ao cancelar inscrição' })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Sair da fila de espera — não há vaga ocupada, então é direto (sem aviso pesado)
+  const handleLeaveQueue = async () => {
+    try {
+      setActionLoading(true)
+      await cancelEnrollmentAPI(course._id)
+      setEnrollmentStatus('not_enrolled')
+      setWaitlistPosition(null)
+      onWaitlistChange?.(course._id, false)
+      setToast({ show: true, message: 'Você saiu da fila de espera.' })
+    } catch (err) {
+      setToast({ show: true, message: err.response?.data?.message || 'Erro ao sair da fila' })
     } finally {
       setActionLoading(false)
     }
@@ -264,7 +294,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
               style={{ width: `${occupancyPercent}%` }}
             />
           </div>
-          {isFull && <p className="text-[11px] text-error mt-1 font-medium">* Vagas esgotadas para este curso.</p>}
+          {isFull && <p className="text-[11px] text-error mt-1 font-medium">* Vagas esgotadas — você pode entrar na fila de espera.</p>}
         </div>
 
         {/* Rodapé de Ações */}
@@ -311,7 +341,14 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
 
               {confirmCancel && (
                 <div className="bg-error/5 p-4 rounded-lg border border-error/20 animate-fadeIn">
-                  <p className="text-xs text-text-primary mb-3 text-center">Ao cancelar, sua vaga será liberada imediatamente. Confirmar?</p>
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertTriangle size={16} className="text-error flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-text-primary">
+                      Ao cancelar, você <strong>perde sua vaga imediatamente</strong>. Se houver fila de
+                      espera, a próxima pessoa assume seu lugar e <strong>você não poderá recuperá-lo</strong> —
+                      teria que entrar no fim da fila. Confirmar?
+                    </p>
+                  </div>
                   <div className="flex gap-3">
                     <Button
                       variant="ghost"
@@ -352,16 +389,53 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                 </div>
               )}
             </div>
+          ) : enrollmentStatus === 'waitlisted' ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between bg-warning/10 py-3 px-6 rounded-lg border border-warning/20">
+                <div className="flex items-center gap-2 text-warning-text font-bold text-sm">
+                  <Hourglass size={18} /> Você está na fila de espera
+                </div>
+                {waitlistPosition != null && (
+                  <span className="text-sm font-bold text-warning-text">
+                    {waitlistPosition}º da fila
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-text-muted text-center">
+                Assim que uma vaga for liberada, a 1ª pessoa da fila entra automaticamente. Você verá o curso em "Meus Cursos".
+              </p>
+              <Button
+                variant="secondary"
+                className="w-full py-3 text-sm"
+                loading={actionLoading}
+                onClick={handleLeaveQueue}
+              >
+                Sair da fila de espera
+              </Button>
+            </div>
           ) : (
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-3">
+              {isFull && course.status !== 'closed' && (
+                <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
+                  <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-text-primary">
+                    Este curso está <strong>sem vagas</strong>. Você pode entrar na fila de espera, mas
+                    {' '}<strong>só fará o curso se houver alguma desistência</strong>.
+                  </p>
+                </div>
+              )}
               <Button
                 variant="primary"
-                className="flex-1 py-4 text-lg"
-                disabled={isFull || course.status === 'closed'}
+                className="w-full py-4 text-lg"
+                disabled={course.status === 'closed'}
                 loading={actionLoading}
                 onClick={handleEnroll}
               >
-                {course.status === 'closed' ? 'Encerrado' : isFull ? 'Vagas Esgotadas' : 'Quero me inscrever'}
+                {course.status === 'closed'
+                  ? 'Encerrado'
+                  : isFull
+                    ? 'Entrar na fila de espera'
+                    : 'Quero me inscrever'}
               </Button>
             </div>
           )}

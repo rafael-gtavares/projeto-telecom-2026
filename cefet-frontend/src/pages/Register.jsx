@@ -28,8 +28,8 @@ const schoolLevelOptions = [
 const Register = () => {
   const navigate = useNavigate()
   const [form, setForm] = useState({
-    name: '', email: '', birthDate: '', gender: 'prefiro_nao_informar',
-    password: '', confirmPassword: '', schoolLevel: '', incomeRange: 'prefiro_nao_informar',
+    name: '', email: '', birthDate: '', gender: '',
+    password: '', confirmPassword: '', schoolLevel: '', incomeRange: '',
     school: '',
   })
   const { schools, loading: schoolsLoading } = useSchools()
@@ -52,11 +52,16 @@ const Register = () => {
     if (!form.name.trim()) errs.name = 'Nome obrigatório'
     if (!form.email) errs.email = 'E-mail obrigatório'
     else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'E-mail inválido'
+    if (!form.birthDate) errs.birthDate = 'Data de nascimento obrigatória'
+    else if (new Date(form.birthDate) > new Date()) errs.birthDate = 'Data inválida'
+    if (!form.gender) errs.gender = 'Selecione uma opção'
     if (!form.password) errs.password = 'Senha obrigatória'
     else if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres'
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'As senhas não coincidem'
-    return errs
     if (!form.schoolLevel) errs.schoolLevel = 'Selecione um nível escolar'
+    if (!form.school) errs.school = 'Selecione sua escola de origem'
+    if (!form.incomeRange) errs.incomeRange = 'Selecione uma faixa de renda'
+    return errs
   }
 
   const handleSubmit = async (e) => {
@@ -65,7 +70,9 @@ const Register = () => {
     if (Object.keys(errs).length) { setErrors(errs); return }
     setLoading(true)
     try {
-      const { confirmPassword, ...payload } = form
+      const { confirmPassword, ...rest } = form
+      // "Outra" (value 'outra') vira null — o aluno não tem escola na lista
+      const payload = { ...rest, school: rest.school === 'outra' ? null : rest.school }
       await registerAPI(payload)
       navigate('/verificar-pendente', { state: { email: form.email } })
     } catch (err) {
@@ -97,18 +104,20 @@ const Register = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Input label="Nome completo" placeholder="Seu nome completo" icon={User} value={form.name} onChange={set('name')} error={errors.name} />
-            <Input label="E-mail" type="email" placeholder="seu@email.com" icon={Mail} value={form.email} onChange={set('email')} error={errors.email} />
+            <Input label="Nome completo *" placeholder="Seu nome completo" icon={User} value={form.name} onChange={set('name')} error={errors.name} />
+            <Input label="E-mail *" type="email" placeholder="seu@email.com" icon={Mail} value={form.email} onChange={set('email')} error={errors.email} />
 
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} />
+              <Input label="Data de nascimento *" type="date" value={form.birthDate} onChange={set('birthDate')} error={errors.birthDate} />
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Sexo</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Sexo *</label>
                 <select value={form.gender} onChange={set('gender')} className="input-field">
+                  <option value="" disabled>Selecione</option>
                   <option value="masculino">Masculino</option>
                   <option value="feminino">Feminino</option>
                   <option value="prefiro_nao_informar">Prefiro não informar</option>
                 </select>
+                {errors.gender && <p className="text-error text-sm mt-1">{errors.gender}</p>}
               </div>
             </div>
 
@@ -151,7 +160,7 @@ const Register = () => {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                Nível Escolar
+                Nível Escolar *
               </label>
 
               <select
@@ -180,7 +189,7 @@ const Register = () => {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                Escola de origem
+                Escola de origem *
               </label>
               {schoolsLoading ? (
                 <div className="input-field flex items-center gap-2 text-text-muted text-sm">
@@ -193,24 +202,27 @@ const Register = () => {
                   onChange={set('school')}
                   className="input-field"
                 >
-                  <option value="">Outra</option>
+                  <option value="" disabled>Selecione</option>
                   {schools.map(s => (
                     <option key={s._id} value={s._id}>
                       {s.name}{s.city ? ` — ${s.city}` : ''}
                     </option>
                   ))}
+                  <option value="outra">Outra</option>
                 </select>
               )}
-              <p className="text-xs text-text-muted mt-1">
-                Selecione sua escola atual ou de formação.
-              </p>
+              {errors.school
+                ? <p className="text-error text-sm mt-1">{errors.school}</p>
+                : <p className="text-xs text-text-muted mt-1">Selecione sua escola atual ou de formação.</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Renda familiar per capita</label>
+              <label className="block text-sm font-medium text-text-secondary mb-1.5">Renda familiar per capita *</label>
               <select value={form.incomeRange} onChange={set('incomeRange')} className="input-field">
+                <option value="" disabled>Selecione</option>
                 {incomeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              {errors.incomeRange && <p className="text-error text-sm mt-1">{errors.incomeRange}</p>}
             </div>
 
             <Button type="submit" variant="primary" className="w-full h-12 text-base mt-2" loading={loading}>

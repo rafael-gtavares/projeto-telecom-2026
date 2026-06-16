@@ -142,10 +142,11 @@ const MyCourses = () => {
               ) : viewMode === 'list' ? (
                 /* ── MODO LISTA ── */
                 <div className="grid grid-cols-1 gap-4">
-                  {filtered.map(({ _id, course, status }) => {
+                  {filtered.map(({ _id, course, status, waitlistPosition }) => {
                     if (!course) return null
                     const { variant, label } = statusBadge[course.status] || {}
                     const mainLocation = course.location || 'A definir'
+                    const isWaitlisted = status === 'fila_espera'
 
                     return (
                       <div key={_id} className="group relative flex flex-col md:flex-row gap-6 p-5 mx-6 bg-white border border-border rounded-xl hover:shadow-md hover:border-primary/30 transition-all">
@@ -166,12 +167,19 @@ const MyCourses = () => {
                               <h3 className="font-black text-text-primary text-xl leading-tight group-hover:text-primary transition-colors truncate">
                                 {course.title}
                               </h3>
-                              {variant && <Badge variant={variant} className="flex-shrink-0 mt-0.5">{label}</Badge>}
+                              {isWaitlisted
+                                ? <Badge variant="warning" className="flex-shrink-0 mt-0.5">Na fila{waitlistPosition ? ` · ${waitlistPosition}º` : ''}</Badge>
+                                : variant && <Badge variant={variant} className="flex-shrink-0 mt-0.5">{label}</Badge>}
                             </div>
-                            <p className="text-sm text-text-secondary font-medium flex items-center gap-1.5 mb-4">
+                            <p className="text-sm text-text-secondary font-medium flex items-center gap-1.5 mb-2">
                               <User size={14} className="text-primary" />
                               {course.instructor || course.professor?.name || '—'}
                             </p>
+                            {isWaitlisted && (
+                              <p className="text-xs text-warning-text bg-warning/10 border border-warning/20 rounded px-2 py-1 mb-2 inline-flex items-center gap-1">
+                                <AlertTriangle size={12} /> Você assume a vaga somente se houver desistência.
+                              </p>
+                            )}
                           </div>
 
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 border-t border-border/50 pt-4">
@@ -227,10 +235,10 @@ const MyCourses = () => {
                             <Button
                               variant="ghost"
                               className="text-[13px] py-2 px-4 w-full border border-error/20"
-                              onClick={() => setCancelModal({ open: true, enrollment: { _id, course } })}
+                              onClick={() => setCancelModal({ open: true, enrollment: { _id, course, status } })}
                             >
                               <XCircle size={14} />
-                              Cancelar
+                              {isWaitlisted ? 'Sair da fila' : 'Cancelar'}
                             </Button>
                           )}
                         </div>
@@ -241,9 +249,10 @@ const MyCourses = () => {
               ) : (
                 /* ── MODO GRID (CARDS) ── */
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-6">
-                  {filtered.map(({ _id, course, status }) => {
+                  {filtered.map(({ _id, course, status, waitlistPosition }) => {
                     if (!course) return null
                     const { variant, label } = statusBadge[course.status] || {}
+                    const isWaitlisted = status === 'fila_espera'
 
                     return (
                       <div key={_id} className="group flex flex-col bg-white border border-border rounded-xl overflow-hidden hover:shadow-md hover:border-primary/30 transition-all">
@@ -258,11 +267,11 @@ const MyCourses = () => {
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/20" />
-                          {variant && (
-                            <div className="absolute top-2 right-2">
-                              <Badge variant={variant}>{label}</Badge>
-                            </div>
-                          )}
+                          <div className="absolute top-2 right-2">
+                            {isWaitlisted
+                              ? <Badge variant="warning">Na fila{waitlistPosition ? ` · ${waitlistPosition}º` : ''}</Badge>
+                              : variant && <Badge variant={variant}>{label}</Badge>}
+                          </div>
                         </div>
 
                         {/* Conteúdo */}
@@ -274,6 +283,12 @@ const MyCourses = () => {
                             <User size={12} className="text-primary flex-shrink-0" />
                             <span className="truncate">{course.instructor || course.professor?.name || '—'}</span>
                           </p>
+
+                          {isWaitlisted && (
+                            <p className="text-[11px] text-warning-text bg-warning/10 border border-warning/20 rounded px-2 py-1 mb-3 flex items-center gap-1">
+                              <AlertTriangle size={11} className="flex-shrink-0" /> Você assume a vaga só se houver desistência.
+                            </p>
+                          )}
 
                           <div className="space-y-1.5 mb-4 flex-1">
                             <p className="text-xs text-text-muted flex items-center gap-1.5">
@@ -315,10 +330,10 @@ const MyCourses = () => {
                             )}
                             {status !== 'closed' && (
                               <button
-                                onClick={() => setCancelModal({ open: true, enrollment: { _id, course } })}
+                                onClick={() => setCancelModal({ open: true, enrollment: { _id, course, status } })}
                                 className="w-full text-xs text-error/70 hover:text-error transition-colors py-1"
                               >
-                                Cancelar inscrição
+                                {isWaitlisted ? 'Sair da fila de espera' : 'Cancelar inscrição'}
                               </button>
                             )}
                           </div>
@@ -337,7 +352,7 @@ const MyCourses = () => {
       <Modal
         open={cancelModal.open}
         onClose={() => !cancelling && setCancelModal({ open: false, enrollment: null })}
-        title="Cancelar inscrição"
+        title={cancelModal.enrollment?.status === 'fila_espera' ? 'Sair da fila de espera' : 'Cancelar inscrição'}
         size="sm"
       >
         <div className="flex items-start gap-3 mb-5">
@@ -345,13 +360,28 @@ const MyCourses = () => {
             <AlertTriangle size={18} className="text-error" />
           </div>
           <div>
-            <p className="text-text-primary font-medium text-sm">
-              Tem certeza que deseja cancelar a inscrição em{' '}
-              <strong>"{cancelModal.enrollment?.course?.title}"</strong>?
-            </p>
-            <p className="text-text-muted text-xs mt-1">
-              Esta ação não pode ser desfeita. Você perderá sua vaga e precisará se inscrever novamente.
-            </p>
+            {cancelModal.enrollment?.status === 'fila_espera' ? (
+              <>
+                <p className="text-text-primary font-medium text-sm">
+                  Deseja sair da fila de espera de{' '}
+                  <strong>"{cancelModal.enrollment?.course?.title}"</strong>?
+                </p>
+                <p className="text-text-muted text-xs mt-1">
+                  Você perderá sua posição atual na fila. Para voltar, entraria no fim da fila.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-text-primary font-medium text-sm">
+                  Tem certeza que deseja cancelar a inscrição em{' '}
+                  <strong>"{cancelModal.enrollment?.course?.title}"</strong>?
+                </p>
+                <p className="text-text-muted text-xs mt-1">
+                  Você perde sua vaga imediatamente. Se houver fila de espera, a próxima pessoa assume seu lugar
+                  e <strong>você não poderá recuperá-lo</strong> — teria que se inscrever de novo, indo para o fim da fila.
+                </p>
+              </>
+            )}
           </div>
         </div>
         <div className="flex gap-3">
@@ -361,7 +391,7 @@ const MyCourses = () => {
             onClick={handleConfirmCancel}
           >
             <XCircle size={14} />
-            Confirmar cancelamento
+            {cancelModal.enrollment?.status === 'fila_espera' ? 'Sair da fila' : 'Confirmar cancelamento'}
           </Button>
           <Button
             variant="secondary"

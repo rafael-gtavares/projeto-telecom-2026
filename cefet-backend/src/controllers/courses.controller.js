@@ -40,20 +40,25 @@ const getCourses = async (req, res, next) => {
 
     const total = await Course.countDocuments(filter);
 
-    // Se o usuário estiver autenticado, verifica inscrição em lote (evita N+1 no frontend)
-    // Inscrição existente = inscrito (o cancelamento remove o registro), alinhado ao checkEnrollment
+    // Se o usuário estiver autenticado, verifica inscrição em lote (evita N+1 no frontend).
+    // Distingue inscrição com vaga (isEnrolled) de fila de espera (isWaitlisted).
     let enrolledIds = new Set();
+    let waitlistedIds = new Set();
     if (req.user?.id) {
       const enrollments = await Enrollment.find(
         { user: req.user.id, course: { $in: courses.map(c => c._id) } },
-        'course'
+        'course status'
       );
-      enrolledIds = new Set(enrollments.map(e => e.course.toString()));
+      for (const e of enrollments) {
+        if (e.status === 'fila_espera') waitlistedIds.add(e.course.toString());
+        else enrolledIds.add(e.course.toString());
+      }
     }
 
     const coursesWithEnrollment = courses.map(c => ({
       ...c.toJSON(),
       isEnrolled: enrolledIds.has(c._id.toString()),
+      isWaitlisted: waitlistedIds.has(c._id.toString()),
     }));
 
     res.json({ success: true, data: { courses: coursesWithEnrollment, total, page: Number(page), limit: Number(limit) } });

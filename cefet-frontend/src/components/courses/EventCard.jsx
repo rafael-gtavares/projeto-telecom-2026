@@ -1,4 +1,4 @@
-import { Calendar, Clock, User, Users, CheckCircle, MapPin } from 'lucide-react'
+import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { formatDate } from '../../utils/formatDate'
@@ -8,6 +8,7 @@ const CARD_GRADIENT = 'from-primary to-primary-light'
 
 const EventCard = ({ course, onOpenModal }) => {
   const isEnrolled = course.isEnrolled ?? false
+  const isWaitlisted = course.isWaitlisted ?? false
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
@@ -79,18 +80,32 @@ const EventCard = ({ course, onOpenModal }) => {
         </div>
 
         <Button
-          variant={isEnrolled ? "secondary" : "primary"}
-          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : ''}`}
-          disabled={isFull && !isEnrolled}
+          variant={(isEnrolled || isWaitlisted) ? 'secondary' : 'primary'}
+          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : ''}`}
         >
           {isEnrolled ? (
             <span className="flex items-center justify-center gap-2">
               <CheckCircle size={16} className="text-green-500" /> Já estou inscrito
             </span>
+          ) : isWaitlisted ? (
+            <span className="flex items-center justify-center gap-2">
+              <Hourglass size={16} /> Na fila de espera
+            </span>
+          ) : isFull ? (
+            'Entrar na fila de espera'
           ) : (
-            isFull ? 'Sem vagas' : 'Inscrever-se'
+            'Inscrever-se'
           )}
         </Button>
+
+        {/* Aviso: vaga só com desistência */}
+        {isFull && !isEnrolled && (
+          <p className="text-[11px] text-text-muted text-center mt-2">
+            {isWaitlisted
+              ? 'Você assume a vaga somente se houver desistência.'
+              : 'Sem vagas — você só fará o curso se houver desistência.'}
+          </p>
+        )}
       </div>
     </div>
   )

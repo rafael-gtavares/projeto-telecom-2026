@@ -49,11 +49,13 @@ const Home = () => {
   const [visibleCourses, setVisibleCourses] = useState(3)
   const [modalityFilter, setModalityFilter] = useState('all')
 
+  // Refaz a busca quando o login/logout muda — assim os flags isEnrolled/isWaitlisted
+  // acompanham o usuário atual (ao deslogar, os botões voltam para "Inscrever-se").
   useEffect(() => {
     getCoursesAPI({ status: 'published' })
       .then(r => setCourses(r.data.data.courses))
       .catch(() => setCourses(mockCourses))
-  }, [])
+  }, [isAuthenticated])
 
   const filteredCourses = modalityFilter === 'all'
     ? courses
@@ -77,22 +79,30 @@ const Home = () => {
     setModalOpen(true)
   }
 
-  const handleEnrollSuccess = (courseId) => {
-    setCourses(prev => prev.map(c =>
-      c._id === courseId
-        ? { ...c, isEnrolled: true, enrolledCount: c.enrolledCount + 1, availableSlots: c.availableSlots - 1 }
-        : c
-    ))
+  const handleEnrollSuccess = (courseId, result = {}) => {
+    setCourses(prev => prev.map(c => {
+      if (c._id !== courseId) return c
+      const enrolledCount = result.enrolledCount ?? c.enrolledCount + 1
+      return { ...c, isEnrolled: true, enrolledCount, availableSlots: c.maxSlots - enrolledCount }
+    }))
     setToast({ show: true, message: 'Inscrição confirmada com sucesso! 🎉' })
   }
 
-  const handleCancelSuccess = (courseId) => {
-    setCourses(prev => prev.map(c =>
-      c._id === courseId
-        ? { ...c, isEnrolled: false, enrolledCount: c.enrolledCount - 1, availableSlots: c.availableSlots + 1 }
-        : c
-    ))
+  const handleCancelSuccess = (courseId, result = {}) => {
+    // O enrolledCount pode não mudar se alguém da fila assumiu a vaga — usa o valor do backend
+    setCourses(prev => prev.map(c => {
+      if (c._id !== courseId) return c
+      const enrolledCount = result.enrolledCount ?? Math.max(0, c.enrolledCount - 1)
+      return { ...c, isEnrolled: false, enrolledCount, availableSlots: c.maxSlots - enrolledCount }
+    }))
     setToast({ show: true, message: 'Inscrição cancelada.' })
+  }
+
+  // Entrar/sair da fila de espera — atualiza o botão do card na hora (sem F5)
+  const handleWaitlistChange = (courseId, waitlisted) => {
+    setCourses(prev => prev.map(c =>
+      c._id === courseId ? { ...c, isWaitlisted: waitlisted, isEnrolled: false } : c
+    ))
   }
 
   return (
@@ -301,6 +311,7 @@ const Home = () => {
         course={selectedCourse}
         onEnrollSuccess={handleEnrollSuccess}
         onCancelSuccess={handleCancelSuccess}
+        onWaitlistChange={handleWaitlistChange}
       />
 
       <Toast

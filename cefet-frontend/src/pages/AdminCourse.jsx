@@ -137,7 +137,6 @@ const AdminCourse = () => {
   // Config (Acesso ao curso + status)
   const [configUsers, setConfigUsers] = useState([])
   const [configUsersLoading, setConfigUsersLoading] = useState(false)
-  const [statusLoading, setStatusLoading] = useState(false)
 
   // Toast
   const [toast, setToast] = useState({ show: false, message: '' })
@@ -399,34 +398,6 @@ const AdminCourse = () => {
       })
       .finally(() => setConfigUsersLoading(false))
   }, [activeTab, course?.professor])
-
-  const STATUS_LABELS = {
-    draft: 'Rascunho',
-    published: 'Publicado',
-    em_andamento: 'Em Andamento',
-    closed: 'Encerrado',
-  }
-
-  const handleChangeStatus = (newStatus) => {
-    if (newStatus === course.status) return
-
-    const label = STATUS_LABELS[newStatus] || newStatus
-    const current = STATUS_LABELS[course.status] || course.status
-
-    setConfirmModal({
-      open: true,
-      message: `Deseja alterar o status do curso de "${current}" para "${label}"? Isso pode afetar as inscrições dos alunos.`,
-      onConfirm: async () => {
-        setStatusLoading(true)
-        try {
-          const { data } = await updateCourseAPI(courseId, { status: newStatus })
-          setCourse(data.data)
-          showToast('Status atualizado com sucesso')
-        } catch (err) { showToast(err.response?.data?.message || 'Erro ao alterar status do curso') }
-        finally { setStatusLoading(false) }
-      },
-    })
-  }
 
   const handleGrantAccess = async (userId) => {
     try {
@@ -883,11 +854,11 @@ const AdminCourse = () => {
             {activeTab === 'config' && (
               <div className="p-4 md:p-6 space-y-6">
 
-                {/* Status do Curso */}
+                {/* Status do Curso — somente leitura (alterado automaticamente pelas datas) */}
                 <div className="pb-6 border-b border-border">
                   <h3 className="font-semibold text-text-primary mb-1">Status do curso</h3>
                   <p className="text-xs text-text-muted mb-4">
-                    Controla a visibilidade e o acesso dos alunos. Você pode alterar em qualquer direção.
+                    O status é definido automaticamente conforme as datas do curso.
                   </p>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -896,31 +867,28 @@ const AdminCourse = () => {
                       { key: 'published', label: 'Publicado', desc: 'Visível, inscrições abertas', dot: 'bg-success' },
                       { key: 'em_andamento', label: 'Em Andamento', desc: 'Curso em execução', dot: 'bg-blue-500' },
                       { key: 'closed', label: 'Encerrado', desc: 'Curso finalizado', dot: 'bg-warning' },
-                    ].map(opt => (
-                      <button
-                        key={opt.key}
-                        onClick={() => handleChangeStatus(opt.key)}
-                        disabled={statusLoading || course.status === opt.key}
-                        className={`p-3 rounded-xl border text-left transition-all disabled:opacity-60 ${course.status === opt.key
-                          ? 'border-primary bg-primary/5 cursor-default'
-                          : 'border-border hover:border-primary/50 bg-white cursor-pointer'
-                          }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dot}`} />
-                          <span className={`text-sm font-semibold ${course.status === opt.key ? 'text-primary' : 'text-text-primary'}`}>
-                            {opt.label}
-                          </span>
-                          {course.status === opt.key && <CheckCircle size={13} className="text-primary ml-auto" />}
+                    ].map(opt => {
+                      const isCurrent = course.status === opt.key
+                      return (
+                        <div
+                          key={opt.key}
+                          className={`p-3 rounded-xl border text-left ${isCurrent
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-white opacity-50'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dot}`} />
+                            <span className={`text-sm font-semibold ${isCurrent ? 'text-primary' : 'text-text-primary'}`}>
+                              {opt.label}
+                            </span>
+                            {isCurrent && <CheckCircle size={13} className="text-primary ml-auto" />}
+                          </div>
+                          <p className="text-xs text-text-muted pl-4">{opt.desc}</p>
                         </div>
-                        <p className="text-xs text-text-muted pl-4">{opt.desc}</p>
-                      </button>
-                    ))}
+                      )
+                    })}
                   </div>
-
-                  {statusLoading && (
-                    <div className="flex justify-center mt-4"><Spinner /></div>
-                  )}
                 </div>
 
                 <div>
