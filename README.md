@@ -1,6 +1,8 @@
-# CEFET Portal — Cursos, Palestras e Eventos
+# Portal Educacional CEFET/RJ — Cursos, Palestras e Eventos
 
-Portal educacional do CEFET/RJ para cadastro, divulgação e gerenciamento de cursos, palestras e workshops. Três papéis de usuário: **aluno**, **professor** e **admin**.
+Portal educacional do CEFET/RJ para cadastro, divulgação e gerenciamento de cursos, palestras e workshops. Desenvolvido como projeto de extensão, a plataforma centraliza em um só lugar o que antes era divulgado por meios informais — grupos de mensagens, murais físicos e e-mails avulsos. Três papéis de usuário: **aluno**, **professor** e **admin**.
+
+🔗 **Deploy:** [projeto-telecom-2026-cefet-frontend.vercel.app](https://projeto-telecom-2026-cefet-frontend.vercel.app/)
 
 ---
 
@@ -16,16 +18,17 @@ Portal educacional do CEFET/RJ para cadastro, divulgação e gerenciamento de cu
 | Ícones | Lucide React |
 | Gráficos | Recharts |
 | E-mail | Nodemailer (Mailtrap em dev) |
+| Upload | Cloudinary |
 
 ---
 
 ## Estrutura do projeto
 
 ```
-projeto-telecom-2026-emailandschool/
+projeto-telecom-2026/
 ├── cefet-backend/
 │   └── src/
-│       ├── config/         # DB, JWT, email
+│       ├── config/         # DB, JWT, e-mail, Cloudinary
 │       ├── controllers/    # Lógica de negócio
 │       ├── middleware/     # auth, roles, upload, errorHandler
 │       ├── models/         # Mongoose schemas
@@ -101,6 +104,11 @@ MAIL_HOST=sandbox.smtp.mailtrap.io
 MAIL_PORT=2525
 MAIL_USER=seu_usuario_mailtrap
 MAIL_PASS=sua_senha_mailtrap
+
+# Upload
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
 ```
 
 ### Frontend `.env`
@@ -202,7 +210,7 @@ VITE_API_URL=http://localhost:3000
 |---|---|
 | `aluno` | Ver cursos publicados, se inscrever, cancelar inscrição, acessar materiais e aulas dos cursos inscritos, editar próprio perfil |
 | `professor` | Tudo do aluno + criar/editar/excluir próprios cursos, gerenciar aulas, materiais e notas, acessar dashboard de métricas |
-| `admin` | Tudo do professor + editar qualquer curso, gerenciar usuários e papéis |
+| `admin` | Tudo do professor + editar qualquer curso, gerenciar usuários, papéis e escolas |
 
 ---
 
@@ -218,10 +226,13 @@ VITE_API_URL=http://localhost:3000
 | `/esqueci-senha` | Solicitar redefinição de senha | Público |
 | `/redefinir-senha` | Formulário de nova senha | Público |
 | `/meus-cursos` | Cursos inscritos e concluídos, modo lista ou cards | Logado |
-| `/meu-curso/:courseId` | Painel do aluno: sobre, cronograma, materiais, notas | Logado (inscrito) |
+| `/meu-curso/:courseId` | Painel do aluno: sobre, cronograma, materiais, notas, exercícios | Logado (inscrito) |
 | `/meu-perfil` | Edição de dados pessoais e senha | Logado |
 | `/admin` | Dashboard com métricas e gráficos | Admin / Professor |
-| `/admin/curso/:courseId` | Painel do curso: edição, aulas, materiais, alunos, notas | Admin / Professor |
+| `/admin/cursos` | Listagem e criação de cursos | Admin / Professor |
+| `/admin/curso/:courseId` | Painel do curso: aulas, materiais, alunos, notas, configurações | Admin / Professor |
+| `/admin/usuarios` | Gerenciamento de usuários e papéis | Admin |
+| `/admin/escolas` | Gerenciamento de escolas | Admin |
 
 ---
 
@@ -229,13 +240,18 @@ VITE_API_URL=http://localhost:3000
 
 - **Autenticação completa** — cadastro, login, verificação de e-mail, recuperação de senha, refresh token
 - **Rate limiting** — proteção contra força bruta em login e cadastro
-- **Catálogo de cursos** — filtros por modalidade, busca por texto, paginação com "Ver mais"
-- **Inscrição em cursos** — controle de vagas, status (inscrito → ativo → concluído)
+- **Catálogo de cursos** — filtros por modalidade (presencial, EAD, palestra, workshop), busca por texto, paginação com "Ver mais"
+- **Inscrição em cursos** — controle de vagas, status (inscrito → em andamento → concluído)
 - **Sync de status de inscrição** — ao alterar o status do curso, as inscrições dos alunos são atualizadas automaticamente
-- **Painel do aluno por curso** — aba Sobre (instrutor, datas, local), Cronograma (calendário com marcação de início/término), Materiais, Notas
-- **Painel admin do curso** — tabs Informações, Aulas, Materiais, Alunos, Notas, Configurações
-- **Alteração de status com confirmação** — modal de confirmação antes de alterar o status do curso
-- **Dashboard de métricas** — total de cursos, alunos, inscrições, gráficos por modalidade e escola de origem
+- **Painel do aluno por curso** — aba Sobre (instrutor, datas, local), Cronograma (calendário interativo), Materiais, Notas
+- **Exercícios por aula** — questões de múltipla escolha com resultado imediato (autoavaliação)
+- **Upload de materiais** — arquivos e links por aula via Cloudinary
+- **Painel admin do curso** — tabs Aulas, Alunos, Material, Dashboard individual, Configurações
+- **Configurações de acesso ao curso** — controle de quais professores têm acesso ao gerenciamento
+- **Alteração de status com confirmação** — modal antes de alterar o status do curso (rascunho, publicado, em andamento, encerrado)
+- **Dashboard de métricas** — total de cursos, alunos, inscrições, ocupação média; gráficos por mês, sexo, faixa etária, escolaridade, renda e escola de origem
+- **Gerenciamento de usuários** — listagem, busca, filtro por função e alteração de papel
+- **Gerenciamento de escolas** — cadastro e administração das instituições de origem dos inscritos
 - **Modo de visualização em Meus Cursos** — alternar entre lista e cards (persistido no localStorage)
 - **Instrutor / Palestrante** — campo independente do professor que criou o curso, exibido para o aluno
 
@@ -247,3 +263,7 @@ VITE_API_URL=http://localhost:3000
 - Fonte: DM Sans
 - Design: Mobile First, tema claro
 - Componentes UI próprios: `Button`, `Input`, `Modal`, `Toast`, `Tabs`, `Badge`, `Spinner`
+
+---
+
+Desenvolvido como projeto de extensão — CEFET/RJ · 2026
