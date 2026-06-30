@@ -2,13 +2,14 @@ const router = require('express').Router();
 
 const verifyJWT = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const requireRole = require('../middleware/roles');
+const { requireMinimumRole } = require('../middleware/roles');
+const { ROLES } = require('../constants/roles');
 const { uploadFile } = require('../controllers/upload.controller');
 
 router.post(
   '/',
   verifyJWT,
-  requireRole('admin', 'professor'),
+  requireMinimumRole(ROLES.PROFESSOR),
   upload.single('file'),
   uploadFile,
 );

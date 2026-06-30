@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { ROLES } = require('../constants/roles')
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -11,13 +12,8 @@ const userSchema = new mongoose.Schema({
   schoolLevel: {
     type: String,
     required: true,
-    enum: [
-      'ensino_fundamental',
-      '1_ou_2_ano_em',
-      'ultimo_ano_em',
-      'ensino_medio_finalizado',
-      'eja'
-    ]
+    enum: Object.values(ROLES),
+    default: ROLES.STUDENT
   },
   incomeRange: {
     type: String,

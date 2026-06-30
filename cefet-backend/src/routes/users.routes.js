@@ -2,12 +2,13 @@ const router = require('express').Router();
 const { verify } = require('jsonwebtoken');
 const { getMe, updateMe, getUsers, getUsersBase, updateUserRole } = require('../controllers/users.controller');
 const verifyJWT = require('../middleware/auth');
-const requireRole = require('../middleware/roles');
+const { requireMinimumRole } = require('../middleware/roles');
+const { ROLES } = require('../constants/roles');
 
 router.get('/me', verifyJWT, getMe);
 router.put('/me', verifyJWT, updateMe);
-router.get('/', verifyJWT, requireRole('admin'), getUsers);
-router.get('/base', verifyJWT, requireRole('admin', 'professor'), getUsersBase)
-router.put('/:id/role', verifyJWT, requireRole('admin'), updateUserRole);
+router.get('/', verifyJWT, requireMinimumRole(ROLES.ADMIN), getUsers);
+router.get('/base', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getUsersBase)
+router.put('/:id/role', verifyJWT, requireMinimumRole(ROLES.ADMIN), updateUserRole);
 
 module.exports = router;

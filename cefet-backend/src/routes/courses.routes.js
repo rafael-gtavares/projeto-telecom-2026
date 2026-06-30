@@ -7,7 +7,8 @@ const {
 } = require('../controllers/courses.controller');
 const verifyJWT = require('../middleware/auth');
 const optionalAuth = require('../middleware/optionalAuth');
-const requireRole = require('../middleware/roles');
+const { requireMinimumRole } = require('../middleware/roles');
+const { ROLES } = require('../constants/roles');
 const requireCourseAccess = require('../middleware/courseAccess');
 const { getCourseStudents } = require('../controllers/enrollments.controller');
 
@@ -17,16 +18,16 @@ const materialsRouter = require('./materials.routes');
 const gradesRouter = require('./grades.routes');
 
 router.get('/', optionalAuth, getCourses);
-router.get('/all', verifyJWT, requireRole('admin', 'professor'), getAllCourses);
+router.get('/all', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getAllCourses);
 router.get('/:id', verifyJWT, getCourse); // Obs.: Essa rota está deixando qualquer usuário autenticado acessar
-router.get('/:id/stats', verifyJWT, requireRole('admin', 'professor'), getCourseStats)
-router.post('/', verifyJWT, requireRole('admin', 'professor'), createCourse);
-router.put('/:id', verifyJWT, requireRole('admin', 'professor'), updateCourse);
-router.delete('/:id', verifyJWT, requireRole('admin', 'professor'), deleteCourse);
+router.get('/:id/stats', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getCourseStats)
+router.post('/', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), createCourse);
+router.put('/:id', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), updateCourse);
+router.delete('/:id', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), deleteCourse);
 
 // Permissões de professores no curso
-router.post('/:id/allowed-professors', verifyJWT, requireRole('admin', 'professor'), addAllowedProfessor);
-router.delete('/:id/allowed-professors/:professorId', verifyJWT, requireRole('admin', 'professor'), removeAllowedProfessor);
+router.post('/:id/allowed-professors', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), addAllowedProfessor);
+router.delete('/:id/allowed-professors/:professorId', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), removeAllowedProfessor);
 
 // Rota de alunos do curso (Passo 12)
 router.get('/:courseId/students', verifyJWT, requireCourseAccess, getCourseStudents);

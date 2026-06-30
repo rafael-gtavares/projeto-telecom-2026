@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const escapeRegex = require('../helpers/escapeRegex');
+const { ROLES } = require('../constants/roles');
 
 const getMe = async (req, res, next) => {
   try {
@@ -75,18 +76,67 @@ const getUsersBase = async (req, res, next) => {
 const updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
-    if (!['aluno', 'professor'].includes(role))
-      return res.status(400).json({ success: false, message: 'Role inválido. Use aluno ou professor' });
+
+    // Define quais cargos cada tipo de usuário pode atribuir
+    const allowedRoles = {
+      [ROLES.ADMIN]: [
+        ROLES.STUDENT,
+        ROLES.PROFESSOR,
+      ],
+      [ROLES.SUPERADMIN]: [
+        ROLES.STUDENT,
+        ROLES.PROFESSOR,
+        ROLES.ADMIN,
+      ],
+    };
+
+    // Verifica se o usuário autenticado pode atribuir o cargo solicitado
+    if (!allowedRoles[req.user.role]?.includes(role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Você não tem permissão para atribuir esse cargo.',
+      });
+    }
 
     const target = await User.findById(req.params.id);
-    if (!target) return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
-    if (target.role === 'admin')
-      return res.status(403).json({ success: false, message: 'Não é possível alterar o role de um admin' });
 
+    if (!target) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado',
+      });
+    }
+
+    // Admin comum não pode alterar contas de superadministradores
+    if (
+      req.user.role === ROLES.ADMIN &&
+      target.role === ROLES.SUPERADMIN
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'Você não pode alterar um superadministrador.',
+      });
+    }
+
+    // O cargo de superadministrador é protegido e não pode ser alterado
+    if (target.role === ROLES.SUPERADMIN) {
+      return res.status(403).json({
+        success: false,
+        message: 'O cargo de superadministrador não pode ser alterado.',
+      });
+    }
+
+    // Atualiza o cargo do usuário
     target.role = role;
     await target.save();
-    res.json({ success: true, data: target.toPublic() });
-  } catch (err) { next(err); }
+
+    res.json({
+      success: true,
+      data: target.toPublic(),
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
 module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole };
