@@ -7,6 +7,7 @@ import LogoSVG from '../../assets/cefetrj-logo'
 import Button from '../ui/Button'
 import { LogOut } from 'lucide-react'
 import { getRoleLabel } from '../../utils/formatDate'
+import { canAccessAdminPanel } from '../../utils/permissions'
 
 // Item de navegação com indicador da página ativa (sublinhado animado em cor primária)
 const navItemClass = ({ isActive }) =>
@@ -63,7 +64,7 @@ const Header = () => {
                 >Início</NavLink>
                 <NavLink to="/meus-cursos" className={navItemClass}>Meus Cursos</NavLink>
                 <NavLink to="/meu-perfil" className={navItemClass}>Meu Perfil</NavLink>
-                {(role === 'admin' || role === 'professor') && (
+                {canAccessAdminPanel(role) && (
                   <NavLink to="/admin" className={navItemClass}>
                     Painel {getRoleLabel(role)}
                   </NavLink>

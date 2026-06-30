@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit2, Trash2, GraduationCap, Users, BookOpen, BarChart2, Settings, Plus, ChevronLeft, ChevronRight, Video, FileText, FileQuestion, FileArchive, Link, File, Search, X, ChevronRight as ChevronRightIcon, CheckCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { isAdmin as isAdminRole } from '../utils/permissions'
 import { Tabs, Spinner, Badge, Avatar, ViewToggle } from '../components/ui/index'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -903,7 +904,7 @@ const AdminCourse = () => {
                     <div className="space-y-2">
                       {configUsers.map(u => {
                         const isCreator = course.professor?._id === u._id || course.professor === u._id
-                        const isAdmin = u.role === 'admin'
+                        const isAdmin = isAdminRole(u.role)
                         const hasAccess = isCreator || isAdmin || (course.allowedProfessors || []).some(p => p._id === u._id)
 
                         return (

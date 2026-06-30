@@ -4,15 +4,17 @@ import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { getRoleLabel, formatDate } from '../../utils/formatDate'
 import { useAuth } from '../../context/AuthContext'
+import { canEditUserRole, getAssignableRoles } from '../../utils/permissions'
 
-const roleBadge = { admin: 'error', professor: 'blue', aluno: 'gray' }
+const roleBadge = { superadmin: 'error', admin: 'error', professor: 'blue', aluno: 'gray' }
 
 const UserTable = ({ users, onRoleChange, loading }) => {
   const { role: myRole, user: me } = useAuth()
   const [confirm, setConfirm] = useState(null)
+  const assignableRoles = getAssignableRoles(myRole)
 
   const handleChange = (user, newRole) => {
-    if (user.role === 'admin') return
+    if (!canEditUserRole(myRole, user.role)) return
     setConfirm({ user, newRole })
   }
 
@@ -46,7 +48,7 @@ const UserTable = ({ users, onRoleChange, loading }) => {
                 </td>
                 <td className="py-3 pr-4 text-text-muted whitespace-nowrap">{formatDate(u.createdAt)}</td>
                 <td className="py-3">
-                  {u.role === 'admin' || u._id === me?._id ? (
+                  {!canEditUserRole(myRole, u.role) || u._id === me?._id ? (
                     <span className="text-xs text-text-muted">—</span>
                   ) : (
                     <select
@@ -55,8 +57,9 @@ const UserTable = ({ users, onRoleChange, loading }) => {
                       className="text-xs border border-border rounded-btn px-2 py-1.5 bg-white text-text-primary focus:border-primary"
                       disabled={loading}
                     >
-                      <option value="aluno">Aluno</option>
-                      <option value="professor">Professor</option>
+                      {assignableRoles.map(r => (
+                        <option key={r} value={r}>{getRoleLabel(r)}</option>
+                      ))}
                     </select>
                   )}
                 </td>

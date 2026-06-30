@@ -51,6 +51,7 @@ import { Spinner } from '../components/ui/index'
 
 // Context
 import { useAuth } from '../context/AuthContext'
+import { canManageUsers, canManageSchools } from '../utils/permissions'
 
 
 // APIs
@@ -202,7 +203,7 @@ const Admin = () => {
   }, [tab, role, statusFilter])
 
   useEffect(() => {
-    if (tab !== 'usuarios' || role !== 'admin') return
+    if (tab !== 'usuarios' || !canManageUsers(role)) return
 
     setLoad('users', true)
 
@@ -619,7 +620,7 @@ const Admin = () => {
               USUÁRIOS
           ====================================================== */}
 
-          {tab === 'usuarios' && role === 'admin' && (
+          {tab === 'usuarios' && canManageUsers(role) && (
 
             <div className="animate-fadeIn space-y-8">
 
@@ -657,6 +658,7 @@ const Admin = () => {
                         <option value="aluno">Alunos</option>
                         <option value="professor">Professores</option>
                         <option value="admin">Admins</option>
+                        <option value="superadmin">Superadmins</option>
                       </select>
 
                     </div>
@@ -689,7 +691,7 @@ const Admin = () => {
               ESCOLAS
           ====================================================== */}
 
-          {tab === 'escolas' && role === 'admin' && (
+          {tab === 'escolas' && canManageSchools(role) && (
 
             <div className="animate-fadeIn">
               <h1 className="text-xl font-bold text-text-primary mb-6">

@@ -3,6 +3,7 @@ import { LayoutDashboard, BookOpen, Settings, GraduationCap, LogOut, Home, Users
 import { useAuth } from '../../context/AuthContext'
 import { Avatar, Badge } from '../ui/index'
 import { getRoleLabel } from '../../utils/formatDate'
+import { isAdmin } from '../../utils/permissions'
 import LogoSVG from '../../assets/cefetrj-logo'
 
 const navItems = [
@@ -16,7 +17,7 @@ const navItems = [
 const Sidebar = ({ onLogout }) => {
   const { tab = '' } = useParams()
   const { user, role } = useAuth()
-  const items = navItems.filter(i => !i.adminOnly || role === 'admin')
+  const items = navItems.filter(i => !i.adminOnly || isAdmin(role))
 
   return (
     <aside className="hidden md:flex w-[240px] flex-shrink-0 flex-col bg-white border-r border-border h-screen sticky top-0 overflow-y-auto">

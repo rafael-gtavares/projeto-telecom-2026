@@ -12,8 +12,13 @@ const userSchema = new mongoose.Schema({
   schoolLevel: {
     type: String,
     required: true,
-    enum: Object.values(ROLES),
-    default: ROLES.STUDENT
+    enum: [
+      'ensino_fundamental',
+      '1_ou_2_ano_em',
+      'ultimo_ano_em',
+      'ensino_medio_finalizado',
+      'eja'
+    ]
   },
   incomeRange: {
     type: String,
@@ -26,7 +31,11 @@ const userSchema = new mongoose.Schema({
     default: null,
     // null = "Outras" (usuários antigos ou que não selecionaram)
   },
-  role: { type: String, enum: ['aluno', 'professor', 'admin'], default: 'aluno' },
+  role: {
+    type: String, 
+    enum: Object.values(ROLES),
+    default: ROLES.STUDENT
+  },
   avatar: { type: String, default: null },
 
   // Versão da sessão: incrementar invalida todos os refresh tokens já emitidos

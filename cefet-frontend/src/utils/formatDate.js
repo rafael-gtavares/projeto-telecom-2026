@@ -1,3 +1,5 @@
+import { ROLE_LABELS } from '../constants/roles'
+
 export const formatDate = (dateStr) => {
   if (!dateStr) return ''
   
@@ -17,7 +19,7 @@ export const formatDate = (dateStr) => {
 export const getInitials = (name = '') =>
   name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 
-export const getRoleLabel = (role) => ({ admin: 'Admin', professor: 'Professor', aluno: 'Aluno' }[role] || role)
+export const getRoleLabel = (role) => ROLE_LABELS[role] || role
 
 export const getIncomeLabel = (val) => ({
   ate_1sm: 'Até 1 salário mínimo', '1_a_2sm': 'De 1 a 2 salários mínimos',

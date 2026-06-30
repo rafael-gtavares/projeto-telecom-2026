@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import { LayoutDashboard, BookOpen, Home, Users, School } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { isAdmin } from '../../utils/permissions'
 
 // Espelha a Sidebar (desktop): admin tem Usuários e Escolas como abas separadas
 const items = [
@@ -14,7 +15,7 @@ const items = [
 const BottomNav = () => {
   const { tab = '' } = useParams()
   const { role } = useAuth()
-  const visible = items.filter(i => !i.adminOnly || role === 'admin')
+  const visible = items.filter(i => !i.adminOnly || isAdmin(role))
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border flex">

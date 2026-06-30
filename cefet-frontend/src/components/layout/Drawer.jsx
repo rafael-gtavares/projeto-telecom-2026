@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Avatar, Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { getRoleLabel } from '../../utils/formatDate'
+import { canAccessAdminPanel, isAdmin } from '../../utils/permissions'
 import LogoSVG from '../../assets/cefetrj-logo'
 
 // Item do menu com destaque da página ativa (barra lateral + fundo + cor primária)
@@ -72,8 +73,8 @@ const Drawer = ({ open, onClose }) => {
             <>
               <NavLink to="/meus-cursos" icon={BookOpen} onClick={close}>Meus Cursos</NavLink>
               <NavLink to="/meu-perfil" icon={UserCircle} onClick={close}>Meu Perfil</NavLink>
-              {(role === 'admin' || role === 'professor') && (
-                <NavLink to="/admin" icon={role === 'admin' ? ShieldCheck : LayoutDashboard} onClick={close}>
+              {canAccessAdminPanel(role) && (
+                <NavLink to="/admin" icon={isAdmin(role) ? ShieldCheck : LayoutDashboard} onClick={close}>
                   Painel {getRoleLabel(role)}
                 </NavLink>
               )}
