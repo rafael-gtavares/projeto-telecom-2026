@@ -32,11 +32,18 @@ const userSchema = new mongoose.Schema({
     // null = "Outras" (usuários antigos ou que não selecionaram)
   },
   role: {
-    type: String, 
+    type: String,
     enum: Object.values(ROLES),
     default: ROLES.STUDENT
   },
-  avatar: { type: String, default: null },
+  avatar: { 
+    type: String, 
+    default: null 
+  },
+  canEditPersonalInfo: {
+    type: Boolean,
+    default: false,
+  },
 
   // Versão da sessão: incrementar invalida todos os refresh tokens já emitidos
   // (usado ao redefinir a senha — revoga sessões possivelmente comprometidas).
