@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ROLES, ROLE_HIERARCHY } = require('../constants/roles')
 
 const courseSchema = new mongoose.Schema({
   title: {
@@ -194,11 +195,8 @@ courseSchema.pre('validate', function (next) {
 });
 
 // Método para verificar se um userId tem acesso de gestão ao curso
-courseSchema.methods.hasManageAccess = function (
-  userId,
-  userRole
-) {
-  if (userRole === 'admin') {
+courseSchema.methods.hasManageAccess = function (userId, userRole) {
+  if (ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[ROLES.ADMIN]) {
     return true;
   }
 

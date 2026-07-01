@@ -42,6 +42,7 @@ const AdminCourse = () => {
 
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [activeTab, setActiveTab] = useState('aulas')
 
   // Modais de Curso
@@ -156,6 +157,7 @@ const AdminCourse = () => {
 
   const loadData = async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const [{ data: cData }, { data: lData }, { data: mData }, { data: sData }, { data: gData }] = await Promise.all([
         getCourseAPI(courseId),
@@ -171,6 +173,11 @@ const AdminCourse = () => {
       setGrades(gData.data)
     } catch (err) {
       console.error(err)
+      if (err.response?.status === 403) {
+        setLoadError('Você não tem acesso a este curso.')
+      } else {
+        setLoadError('Erro ao carregar os dados do curso.')
+      }
     } finally {
       setLoading(false)
     }
@@ -420,7 +427,14 @@ const AdminCourse = () => {
     })
   }
 
-  if (loading || !course) return <div className="flex justify-center p-12"><Spinner /></div>
+  if (loading) return <div className="flex justify-center p-12"><Spinner /></div>
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center p-12 gap-3">
+      <p className="text-text-secondary">{loadError}</p>
+      <Button variant="secondary" onClick={() => navigate('/admin/cursos')}>Voltar para cursos</Button>
+    </div>
+  )
+  if (!course) return null
 
   return (
     <div className="min-h-screen bg-surface-page pb-16">
