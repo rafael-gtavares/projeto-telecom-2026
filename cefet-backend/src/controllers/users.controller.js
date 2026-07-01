@@ -128,11 +128,46 @@ const updateUserRole = async (req, res, next) => {
 
     // Atualiza o cargo do usuário
     target.role = role;
+
+    // Atualiza a permissão de edição de dados
+    target.canEditPersonalInfo = role !== ROLES.STUDENT;
+
     await target.save();
 
     res.json({
       success: true,
       data: target.toPublic(),
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateEditPermission = async (req, res, next) => {
+  try {
+    const currentUser = await User.findById(req.params.id);
+
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado.',
+      });
+    }
+
+    if (currentUser.role !== ROLES.STUDENT) {
+      return res.status(400).json({
+        success: false,
+        message: 'Essa permissão só pode ser alterada para alunos.',
+      });
+    }
+
+    currentUser.canEditPersonalInfo = req.body.canEditPersonalInfo;
+
+    await currentUser.save();
+
+    res.json({
+      success: true,
+      data: currentUser.toPublic(),
     });
   } catch (err) {
     next(err);
