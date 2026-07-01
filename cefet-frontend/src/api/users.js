@@ -5,6 +5,7 @@ export const updateMeAPI = (data) => api.put('/users/me', data)
 export const getUsersAPI = (params) => api.get('/users', { params })
 export const getUsersBaseAPI = (params) => api.get('/users/base')
 export const updateUserRoleAPI = (id, role) => api.put(`/users/${id}/role`, { role })
+export const updateEditPermissionAPI = (id, canEditPersonalInfo) => api.put(`/users/${id}/editPermission`, canEditPersonalInfo)
 export const getAdminStatsAPI = (period) => api.get(`/admin/stats?period=${period}`)
 
 // Escolas

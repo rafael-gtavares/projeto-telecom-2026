@@ -65,7 +65,8 @@ import {
 import {
   getUsersAPI,
   updateUserRoleAPI,
-  getAdminStatsAPI
+  getAdminStatsAPI,
+  updateEditPermissionAPI
 } from '../api/users'
 
 
@@ -136,10 +137,10 @@ const Admin = () => {
   // Filtro de busca de cursos (por título ou instrutor), feito no cliente
   const filteredCourses = courseSearch.trim()
     ? courses.filter(c => {
-        const q = courseSearch.trim().toLowerCase()
-        return (c.title || '').toLowerCase().includes(q) ||
-               (c.instructor || '').toLowerCase().includes(q)
-      })
+      const q = courseSearch.trim().toLowerCase()
+      return (c.title || '').toLowerCase().includes(q) ||
+        (c.instructor || '').toLowerCase().includes(q)
+    })
     : courses
 
 
@@ -382,6 +383,34 @@ const Admin = () => {
     logout()
 
     navigate('/')
+  }
+
+  const handleToggleEditPermission = async (id, value) => {
+    setLoad('role', true)
+
+    try {
+      const { data } = await updateEditPermissionAPI(id, {
+        canEditPersonalInfo: value
+      })
+
+      setUsers(prev =>
+        prev.map(user =>
+          user._id === id
+            ? data.data
+            : user
+        )
+      )
+
+    } catch (err) {
+      setToast({
+        show: true,
+        message:
+          err.response?.data?.message ||
+          'Erro ao alterar permissão',
+      })
+    } finally {
+      setLoad('role', false)
+    }
   }
 
 
@@ -678,6 +707,7 @@ const Admin = () => {
                         users={users}
                         onRoleChange={handleRoleChange}
                         loading={loading.role}
+                        onToggleEditPermission={handleToggleEditPermission}
                       />
                     )}
 

@@ -83,6 +83,8 @@ const MyProfile = () => {
     setError(''); setSuccess(''); setShowPassSection(false)
   }
 
+  const canEditPersonalInfo = user?.canEditPersonalInfo;
+
   return (
     <div className="min-h-screen bg-surface-page">
       <Header />
@@ -102,9 +104,9 @@ const MyProfile = () => {
             {error && <div className="bg-error-light border border-error/20 text-error text-sm rounded-lg px-4 py-3 mb-5">{error}</div>}
 
             <div className="space-y-4">
-              <Input label="Nome completo" value={form.name} onChange={set('name')} />
+              <Input label="Nome completo" value={form.name} onChange={set('name')} disabled={!canEditPersonalInfo}/>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} />
+                <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} disabled={!canEditPersonalInfo}/>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Sexo</label>
                   <select value={form.gender} onChange={set('gender')} className="input-field">
