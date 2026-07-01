@@ -174,4 +174,4 @@ const updateEditPermission = async (req, res, next) => {
   }
 };
 
-module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole };
+module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole , updateEditPermission };
