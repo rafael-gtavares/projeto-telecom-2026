@@ -829,7 +829,7 @@ const AdminCourse = () => {
                 ) : (
                   <div className="space-y-2">
                     {filteredStudents.map(({ _id, user: student, status, averageGrade, situation }) => (
-                      <div key={_id} className="card p-3 space-y-3">
+                      <div key={_id} className="card p-3 space-y-3 transition-all duration-200 hover:shadow-[0_0_15px_rgba(59,130,246,0.35)]">
                         {/* Linha principal: avatar + nome + status de inscrição */}
                         <button
                           onClick={() => setStudentModal({ open: true, student })}
