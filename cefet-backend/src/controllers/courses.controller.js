@@ -3,6 +3,8 @@ const Enrollment = require('../models/Enrollment');
 const School = require('../models/School');
 const Lesson = require('../models/Lesson');
 
+const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+
 const {
   validateSchedule,
   getCoursePeriod,
@@ -50,7 +52,7 @@ const getCourses = async (req, res, next) => {
         'course status'
       );
       for (const e of enrollments) {
-        if (e.status === 'fila_espera') waitlistedIds.add(e.course.toString());
+        if (e.status === ENROLLMENT_STATUS.WAITING_LIST) waitlistedIds.add(e.course.toString());
         else enrolledIds.add(e.course.toString());
       }
     }
@@ -70,7 +72,7 @@ const getAllCourses = async (req, res, next) => {
   try {
 
     await updateCourseStatuses();
-    
+
     const { status, page = 1 } = req.query;
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
     const filter = {};
@@ -653,13 +655,13 @@ const updateCourse = async (req, res, next) => {
             course: course._id,
             status: {
               $in: [
-                'inscrito',
-                'concluido',
+                ENROLLMENT_STATUS.ENROLLED,
+                ENROLLMENT_STATUS.COMPLETED,
               ],
             },
           },
           {
-            status: 'ativo',
+            status: ENROLLMENT_STATUS.ACTIVE,
           }
         );
       }
@@ -671,10 +673,10 @@ const updateCourse = async (req, res, next) => {
         await Enrollment.updateMany(
           {
             course: course._id,
-            status: 'concluido',
+            status: ENROLLMENT_STATUS.COMPLETED,
           },
           {
-            status: 'inscrito',
+            status: ENROLLMENT_STATUS.ENROLLED,
           }
         );
       }
@@ -685,13 +687,13 @@ const updateCourse = async (req, res, next) => {
             course: course._id,
             status: {
               $in: [
-                'inscrito',
-                'ativo',
+                ENROLLMENT_STATUS.ENROLLED,
+                ENROLLMENT_STATUS.ACTIVE,
               ],
             },
           },
           {
-            status: 'concluido',
+            status: ENROLLMENT_STATUS.COMPLETED,
           }
         );
       }
@@ -773,11 +775,14 @@ const changeCoursePhase = async (req, res, next) => {
     course.phase = phase;
 
     if (phase === 'em_andamento') {
-      await Enrollment.updateMany({ course: course._id, status: 'inscrito' }, { status: 'ativo' });
+      await Enrollment.updateMany(
+        { course: course._id, status: ENROLLMENT_STATUS.ENROLLED },
+        { status: ENROLLMENT_STATUS.ACTIVE }
+      );
     } else if (phase === 'encerrado') {
       await Enrollment.updateMany(
-        { course: course._id, status: { $in: ['inscrito', 'ativo'] } },
-        { status: 'concluido' }
+        { course: course._id, status: { $in: [ENROLLMENT_STATUS.ENROLLED, ENROLLMENT_STATUS.ACTIVE] } },
+        { status: ENROLLMENT_STATUS.COMPLETED }
       );
       course.status = 'closed';
     }

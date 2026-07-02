@@ -1,6 +1,8 @@
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 
+const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+
 // POST /enrollments
 const enroll = async (req, res, next) => {
   try {
@@ -38,11 +40,11 @@ const enroll = async (req, res, next) => {
     }
 
     // 3b) Sem vaga → entra na fila de espera (não apaga a inscrição)
-    enrollment.status = 'fila_espera';
+    enrollment.status = ENROLLMENT_STATUS.WAITING_LIST;
     await enrollment.save();
     const waitlistPosition = await Enrollment.countDocuments({
       course: courseId,
-      status: 'fila_espera',
+      status: ENROLLMENT_STATUS.WAITING_LIST,
       createdAt: { $lte: enrollment.createdAt },
     });
 
@@ -65,10 +67,10 @@ const getMyEnrollments = async (req, res, next) => {
     // Anexa a posição na fila para inscrições em fila_espera
     const data = await Promise.all(enrollments.map(async (e) => {
       const obj = e.toObject();
-      if (e.status === 'fila_espera' && e.course) {
+      if (e.status === ENROLLMENT_STATUS.WAITING_LIST && e.course) {
         obj.waitlistPosition = await Enrollment.countDocuments({
           course: e.course._id,
-          status: 'fila_espera',
+          status: ENROLLMENT_STATUS.WAITING_LIST,
           createdAt: { $lte: e.createdAt },
         });
       }
@@ -82,13 +84,13 @@ const getMyEnrollments = async (req, res, next) => {
 const checkEnrollment = async (req, res, next) => {
   try {
     const enrollment = await Enrollment.findOne({ user: req.user.id, course: req.params.courseId });
-    const waitlisted = enrollment?.status === 'fila_espera';
+    const waitlisted = enrollment?.status === ENROLLMENT_STATUS.WAITING_LIST;
 
     let waitlistPosition = null;
     if (waitlisted) {
       waitlistPosition = await Enrollment.countDocuments({
         course: req.params.courseId,
-        status: 'fila_espera',
+        status: ENROLLMENT_STATUS.WAITING_LIST,
         createdAt: { $lte: enrollment.createdAt },
       });
     }
@@ -114,11 +116,11 @@ const cancelEnrollment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Inscrição não encontrada' });
     }
 
-    if (enrollment.status === 'concluido') {
+    if (enrollment.status === ENROLLMENT_STATUS.COMPLETED) {
       return res.status(400).json({ success: false, message: 'Não é possível cancelar um curso já concluído' });
     }
 
-    const wasWaitlisted = enrollment.status === 'fila_espera';
+    const wasWaitlisted = enrollment.status === ENROLLMENT_STATUS.WAITING_LIST;
     await enrollment.deleteOne();
 
     let promoted = false;
@@ -133,7 +135,7 @@ const cancelEnrollment = async (req, res, next) => {
       );
 
       // Promove o primeiro da fila (se houver) — ele assume a vaga liberada
-      const next = await Enrollment.findOne({ course: courseId, status: 'fila_espera' })
+      const next = await Enrollment.findOne({ course: courseId, status: ENROLLMENT_STATUS.WAITING_LIST })
         .sort({ createdAt: 1 });
 
       if (next) {
@@ -143,7 +145,7 @@ const cancelEnrollment = async (req, res, next) => {
           { new: true }
         );
         if (taken) {
-          next.status = 'inscrito';
+          next.status = ENROLLMENT_STATUS.ENROLLED;
           await next.save();
           promoted = true;
           course = taken;
@@ -167,7 +169,7 @@ const getCourseStudents = async (req, res, next) => {
   try {
     const enrollments = await Enrollment.find({
       course: req.params.courseId,
-      status: { $nin: ['cancelado', 'fila_espera'] },
+      status: { $nin: [ENROLLMENT_STATUS.CANCELED, ENROLLMENT_STATUS.WAITING_LIST] },
     })
       .populate('user', 'name email avatar school schoolLevel birthDate')
       .sort({ createdAt: 1 });
@@ -176,4 +178,30 @@ const getCourseStudents = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, getCourseStudents };
+const updateSituation = async (req, res, next) => {
+  try {
+    const { situation } = req.body;
+
+    const enrollment = await Enrollment.findById(req.params.id);
+
+    if (!enrollment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inscrição não encontrada',
+      });
+    }
+
+    enrollment.situation = situation;
+
+    await enrollment.save();
+
+    res.json({
+      success: true,
+      data: enrollment,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, getCourseStudents, updateSituation };

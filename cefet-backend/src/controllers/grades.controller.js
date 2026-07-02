@@ -1,5 +1,6 @@
 const Grade = require('../models/Grade');
 const Enrollment = require('../models/Enrollment');
+const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus')
 
 // GET /courses/:courseId/grades — professor/admin vê todas as notas do curso
 const getCourseGrades = async (req, res, next) => {
@@ -15,8 +16,12 @@ const getCourseGrades = async (req, res, next) => {
 // GET /courses/:courseId/grades/my — aluno vê apenas suas próprias notas
 const getMyGrades = async (req, res, next) => {
   try {
-    // Verifica se o aluno está inscrito no curso
-    const enrollment = await Enrollment.findOne({ user: req.user.id, course: req.params.courseId });
+    // Verifica se o aluno está inscrito no curso (com vaga confirmada, não apenas na fila)
+    const enrollment = await Enrollment.findOne({
+      user: req.user.id,
+      course: req.params.courseId,
+      status: { $ne: ENROLLMENT_STATUS.WAITING_LIST },
+    });
     if (!enrollment)
       return res.status(403).json({ success: false, message: 'Você não está inscrito neste curso' });
 
@@ -37,7 +42,12 @@ const createGrade = async (req, res, next) => {
     if (grade < 0 || grade > (maxGrade || 10))
       return res.status(400).json({ success: false, message: 'Nota inválida' });
 
-    const enrollment = await Enrollment.findOne({ user: studentId, course: req.params.courseId });
+    // Só permite lançar nota pra aluno com vaga confirmada (não apenas na fila)
+    const enrollment = await Enrollment.findOne({
+      user: studentId,
+      course: req.params.courseId,
+      status: { $ne: ENROLLMENT_STATUS.WAITING_LIST },
+    });
     if (!enrollment)
       return res.status(400).json({ success: false, message: 'Aluno não está inscrito neste curso' });
 
@@ -51,6 +61,25 @@ const createGrade = async (req, res, next) => {
       feedback: feedback || '',
       gradedBy: req.user.id,
     });
+
+    const grades = await Grade.find({
+      course: req.params.courseId,
+      student: studentId,
+    });
+
+    const average =
+      grades.reduce((sum, item) => sum + item.grade, 0) /
+      grades.length;
+
+    await Enrollment.findOneAndUpdate(
+      {
+        user: studentId,
+        course: req.params.courseId,
+      },
+      {
+        averageGrade: Number(average.toFixed(2)),
+      }
+    );
 
     await newGrade.populate('student', 'name email');
     res.status(201).json({ success: true, data: newGrade });
@@ -70,6 +99,26 @@ const updateGrade = async (req, res, next) => {
     if (type) gradeDoc.type = type;
 
     await gradeDoc.save();
+
+    const grades = await Grade.find({
+      course: req.params.courseId,
+      student: gradeDoc.student,
+    });
+
+    const average =
+      grades.reduce((sum, item) => sum + item.grade, 0) /
+      grades.length;
+
+    await Enrollment.findOneAndUpdate(
+      {
+        user: gradeDoc.student,
+        course: req.params.courseId,
+      },
+      {
+        averageGrade: Number(average.toFixed(2)),
+      }
+    );
+
     await gradeDoc.populate('student', 'name email');
     res.json({ success: true, data: gradeDoc });
   } catch (err) { next(err); }
@@ -79,6 +128,26 @@ const updateGrade = async (req, res, next) => {
 const deleteGrade = async (req, res, next) => {
   try {
     const gradeDoc = await Grade.findOneAndDelete({ _id: req.params.gradeId, course: req.params.courseId });
+
+    const grades = await Grade.find({
+      course: req.params.courseId,
+      student: gradeDoc.student,
+    });
+
+    const average = grades.length
+      ? grades.reduce((sum, item) => sum + item.grade, 0) / grades.length
+      : null;
+
+    await Enrollment.findOneAndUpdate(
+      {
+        user: gradeDoc.student,
+        course: req.params.courseId,
+      },
+      {
+        averageGrade: average,
+      }
+    );
+    
     if (!gradeDoc) return res.status(404).json({ success: false, message: 'Nota não encontrada' });
     res.json({ success: true, message: 'Nota removida com sucesso' });
   } catch (err) { next(err); }
