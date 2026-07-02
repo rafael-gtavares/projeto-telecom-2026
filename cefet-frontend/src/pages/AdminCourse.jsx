@@ -17,13 +17,14 @@ import {
   getMaterialsAPI, createMaterialAPI, updateMaterialAPI, deleteMaterialAPI,
   getCourseStudentsAPI,
   getCourseGradesAPI, createGradeAPI, updateGradeAPI, deleteGradeAPI,
-  addAllowedProfessorAPI, removeAllowedProfessorAPI,
+  addAllowedProfessorAPI, removeAllowedProfessorAPI, updateSituationAPI
 } from '../api/courses'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
+import { SITUATIONS, SITUATION_OPTIONS, SITUATION_LABELS } from '../constants/enrollmentSitutation'
 
 const MetricCard = ({ label, value, icon: Icon }) => (
   <div className="card p-4 flex flex-col justify-center">
@@ -39,6 +40,8 @@ const AdminCourse = () => {
   const { courseId } = useParams()
   const navigate = useNavigate()
   const { user, role } = useAuth()
+
+  const [situationFilter, setSituationFilter] = useState('all')
 
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -154,6 +157,10 @@ const AdminCourse = () => {
     { value: 'dashboard', label: 'Dashboard' },
     { value: 'config', label: 'Config.' },
   ]
+
+  const filteredStudents = situationFilter === 'all'
+    ? students
+    : students.filter(s => (s.situation || SITUATIONS.PENDENTE) === situationFilter)
 
   const loadData = async () => {
     setLoading(true)
@@ -423,6 +430,43 @@ const AdminCourse = () => {
           await removeAllowedProfessorAPI(courseId, profId)
           setCourse(prev => ({ ...prev, allowedProfessors: prev.allowedProfessors.filter(p => p._id !== profId) }))
         } catch { showToast('Erro ao remover acesso') }
+      },
+    })
+  }
+
+  const [situationLoading, setSituationLoading] = useState(null) // guarda o _id do enrollment em atualização
+
+  const handleChangeSituation = (enrollmentId, newSituation) => {
+    setConfirmModal({
+      open: true,
+      message: `Deseja alterar a situação deste aluno para "${SITUATION_LABELS[newSituation]}"?`,
+      onConfirm: async () => {
+        setSituationLoading(enrollmentId)
+
+        console.log('[handleChangeSituation] iniciando', { enrollmentId, newSituation })
+
+        try {
+          const { data } = await updateSituationAPI(enrollmentId, { situation: newSituation })
+
+          console.log('[handleChangeSituation] sucesso', data)
+
+          setStudents(prev =>
+            prev.map(s => s._id === enrollmentId ? { ...s, situation: data.data.situation } : s)
+          )
+          showToast('Situação atualizada')
+        } catch (err) {
+          console.error('[handleChangeSituation] ERRO COMPLETO:', err)
+          console.error('[handleChangeSituation] err.message:', err.message)
+          console.error('[handleChangeSituation] err.response?.status:', err.response?.status)
+          console.error('[handleChangeSituation] err.response?.data:', err.response?.data)
+          console.error('[handleChangeSituation] err.config?.url:', err.config?.url)
+          console.error('[handleChangeSituation] err.config?.method:', err.config?.method)
+          console.error('[handleChangeSituation] err.config?.data:', err.config?.data)
+
+          showToast(err.response?.data?.message || 'Erro ao atualizar situação')
+        } finally {
+          setSituationLoading(null)
+        }
       },
     })
   }
@@ -750,30 +794,99 @@ const AdminCourse = () => {
             {/* ABA ALUNOS */}
             {activeTab === 'alunos' && (
               <div className="p-4 md:p-6 space-y-4">
-                <h3 className="font-semibold text-text-primary">
-                  Alunos inscritos — {students.length} aluno{students.length !== 1 ? 's' : ''}
-                </h3>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-semibold text-text-primary">
+                    Alunos inscritos — {filteredStudents.length} de {students.length} aluno{students.length !== 1 ? 's' : ''}
+                  </h3>
 
-                {students.length === 0 ? (
-                  <div className="text-center py-12 text-text-muted text-sm">Nenhum aluno inscrito ainda.</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-text-muted flex-shrink-0">Filtrar por situação:</span>
+                    <select
+                      value={situationFilter}
+                      onChange={(e) => setSituationFilter(e.target.value)}
+                      className="input-field text-xs py-1.5"
+                    >
+                      <option value="all">Todas</option>
+                      {SITUATION_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {course.status !== 'closed' && (
+                  <p className="text-xs text-text-muted bg-surface-page px-3 py-2 rounded-lg">
+                    A situação dos alunos só pode ser alterada quando o curso estiver <strong>Encerrado</strong>.
+                  </p>
+                )}
+
+                {filteredStudents.length === 0 ? (
+                  <div className="text-center py-12 text-text-muted text-sm">
+                    {students.length === 0
+                      ? 'Nenhum aluno inscrito ainda.'
+                      : 'Nenhum aluno encontrado com essa situação.'}
+                  </div>
                 ) : (
                   <div className="space-y-2">
-                    {students.map(({ _id, user: student, status }) => (
-                      <button
-                        key={_id}
-                        onClick={() => setStudentModal({ open: true, student })}
-                        className="w-full flex items-center gap-3 p-3 card hover:shadow-hover hover:border-primary transition-all text-left"
-                      >
-                        <Avatar name={student.name} size="md" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-text-primary text-sm truncate">{student.name}</p>
-                          <p className="text-xs text-text-muted truncate">{student.email}</p>
+                    {filteredStudents.map(({ _id, user: student, status, averageGrade, situation }) => (
+                      <div key={_id} className="card p-3 space-y-3">
+                        {/* Linha principal: avatar + nome + status de inscrição */}
+                        <button
+                          onClick={() => setStudentModal({ open: true, student })}
+                          className="w-full flex items-center gap-3 text-left"
+                        >
+                          <Avatar name={student.name} size="md" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-text-primary text-sm truncate">{student.name}</p>
+                            <p className="text-xs text-text-muted truncate">{student.email}</p>
+                          </div>
+                          <Badge variant={status === 'ativo' ? 'success' : 'blue'}>
+                            {status === 'ativo' ? 'Ativo' : 'Inscrito'}
+                          </Badge>
+                          <ChevronRightIcon size={16} className="text-text-muted flex-shrink-0" />
+                        </button>
+
+                        {/* Linha de desempenho: média, situação e ações */}
+                        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-text-muted">Média:</span>
+                            <span className="text-sm font-bold text-primary">
+                              {averageGrade != null ? averageGrade.toFixed(1) : '—'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+                            <span className="text-xs text-text-muted flex-shrink-0">Situação:</span>
+                            <select
+                              value={situation || SITUATIONS.PENDENTE}
+                              disabled={course.status !== 'closed' || situationLoading === _id}
+                              onChange={(e) => handleChangeSituation(_id, e.target.value)}
+                              className="input-field text-xs py-1.5 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {SITUATION_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="flex gap-1 flex-shrink-0 ml-auto">
+                            <Button
+                              variant="secondary"
+                              className="text-xs py-1.5 px-3"
+                              onClick={() => setStudentModal({ open: true, student })}
+                            >
+                              Ver notas
+                            </Button>
+                            <Button
+                              variant="primary"
+                              className="text-xs py-1.5 px-3 gap-1"
+                              onClick={() => setGradeModal({ open: true, student })}
+                            >
+                              <Plus size={13} /> Lançar nota
+                            </Button>
+                          </div>
                         </div>
-                        <Badge variant={status === 'ativo' ? 'success' : 'blue'}>
-                          {status === 'ativo' ? 'Ativo' : 'Inscrito'}
-                        </Badge>
-                        <ChevronRightIcon size={16} className="text-text-muted flex-shrink-0" />
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}

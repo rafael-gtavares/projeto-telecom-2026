@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive} from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive } from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Spinner, ViewToggle, Badge } from '../components/ui/index'
 import Modal from '../components/ui/Modal'
 import Toast from '../components/ui/Toast'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
 import ExerciseRunner from '../components/exercises/ExerciseRunner'
-import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI } from '../api/courses'
+import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI, getMyEnrollmentsAPI } from '../api/courses'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
+import { SITUATIONS, SITUATION_LABELS } from '../constants/enrollmentSitutation'
 
 const tabs = [
   { value: 'sobre', label: 'Sobre' },
@@ -26,9 +27,8 @@ const LessonCard = ({ lesson, isToday = false, past = false, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className={`card p-4 flex gap-4 items-start transition-all ${
-        onClick ? 'cursor-pointer hover:shadow-hover hover:border-primary/40' : ''
-      } ${isToday ? 'ring-2 ring-primary border-primary bg-surface-blue' : ''} ${past ? 'opacity-60' : ''}`}
+      className={`card p-4 flex gap-4 items-start transition-all ${onClick ? 'cursor-pointer hover:shadow-hover hover:border-primary/40' : ''
+        } ${isToday ? 'ring-2 ring-primary border-primary bg-surface-blue' : ''} ${past ? 'opacity-60' : ''}`}
     >
       <div className="w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
         <span className="text-xs font-bold text-primary text-center">
@@ -73,6 +73,7 @@ const StudentCourse = () => {
   // Aula aberta para ver o conteúdo / quiz aberto (outra tela)
   const [viewLesson, setViewLesson] = useState(null)
   const [quizLesson, setQuizLesson] = useState(null)
+  const [myEnrollment, setMyEnrollment] = useState(null)
 
   const openLesson = (lesson) => setViewLesson(lesson)
   const startQuiz = () => { setQuizLesson(viewLesson); setViewLesson(null) }
@@ -89,17 +90,22 @@ const StudentCourse = () => {
     const loadData = async () => {
       setLoading(true)
       try {
-        const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }] = await Promise.all([
+        const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: eData }] = await Promise.all([
           getCourseAPI(courseId),
           getLessonsAPI(courseId),
           getMaterialsAPI(courseId),
-          getMyGradesAPI(courseId)
+          getMyGradesAPI(courseId),
+          getMyEnrollmentsAPI()
         ])
         if (controller.signal.aborted) return
         setCourse(cData.data)
         setLessons(lData.data)
         setMaterials(mData.data)
         setMyGrades(gData.data)
+
+        // getMyEnrollmentsAPI traz todas as inscrições do aluno; filtra a deste curso
+        const enrollment = eData.data.find(e => (e.course?._id || e.course) === courseId)
+        setMyEnrollment(enrollment || null)
       } catch (err) {
         if (controller.signal.aborted) return
         if (err.response?.status === 403) {
@@ -281,11 +287,11 @@ const StudentCourse = () => {
                             `}
                           >
                             <span className={`font-semibold leading-none text-sm ${isSelected ? 'text-white'
-                                : isStart && isEnd ? 'text-success'
-                                  : isStart ? 'text-success'
-                                    : isEnd ? 'text-warning'
-                                      : today ? 'text-primary'
-                                        : 'text-text-primary'
+                              : isStart && isEnd ? 'text-success'
+                                : isStart ? 'text-success'
+                                  : isEnd ? 'text-warning'
+                                    : today ? 'text-primary'
+                                      : 'text-text-primary'
                               } ${!day ? 'invisible' : ''}`}>
                               {day || '0'}
                             </span>
@@ -401,22 +407,20 @@ const StudentCourse = () => {
                           <button
                             type="button"
                             onClick={() => setScheduleFilter('upcoming')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                              scheduleFilter === 'upcoming'
-                                ? 'bg-white shadow-sm text-primary'
-                                : 'text-text-muted hover:text-text-primary'
-                            }`}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${scheduleFilter === 'upcoming'
+                              ? 'bg-white shadow-sm text-primary'
+                              : 'text-text-muted hover:text-text-primary'
+                              }`}
                           >
                             Próximas{upcoming.length > 0 ? ` (${upcoming.length})` : ''}
                           </button>
                           <button
                             type="button"
                             onClick={() => setScheduleFilter('past')}
-                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                              scheduleFilter === 'past'
-                                ? 'bg-white shadow-sm text-primary'
-                                : 'text-text-muted hover:text-text-primary'
-                            }`}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${scheduleFilter === 'past'
+                              ? 'bg-white shadow-sm text-primary'
+                              : 'text-text-muted hover:text-text-primary'
+                              }`}
                           >
                             Anteriores{past.length > 0 ? ` (${past.length})` : ''}
                           </button>
@@ -494,33 +498,45 @@ const StudentCourse = () => {
 
             {activeTab === 'notas' && (
               <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="p-4 bg-surface-blue rounded-card text-center">
+                    <p className="text-xs text-text-muted mb-1">Média geral</p>
+                    <p className="text-3xl font-bold text-primary">
+                      {myEnrollment?.averageGrade != null ? myEnrollment.averageGrade.toFixed(1) : '—'}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-surface-blue rounded-card text-center flex flex-col items-center justify-center gap-1">
+                    <p className="text-xs text-text-muted mb-1">Situação</p>
+                    <Badge variant={
+                      myEnrollment?.situation === SITUATIONS.APROVADO ? 'success' :
+                        myEnrollment?.situation === SITUATIONS.REPROVADO ? 'error' :
+                          myEnrollment?.situation === SITUATIONS.DESISTENTE ? 'warning' :
+                            'gray'
+                    } className="text-sm">
+                      {SITUATION_LABELS[myEnrollment?.situation] || SITUATION_LABELS[SITUATIONS.PENDENTE]}
+                    </Badge>
+                  </div>
+                </div>
+
                 {myGrades.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-sm text-text-muted">Nenhuma nota lançada ainda.</p>
                   </div>
                 ) : (
-                  <>
-                    <div className="p-4 bg-surface-blue rounded-card text-center mb-4">
-                      <p className="text-xs text-text-muted mb-1">Média geral</p>
-                      <p className="text-3xl font-bold text-primary">
-                        {(myGrades.reduce((acc, g) => acc + g.grade, 0) / myGrades.length).toFixed(1)}
-                      </p>
-                    </div>
-
-                    {myGrades.map(g => (
-                      <div key={g._id} className="flex items-center gap-4 p-3 card">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-text-primary text-sm">{g.title}</p>
-                          <p className="text-xs text-text-muted capitalize">{g.type}</p>
-                          {g.feedback && <p className="text-xs text-text-secondary mt-1 italic">"{g.feedback}"</p>}
-                        </div>
-                        <div className="flex-shrink-0 text-right">
-                          <span className="text-xl font-bold text-primary">{g.grade}</span>
-                          <span className="text-text-muted text-xs">/{g.maxGrade}</span>
-                        </div>
+                  myGrades.map(g => (
+                    <div key={g._id} className="flex items-center gap-4 p-3 card">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-text-primary text-sm">{g.title}</p>
+                        <p className="text-xs text-text-muted capitalize">{g.type}</p>
+                        {g.feedback && <p className="text-xs text-text-secondary mt-1 italic">"{g.feedback}"</p>}
                       </div>
-                    ))}
-                  </>
+                      <div className="flex-shrink-0 text-right">
+                        <span className="text-xl font-bold text-primary">{g.grade}</span>
+                        <span className="text-text-muted text-xs">/{g.maxGrade}</span>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}
