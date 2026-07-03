@@ -1,47 +1,56 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Trash2, GraduationCap, Users, BookOpen, BarChart2, Settings, Plus, ChevronLeft, ChevronRight, Video, FileText, FileQuestion, FileArchive, Link, File, Search, X, ChevronRight as ChevronRightIcon, CheckCircle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import { isAdmin as isAdminRole } from '../utils/permissions'
-import { Tabs, Spinner, Badge, Avatar, ViewToggle } from '../components/ui/index'
+import { ArrowLeft, Edit2, Trash2 } from 'lucide-react'
+import { Tabs, Spinner, Badge } from '../components/ui/index'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Toast from '../components/ui/Toast'
+import ConfirmModal from '../components/ui/ConfirmModal'
 import CourseModal from '../components/courses/CourseModal'
-import MarkdownEditor from '../components/markdown/MarkdownEditor'
-import ExerciseBuilder, { blankQuestion } from '../components/exercises/ExerciseBuilder'
-import Input from '../components/ui/Input'
+
+import LessonsTab from '../components/courses/admin/LessonsTab'
+import LessonModal from '../components/courses/admin/LessonModal'
+import LessonContentModal from '../components/courses/admin/LessonContentModal'
+import LessonExerciseModal from '../components/courses/admin/LessonExerciseModal'
+
+import StudentsTab from '../components/courses/admin/StudentsTab'
+import StudentDetailModal from '../components/courses/admin/StudentDetailModal'
+import GradeModal from '../components/courses/admin/GradeModal'
+
+import MaterialsTab from '../components/courses/admin/MaterialsTab'
+import MaterialModal from '../components/courses/admin/MaterialModal'
+
+import DashboardTab from '../components/courses/admin/DashboardTab'
+import ConfigTab from '../components/courses/admin/ConfigTab'
+
+import { useConfirmModal } from '../hooks/useConfirmModal'
+import { useToast } from '../hooks/useToast'
+
+import { isAdmin as isAdminRole } from '../utils/permissions'
 import {
   getCourseAPI, updateCourseAPI, deleteCourseAPI,
   getLessonsAPI, updateLessonAPI, deleteLessonAPI,
   getMaterialsAPI, createMaterialAPI, updateMaterialAPI, deleteMaterialAPI,
   getCourseStudentsAPI,
-  getCourseGradesAPI, createGradeAPI, updateGradeAPI, deleteGradeAPI,
-  addAllowedProfessorAPI, removeAllowedProfessorAPI, updateSituationAPI
+  getCourseGradesAPI, createGradeAPI, deleteGradeAPI,
+  addAllowedProfessorAPI, removeAllowedProfessorAPI, updateSituationAPI,
 } from '../api/courses'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
-import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
-import { generateCalendarDays } from '../utils/generateCalendarDays'
-import { SITUATIONS, SITUATION_OPTIONS, SITUATION_LABELS } from '../constants/enrollmentSitutation'
+import { SITUATION_LABELS } from '../constants/enrollmentSitutation'
 
-const MetricCard = ({ label, value, icon: Icon }) => (
-  <div className="card p-4 flex flex-col justify-center">
-    <div className="flex items-center gap-2 mb-2 text-text-muted">
-      <Icon size={16} />
-      <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
-    </div>
-    <span className="text-2xl font-bold text-primary">{value}</span>
-  </div>
-)
+const TABS = [
+  { value: 'aulas', label: 'Aulas' },
+  { value: 'alunos', label: 'Alunos' },
+  { value: 'material', label: 'Material' },
+  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'config', label: 'Config.' },
+]
 
 const AdminCourse = () => {
   const { courseId } = useParams()
   const navigate = useNavigate()
-  const { user, role } = useAuth()
-
-  const [situationFilter, setSituationFilter] = useState('all')
 
   const [course, setCourse] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -60,70 +69,13 @@ const AdminCourse = () => {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null)
   const [lessonModal, setLessonModal] = useState({ open: false, lesson: null })
   const [lessonSaveLoading, setLessonSaveLoading] = useState(false)
-  const [lessonForm, setLessonForm] = useState({ title: '', date: '', modality: 'presencial', startTime: '', endTime: '', location: '', meetingUrl: '', description: '' })
   const [lessonsView, setLessonsView] = useState(() => localStorage.getItem('adminCourseLessonsView') || 'list')
 
-  // Conteúdo da aula (Markdown)
   const [contentModal, setContentModal] = useState({ open: false, lesson: null })
-  const [contentDraft, setContentDraft] = useState('')
   const [contentSaving, setContentSaving] = useState(false)
 
-  // Exercícios da aula (múltipla escolha)
   const [exerciseModal, setExerciseModal] = useState({ open: false, lesson: null })
-  const [exerciseDraft, setExerciseDraft] = useState([])
   const [exerciseSaving, setExerciseSaving] = useState(false)
-
-  const toggleLessonsView = (mode) => {
-    setLessonsView(mode)
-    localStorage.setItem('adminCourseLessonsView', mode)
-  }
-
-  const openContent = (lesson) => {
-    setContentDraft(lesson.content || '')
-    setContentModal({ open: true, lesson })
-  }
-
-  const handleSaveContent = async () => {
-    setContentSaving(true)
-    try {
-      const { data } = await updateLessonAPI(courseId, contentModal.lesson._id, { content: contentDraft })
-      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
-      setContentModal({ open: false, lesson: null })
-      showToast('Conteúdo salvo')
-    } catch { showToast('Erro ao salvar conteúdo') }
-    finally { setContentSaving(false) }
-  }
-
-  const openExercises = (lesson) => {
-    setExerciseDraft((lesson.exercises || []).map(q => ({
-      _key: crypto.randomUUID(),
-      question: q.question || '',
-      options: q.options?.length ? [...q.options] : ['', ''],
-      correctIndex: q.correctIndex ?? 0,
-    })))
-    setExerciseModal({ open: true, lesson })
-  }
-
-  const handleSaveExercises = async () => {
-    for (const q of exerciseDraft) {
-      if (!q.question.trim()) { showToast('Toda questão precisa de um enunciado'); return }
-      if (q.options.length < 2) { showToast('Cada questão precisa de ao menos 2 alternativas'); return }
-      if (q.options.some(o => !o.trim())) { showToast('Preencha todas as alternativas'); return }
-    }
-    const exercises = exerciseDraft.map(q => ({
-      question: q.question.trim(),
-      options: q.options.map(o => o.trim()),
-      correctIndex: q.correctIndex,
-    }))
-    setExerciseSaving(true)
-    try {
-      const { data } = await updateLessonAPI(courseId, exerciseModal.lesson._id, { exercises })
-      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
-      setExerciseModal({ open: false, lesson: null })
-      showToast('Exercícios salvos')
-    } catch { showToast('Erro ao salvar exercícios') }
-    finally { setExerciseSaving(false) }
-  }
 
   // Alunos e Notas
   const [students, setStudents] = useState([])
@@ -131,36 +83,19 @@ const AdminCourse = () => {
   const [studentModal, setStudentModal] = useState({ open: false, student: null })
   const [gradeModal, setGradeModal] = useState({ open: false, student: null })
   const [gradeSaveLoading, setGradeSaveLoading] = useState(false)
-  const [gradeForm, setGradeForm] = useState({ title: '', type: 'prova', grade: '', feedback: '' })
+  const [situationLoading, setSituationLoading] = useState(null) // _id do enrollment em atualização
 
   // Material
   const [materials, setMaterials] = useState([])
   const [materialModal, setMaterialModal] = useState({ open: false, material: null })
   const [materialSaveLoading, setMaterialSaveLoading] = useState(false)
-  const [materialForm, setMaterialForm] = useState({ title: '', type: 'text', content: '', description: '' })
 
-  // Config (Acesso ao curso + status)
+  // Config
   const [configUsers, setConfigUsers] = useState([])
   const [configUsersLoading, setConfigUsersLoading] = useState(false)
 
-  // Toast
-  const [toast, setToast] = useState({ show: false, message: '' })
-  const showToast = useCallback((message) => setToast({ show: true, message }), [])
-
-  // Modal de confirmação genérico (substituindo window.confirm)
-  const [confirmModal, setConfirmModal] = useState({ open: false, message: '', onConfirm: null })
-
-  const tabs = [
-    { value: 'aulas', label: 'Aulas' },
-    { value: 'alunos', label: 'Alunos' },
-    { value: 'material', label: 'Material' },
-    { value: 'dashboard', label: 'Dashboard' },
-    { value: 'config', label: 'Config.' },
-  ]
-
-  const filteredStudents = situationFilter === 'all'
-    ? students
-    : students.filter(s => (s.situation || SITUATIONS.PENDENTE) === situationFilter)
+  const { toast, showToast, closeToast } = useToast()
+  const { confirmModal, confirm, close: closeConfirm, handleConfirm } = useConfirmModal()
 
   const loadData = async () => {
     setLoading(true)
@@ -171,7 +106,7 @@ const AdminCourse = () => {
         getLessonsAPI(courseId),
         getMaterialsAPI(courseId),
         getCourseStudentsAPI(courseId),
-        getCourseGradesAPI(courseId)
+        getCourseGradesAPI(courseId),
       ])
       setCourse(cData.data)
       setLessons(lData.data)
@@ -179,7 +114,6 @@ const AdminCourse = () => {
       setStudents(sData.data)
       setGrades(gData.data)
     } catch (err) {
-      console.error(err)
       if (err.response?.status === 403) {
         setLoadError('Você não tem acesso a este curso.')
       } else {
@@ -192,6 +126,7 @@ const AdminCourse = () => {
 
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
 
   // --- Handlers do Curso ---
@@ -206,8 +141,11 @@ const AdminCourse = () => {
       setLessons(lData.data)
       setSelectedCalendarDay(null)
       setEditModal(false)
-    } catch (err) { showToast('Erro ao salvar curso') }
-    finally { setSaveLoading(false) }
+    } catch {
+      showToast('Erro ao salvar curso')
+    } finally {
+      setSaveLoading(false)
+    }
   }
 
   const handleDeleteCourse = async () => {
@@ -215,125 +153,111 @@ const AdminCourse = () => {
     try {
       await deleteCourseAPI(course._id)
       navigate('/admin/cursos')
-    } catch (err) { showToast('Erro ao deletar curso') }
-    finally { setDeleteLoading(false) }
+    } catch {
+      showToast('Erro ao deletar curso')
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   // --- Handlers de Aulas ---
-  useEffect(() => {
-    if (lessonModal.open && lessonModal.lesson) {
-      setLessonForm({
-        title: lessonModal.lesson.title || '',
-        date: lessonModal.lesson.date ? parseUTCDate(lessonModal.lesson.date).toISOString().slice(0, 10) : '',
-        modality: lessonModal.lesson.modality || 'presencial',
-        startTime: lessonModal.lesson.startTime || '',
-        endTime: lessonModal.lesson.endTime || '',
-        location: lessonModal.lesson.location || '',
-        meetingUrl: lessonModal.lesson.meetingUrl || '',
-        description: lessonModal.lesson.description || ''
-      })
-    } else {
-      setLessonForm({ title: '', date: '', modality: 'presencial', startTime: '', endTime: '', location: '', meetingUrl: '', description: '' })
-    }
-  }, [lessonModal.open])
-
-  const handleSaveLesson = async () => {
-    if (!lessonForm.title || !lessonForm.date || !lessonForm.startTime || !lessonForm.endTime) return
-    if (lessonForm.startTime >= lessonForm.endTime) {
+  const handleSaveLesson = async (form) => {
+    if (form.startTime >= form.endTime) {
       showToast('O horário de início deve ser anterior ao de término')
       return
     }
     setLessonSaveLoading(true)
     try {
-      const { data } = await updateLessonAPI(courseId, lessonModal.lesson._id, lessonForm)
+      const { data } = await updateLessonAPI(courseId, lessonModal.lesson._id, form)
       setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
       setLessonModal({ open: false, lesson: null })
-    } catch (err) { showToast('Erro ao salvar aula') }
-    finally { setLessonSaveLoading(false) }
+    } catch {
+      showToast('Erro ao salvar aula')
+    } finally {
+      setLessonSaveLoading(false)
+    }
   }
 
   const handleDeleteLesson = (id) => {
-    setConfirmModal({
-      open: true,
-      message: 'Deseja excluir esta aula?',
-      onConfirm: async () => {
-        try {
-          await deleteLessonAPI(courseId, id)
-          setLessons(prev => prev.filter(l => l._id !== id))
-        } catch { showToast('Erro ao excluir aula') }
-      },
+    confirm('Deseja excluir esta aula?', async () => {
+      try {
+        await deleteLessonAPI(courseId, id)
+        setLessons(prev => prev.filter(l => l._id !== id))
+      } catch {
+        showToast('Erro ao excluir aula')
+      }
     })
+  }
+
+  const handleSaveContent = async (content) => {
+    setContentSaving(true)
+    try {
+      const { data } = await updateLessonAPI(courseId, contentModal.lesson._id, { content })
+      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
+      setContentModal({ open: false, lesson: null })
+      showToast('Conteúdo salvo')
+    } catch {
+      showToast('Erro ao salvar conteúdo')
+    } finally {
+      setContentSaving(false)
+    }
+  }
+
+  const handleSaveExercises = async (draft) => {
+    for (const q of draft) {
+      if (!q.question.trim()) { showToast('Toda questão precisa de um enunciado'); return }
+      if (q.options.length < 2) { showToast('Cada questão precisa de ao menos 2 alternativas'); return }
+      if (q.options.some(o => !o.trim())) { showToast('Preencha todas as alternativas'); return }
+    }
+    const exercises = draft.map(q => ({
+      question: q.question.trim(),
+      options: q.options.map(o => o.trim()),
+      correctIndex: q.correctIndex,
+    }))
+    setExerciseSaving(true)
+    try {
+      const { data } = await updateLessonAPI(courseId, exerciseModal.lesson._id, { exercises })
+      setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
+      setExerciseModal({ open: false, lesson: null })
+      showToast('Exercícios salvos')
+    } catch {
+      showToast('Erro ao salvar exercícios')
+    } finally {
+      setExerciseSaving(false)
+    }
   }
 
   const nextMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))
   const prevMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))
 
-  // --- Handlers de Material ---
-  useEffect(() => {
-    if (materialModal.open && materialModal.material) {
-      setMaterialForm({
-        title: materialModal.material.title || '',
-        type: materialModal.material.type || 'text',
-        content: materialModal.material.content || '',
-        description: materialModal.material.description || '',
-        file: null
-      })
-    } else {
-      setMaterialForm({ title: '', type: 'text', content: '', description: '' })
-    }
-  }, [materialModal.open])
-
-  const handleFileChange = (e) => {
-    setMaterialForm(f => ({
-      ...f,
-      file: e.target.files[0]
-    }))
+  const toggleLessonsView = (mode) => {
+    setLessonsView(mode)
+    localStorage.setItem('adminCourseLessonsView', mode)
   }
 
-  const handleSaveMaterial = async () => {
-    if (!materialForm.title) return
-
+  // --- Handlers de Material ---
+  const handleSaveMaterial = async (form) => {
     setMaterialSaveLoading(true)
-
     try {
-      let payload = { ...materialForm }
+      let payload = { ...form }
 
-      if (materialForm.type === 'file' && materialForm.file) {
+      if (form.type === 'file' && form.file) {
         const formData = new FormData()
-
-        formData.append('file', materialForm.file)
-
+        formData.append('file', form.file)
         const { data } = await uploadFileAPI(formData)
-
         payload.content = data.url
       }
 
       if (materialModal.material) {
-        const { data } = await updateMaterialAPI(
-          courseId,
-          materialModal.material._id,
-          payload
-        )
-
-        setMaterials(prev =>
-          prev.map(m =>
-            m._id === data.data._id ? data.data : m
-          )
-        )
+        const { data } = await updateMaterialAPI(courseId, materialModal.material._id, payload)
+        setMaterials(prev => prev.map(m => m._id === data.data._id ? data.data : m))
       } else {
         delete payload.file
-        const { data } = await createMaterialAPI(
-          courseId,
-          payload
-        )
-
+        const { data } = await createMaterialAPI(courseId, payload)
         setMaterials(prev => [...prev, data.data])
       }
 
-      setMaterialModal({
-        open: false,
-        material: null
-      })
+      setMaterialModal({ open: false, material: null })
     } catch (err) {
       showToast('Erro ao salvar material')
       console.error(JSON.stringify(err.response?.data, null, 2))
@@ -343,60 +267,68 @@ const AdminCourse = () => {
   }
 
   const handleDeleteMaterial = (id) => {
-    setConfirmModal({
-      open: true,
-      message: 'Deseja excluir este material?',
-      onConfirm: async () => {
-        try {
-          await deleteMaterialAPI(courseId, id)
-          setMaterials(prev => prev.filter(m => m._id !== id))
-        } catch { showToast('Erro ao excluir material') }
-      },
+    confirm('Deseja excluir este material?', async () => {
+      try {
+        await deleteMaterialAPI(courseId, id)
+        setMaterials(prev => prev.filter(m => m._id !== id))
+      } catch {
+        showToast('Erro ao excluir material')
+      }
     })
   }
 
   // --- Handlers de Notas ---
-  useEffect(() => {
-    if (!gradeModal.open) {
-      setGradeForm({ title: '', type: 'prova', grade: '', feedback: '' })
-    }
-  }, [gradeModal.open])
-
-  const handleSaveGrade = async () => {
-    if (!gradeForm.title || !gradeForm.grade) return
+  const handleSaveGrade = async (form) => {
     setGradeSaveLoading(true)
     try {
-      const payload = { ...gradeForm, studentId: gradeModal.student._id }
+      const payload = { ...form, studentId: gradeModal.student._id }
       const { data } = await createGradeAPI(courseId, payload)
       setGrades(prev => [data.data, ...prev])
       setGradeModal({ open: false, student: null })
-    } catch (err) { showToast('Erro ao lançar nota') }
-    finally { setGradeSaveLoading(false) }
+    } catch {
+      showToast('Erro ao lançar nota')
+    } finally {
+      setGradeSaveLoading(false)
+    }
   }
 
   const handleDeleteGrade = (id) => {
-    setConfirmModal({
-      open: true,
-      message: 'Deseja excluir esta nota?',
-      onConfirm: async () => {
-        try {
-          await deleteGradeAPI(courseId, id)
-          setGrades(prev => prev.filter(g => g._id !== id))
-        } catch { showToast('Erro ao excluir nota') }
-      },
+    confirm('Deseja excluir esta nota?', async () => {
+      try {
+        await deleteGradeAPI(courseId, id)
+        setGrades(prev => prev.filter(g => g._id !== id))
+      } catch {
+        showToast('Erro ao excluir nota')
+      }
+    })
+  }
+
+  // --- Handlers de Situação ---
+  const handleChangeSituation = (enrollmentId, newSituation) => {
+    confirm(`Deseja alterar a situação deste aluno para "${SITUATION_LABELS[newSituation]}"?`, async () => {
+      setSituationLoading(enrollmentId)
+      try {
+        const { data } = await updateSituationAPI(enrollmentId, { situation: newSituation })
+        setStudents(prev =>
+          prev.map(s => s._id === enrollmentId ? { ...s, situation: data.data.situation } : s)
+        )
+        showToast('Situação atualizada')
+      } catch (err) {
+        showToast(err.response?.data?.message || 'Erro ao atualizar situação')
+      } finally {
+        setSituationLoading(null)
+      }
     })
   }
 
   // --- Handlers Config ---
   useEffect(() => {
-    if (activeTab !== 'config') return
+    if (activeTab !== 'config' || !course) return
 
     setConfigUsersLoading(true)
-
     getUsersBaseAPI()
       .then(({ data }) => {
         const users = [...data.data.users]
-
         users.sort((a, b) => {
           const aIsCreator = course.professor?._id === a._id || course.professor === a._id
           const bIsCreator = course.professor?._id === b._id || course.professor === b._id
@@ -404,70 +336,30 @@ const AdminCourse = () => {
           if (bIsCreator) return 1
           return 0
         })
-
         setConfigUsers(users)
       })
-      .catch((err) => {
-        console.error('ERRO CONFIG USERS:', err)
-        showToast('Erro ao carregar usuários')
-      })
+      .catch(() => showToast('Erro ao carregar usuários'))
       .finally(() => setConfigUsersLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, course?.professor])
 
   const handleGrantAccess = async (userId) => {
     try {
       const { data } = await addAllowedProfessorAPI(courseId, userId)
       setCourse(prev => ({ ...prev, allowedProfessors: data.data }))
-    } catch (err) { showToast(err.response?.data?.message || 'Erro ao conceder acesso') }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao conceder acesso')
+    }
   }
 
   const handleRevokeAccess = (profId) => {
-    setConfirmModal({
-      open: true,
-      message: 'Remover acesso deste professor?',
-      onConfirm: async () => {
-        try {
-          await removeAllowedProfessorAPI(courseId, profId)
-          setCourse(prev => ({ ...prev, allowedProfessors: prev.allowedProfessors.filter(p => p._id !== profId) }))
-        } catch { showToast('Erro ao remover acesso') }
-      },
-    })
-  }
-
-  const [situationLoading, setSituationLoading] = useState(null) // guarda o _id do enrollment em atualização
-
-  const handleChangeSituation = (enrollmentId, newSituation) => {
-    setConfirmModal({
-      open: true,
-      message: `Deseja alterar a situação deste aluno para "${SITUATION_LABELS[newSituation]}"?`,
-      onConfirm: async () => {
-        setSituationLoading(enrollmentId)
-
-        console.log('[handleChangeSituation] iniciando', { enrollmentId, newSituation })
-
-        try {
-          const { data } = await updateSituationAPI(enrollmentId, { situation: newSituation })
-
-          console.log('[handleChangeSituation] sucesso', data)
-
-          setStudents(prev =>
-            prev.map(s => s._id === enrollmentId ? { ...s, situation: data.data.situation } : s)
-          )
-          showToast('Situação atualizada')
-        } catch (err) {
-          console.error('[handleChangeSituation] ERRO COMPLETO:', err)
-          console.error('[handleChangeSituation] err.message:', err.message)
-          console.error('[handleChangeSituation] err.response?.status:', err.response?.status)
-          console.error('[handleChangeSituation] err.response?.data:', err.response?.data)
-          console.error('[handleChangeSituation] err.config?.url:', err.config?.url)
-          console.error('[handleChangeSituation] err.config?.method:', err.config?.method)
-          console.error('[handleChangeSituation] err.config?.data:', err.config?.data)
-
-          showToast(err.response?.data?.message || 'Erro ao atualizar situação')
-        } finally {
-          setSituationLoading(null)
-        }
-      },
+    confirm('Remover acesso deste professor?', async () => {
+      try {
+        await removeAllowedProfessorAPI(courseId, profId)
+        setCourse(prev => ({ ...prev, allowedProfessors: prev.allowedProfessors.filter(p => p._id !== profId) }))
+      } catch {
+        showToast('Erro ao remover acesso')
+      }
     })
   }
 
@@ -515,569 +407,68 @@ const AdminCourse = () => {
         {/* Abas + conteúdo */}
         <div>
           <div className="border-b border-border bg-white px-4 sticky top-0 z-10 rounded-t-card">
-            <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+            <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
           </div>
 
           <div className="bg-white rounded-b-card border border-border border-t-0">
 
-            {/* ABA AULAS */}
             {activeTab === 'aulas' && (
-              <div className="p-4 md:p-6 space-y-6">
-
-                {/* As aulas são geradas automaticamente pelo cronograma do curso
-                    (tipo de agenda). Aqui só é possível ajustar/excluir as existentes. */}
-
-                {/* Período do curso */}
-                <div className="grid grid-cols-2 gap-4 p-3 bg-surface-page rounded-card">
-                  <div>
-                    <p className="text-xs text-text-muted mb-0.5">Início do curso</p>
-                    <p className="text-sm font-semibold text-text-primary">{formatDate(course.startDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-text-muted mb-0.5">Término do curso</p>
-                    <p className="text-sm font-semibold text-text-primary">{formatDate(course.endDate)}</p>
-                  </div>
-                </div>
-
-                <div className="card p-0 overflow-hidden">
-                  {/* Header do mês */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface-page">
-                    <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
-                      <ChevronLeft size={16} />
-                    </button>
-                    <span className="font-semibold text-text-primary capitalize text-sm">
-                      {calendarDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors">
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-
-                  {/* Grid */}
-                  <div className="p-3">
-                    <div className="grid grid-cols-7 text-center mb-1">
-                      {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
-                        <div key={d} className="text-[10px] font-bold text-text-muted uppercase py-1">{d}</div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7 gap-y-1">
-                      {generateCalendarDays(calendarDate, lessons).map(({ day, date, lessonCount }, idx) => {
-                        const today = day && date?.toDateString() === new Date().toDateString()
-                        const isSelected = day && selectedCalendarDay?.toDateString() === date?.toDateString()
-                        const hasLessons = lessonCount > 0
-                        // Comparação UTC-safe: parseUTCDate garante que course.startDate/endDate
-                        // sejam interpretadas como datas locais, igual ao que já é feito nas listas.
-                        const isStart = day && course.startDate && date?.toDateString() === parseUTCDate(course.startDate).toDateString()
-                        const isEnd = day && course.endDate && date?.toDateString() === parseUTCDate(course.endDate).toDateString()
-                        const isMilestone = isStart || isEnd
-
-                        return (
-                          <div key={idx}
-                            onClick={() => day && (hasLessons || isMilestone) && setSelectedCalendarDay(isSelected ? null : date)}
-                            className={`
-                              flex flex-col items-center justify-start py-1.5 rounded-xl text-sm transition-all select-none
-                              ${!day ? '' : (hasLessons || isMilestone) ? 'cursor-pointer' : 'cursor-default'}
-                              ${isSelected
-                                ? 'bg-primary'
-                                : isStart && isEnd
-                                  ? 'bg-success/15 ring-2 ring-inset ring-success/40'
-                                  : isStart
-                                    ? 'bg-success/15 ring-2 ring-inset ring-success/50'
-                                    : isEnd
-                                      ? 'bg-warning/15 ring-2 ring-inset ring-warning/50'
-                                      : today
-                                        ? 'bg-surface-blue'
-                                        : hasLessons
-                                          ? 'hover:bg-surface-hover'
-                                          : ''}
-                            `}
-                          >
-                            <span className={`font-semibold leading-none text-sm ${isSelected ? 'text-white'
-                              : isStart && isEnd ? 'text-success'
-                                : isStart ? 'text-success'
-                                  : isEnd ? 'text-warning'
-                                    : today ? 'text-primary'
-                                      : 'text-text-primary'
-                              } ${!day ? 'invisible' : ''}`}>
-                              {day || '0'}
-                            </span>
-                            {(hasLessons || isMilestone) && (
-                              <div className="flex gap-0.5 mt-1 items-center justify-around">
-                                {hasLessons && Array.from({ length: Math.min(lessonCount, 3) }).map((_, i) => (
-                                  <span key={i} className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/70' : 'bg-primary'}`} />
-                                ))}
-                                {isStart && !isSelected && (
-                                  <span className="w-1 h-1 rounded-full bg-success" title="Início do curso" />
-                                )}
-                                {isEnd && !isStart && !isSelected && (
-                                  <span className="w-1 h-1 rounded-full bg-warning" title="Término do curso" />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Legenda */}
-                    <div className="flex flex-wrap gap-10 mt-3 pt-3 border-t border-border justify-center">
-                      <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                        <span className="w-2 h-2 rounded-full bg-primary inline-block" /> Aulas
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                        <span className="w-2 h-2 rounded-full bg-success inline-block" /> Início
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[10px] text-text-muted">
-                        <span className="w-2 h-2 rounded-full bg-warning inline-block" /> Término
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Painel do dia selecionado */}
-                  {selectedCalendarDay && (() => {
-                    const dayLessons = lessons.filter(l =>
-                      parseUTCDate(l.date).toDateString() === selectedCalendarDay.toDateString()
-                    )
-                    const dayIsStart = course.startDate && selectedCalendarDay.toDateString() === parseUTCDate(course.startDate).toDateString()
-                    const dayIsEnd = course.endDate && selectedCalendarDay.toDateString() === parseUTCDate(course.endDate).toDateString()
-                    return (
-                      <div className="border-t border-border px-4 pb-4 pt-3 space-y-2">
-                        <p className="text-xs font-bold text-text-muted uppercase">
-                          {selectedCalendarDay.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                        </p>
-
-                        {/* Marcadores de início / término */}
-                        {dayIsStart && (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/20">
-                            <span className="w-2 h-2 rounded-full bg-success flex-shrink-0" />
-                            <p className="text-xs font-semibold text-success">Início do curso</p>
-                          </div>
-                        )}
-                        {dayIsEnd && (
-                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20">
-                            <span className="w-2 h-2 rounded-full bg-warning flex-shrink-0" />
-                            <p className="text-xs font-semibold text-warning">Término do curso</p>
-                          </div>
-                        )}
-
-                        {dayLessons.map(lesson => (
-                          <div key={lesson._id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-hover border border-border">
-                            <div className="flex-shrink-0 w-10 text-center">
-                              <p className="text-[10px] font-bold text-primary uppercase">{lesson.startTime}</p>
-                              <div className="w-px h-3 bg-primary/30 mx-auto my-0.5" />
-                              <p className="text-[10px] text-text-muted">{lesson.endTime}</p>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-text-primary truncate">{lesson.title}</p>
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'} className="text-[10px]">
-                                  {lesson.modality}
-                                </Badge>
-                                {lesson.location && <span className="text-[10px] text-text-muted">{lesson.location}</span>}
-                                {lesson.meetingUrl && (
-                                  <a href={lesson.meetingUrl} target="_blank" rel="noreferrer"
-                                    className="text-[10px] text-primary hover:underline" onClick={e => e.stopPropagation()}>
-                                    Link da aula
-                                  </a>
-                                )}
-                              </div>
-                              {lesson.description && <p className="text-[11px] text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
-                            </div>
-                            <button onClick={() => setLessonModal({ open: true, lesson })}
-                              className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-white transition-colors flex-shrink-0">
-                              <Edit2 size={13} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })()}
-                </div>
-
-                {/* Lista de todas as aulas */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-text-primary">Todas as aulas</h3>
-                    {lessons.length > 0 && <ViewToggle value={lessonsView} onChange={toggleLessonsView} />}
-                  </div>
-                  {lessons.length === 0 ? (
-                    <div className="text-center py-10 text-text-muted text-sm">Nenhuma aula cadastrada ainda.</div>
-                  ) : lessonsView === 'list' ? (
-                    /* ── MODO LISTA ── */
-                    lessons.map(lesson => (
-                      <div key={lesson._id} className="card p-4 flex gap-4 items-start">
-                        <div className="text-center w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-primary">
-                            {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-text-primary text-sm">{lesson.title}</h4>
-                          <div className="flex flex-wrap gap-3 mt-1">
-                            <span className="text-xs text-text-muted">{lesson.startTime} – {lesson.endTime}</span>
-                            <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'}>
-                              {lesson.modality}
-                            </Badge>
-                            {lesson.location && <span className="text-xs text-text-muted">{lesson.location}</span>}
-                          </div>
-                          {lesson.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{lesson.description}</p>}
-                        </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button onClick={() => openContent(lesson)} title="Conteúdo da aula"
-                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                            <FileText size={14} />
-                          </button>
-                          <button onClick={() => openExercises(lesson)} title="Exercícios da aula"
-                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                            <FileQuestion size={14} />
-                          </button>
-                          <button onClick={() => setLessonModal({ open: true, lesson })} title="Editar aula"
-                            className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => handleDeleteLesson(lesson._id)} title="Excluir aula"
-                            className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    /* ── MODO GRID (CARDS) ── */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {lessons.map(lesson => (
-                        <div key={lesson._id} className="card p-4 flex flex-col">
-                          <div className="flex items-start gap-3">
-                            <div className="text-center w-12 h-12 rounded-card bg-surface-hover flex flex-col items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-bold text-primary">
-                                {parseUTCDate(lesson.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-text-primary text-sm leading-tight">{lesson.title}</h4>
-                              <span className="text-xs text-text-muted">{lesson.startTime} – {lesson.endTime}</span>
-                            </div>
-                            <div className="flex gap-1 flex-shrink-0">
-                              <button onClick={() => openContent(lesson)} title="Conteúdo da aula"
-                                className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                                <FileText size={14} />
-                              </button>
-                              <button onClick={() => openExercises(lesson)} title="Exercícios da aula"
-                                className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                                <FileQuestion size={14} />
-                              </button>
-                              <button onClick={() => setLessonModal({ open: true, lesson })} title="Editar aula"
-                                className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                                <Edit2 size={14} />
-                              </button>
-                              <button onClick={() => handleDeleteLesson(lesson._id)} title="Excluir aula"
-                                className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-3">
-                            <Badge variant={lesson.modality === 'online' ? 'blue' : 'gray'}>
-                              {lesson.modality}
-                            </Badge>
-                            {lesson.location && <span className="text-xs text-text-muted">{lesson.location}</span>}
-                          </div>
-                          {lesson.description && <p className="text-xs text-text-secondary mt-2 line-clamp-2">{lesson.description}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <LessonsTab
+                course={course}
+                lessons={lessons}
+                calendarDate={calendarDate}
+                selectedCalendarDay={selectedCalendarDay}
+                lessonsView={lessonsView}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+                onSelectDay={setSelectedCalendarDay}
+                onToggleView={toggleLessonsView}
+                onOpenContent={(lesson) => setContentModal({ open: true, lesson })}
+                onOpenExercises={(lesson) => setExerciseModal({ open: true, lesson })}
+                onEditLesson={(lesson) => setLessonModal({ open: true, lesson })}
+                onDeleteLesson={handleDeleteLesson}
+              />
             )}
 
-            {/* ABA ALUNOS */}
             {activeTab === 'alunos' && (
-              <div className="p-4 md:p-6 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-semibold text-text-primary">
-                    Alunos inscritos — {filteredStudents.length} de {students.length} aluno{students.length !== 1 ? 's' : ''}
-                  </h3>
-
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-text-muted flex-shrink-0">Filtrar por situação:</span>
-                    <select
-                      value={situationFilter}
-                      onChange={(e) => setSituationFilter(e.target.value)}
-                      className="input-field text-xs py-1.5"
-                    >
-                      <option value="all">Todas</option>
-                      {SITUATION_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {course.status !== 'closed' && (
-                  <p className="text-xs text-text-muted bg-surface-page px-3 py-2 rounded-lg">
-                    A situação dos alunos só pode ser alterada quando o curso estiver <strong>Encerrado</strong>.
-                  </p>
-                )}
-
-                {filteredStudents.length === 0 ? (
-                  <div className="text-center py-12 text-text-muted text-sm">
-                    {students.length === 0
-                      ? 'Nenhum aluno inscrito ainda.'
-                      : 'Nenhum aluno encontrado com essa situação.'}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredStudents.map(({ _id, user: student, status, averageGrade, situation }) => (
-                      <div key={_id} className="card p-3 space-y-3 transition-all duration-200 hover:shadow-[0_0_15px_rgba(59,130,246,0.35)]">
-                        {/* Linha principal: avatar + nome + status de inscrição */}
-                        <button
-                          onClick={() => setStudentModal({ open: true, student })}
-                          className="w-full flex items-center gap-3 text-left"
-                        >
-                          <Avatar name={student.name} size="md" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-text-primary text-sm truncate">{student.name}</p>
-                            <p className="text-xs text-text-muted truncate">{student.email}</p>
-                          </div>
-                          <Badge variant={status === 'ativo' ? 'success' : 'blue'}>
-                            {status === 'ativo' ? 'Ativo' : 'Inscrito'}
-                          </Badge>
-                          <ChevronRightIcon size={16} className="text-text-muted flex-shrink-0" />
-                        </button>
-
-                        {/* Linha de desempenho: média, situação e ações */}
-                        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-border">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-text-muted">Média:</span>
-                            <span className="text-sm font-bold text-primary">
-                              {averageGrade != null ? averageGrade.toFixed(1) : '—'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
-                            <span className="text-xs text-text-muted flex-shrink-0">Situação:</span>
-                            <select
-                              value={situation || SITUATIONS.PENDENTE}
-                              disabled={course.status !== 'closed' || situationLoading === _id}
-                              onChange={(e) => handleChangeSituation(_id, e.target.value)}
-                              className="input-field text-xs py-1.5 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {SITUATION_OPTIONS.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="flex gap-1 flex-shrink-0 ml-auto">
-                            <Button
-                              variant="secondary"
-                              className="text-xs py-1.5 px-3"
-                              onClick={() => setStudentModal({ open: true, student })}
-                            >
-                              Ver notas
-                            </Button>
-                            <Button
-                              variant="primary"
-                              className="text-xs py-1.5 px-3 gap-1"
-                              onClick={() => setGradeModal({ open: true, student })}
-                            >
-                              <Plus size={13} /> Lançar nota
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <StudentsTab
+                students={students}
+                course={course}
+                situationLoading={situationLoading}
+                onOpenStudent={(student) => setStudentModal({ open: true, student })}
+                onOpenGrade={(student) => setGradeModal({ open: true, student })}
+                onChangeSituation={handleChangeSituation}
+              />
             )}
 
-            {/* ABA MATERIAL */}
             {activeTab === 'material' && (
-              <div className="p-4 md:p-6 space-y-4">
-                <div className="flex justify-end">
-                  <Button variant="primary" className="gap-2 text-sm" onClick={() => setMaterialModal({ open: true, material: null })}>
-                    <Plus size={15} /> Novo material
-                  </Button>
-                </div>
-
-                {materials.length === 0 ? (
-                  <div className="text-center py-12 text-text-muted text-sm">Nenhum material cadastrado.</div>
-                ) : (
-                  <div className="space-y-3">
-                    {materials.map(mat => {
-                      const typeIcon = {
-                        text: <BookOpen size={16} />,
-                        link: <Link size={16} />,
-                        file: <FileArchive size={16} />
-                      }[mat.type] || <BookOpen size={16} />
-
-                      return (
-                        <div key={mat._id} className="card p-4 flex gap-4 items-start">
-                          <div className="w-10 h-10 rounded-card bg-surface-hover flex items-center justify-center flex-shrink-0 text-primary">
-                            {typeIcon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-text-primary text-sm">{mat.title}</h4>
-                            <Badge variant="gray" className="text-xs mt-1">{mat.type}</Badge>
-                            {mat.description && <p className="text-xs text-text-secondary mt-1 line-clamp-2">{mat.description}</p>}
-                            {mat.content && (
-                              mat.type === 'text' ? (
-                                <p className="text-xs italic text-text-muted mt-2 line-clamp-3">
-                                  "{mat.content}"
-                                </p>
-                              ) : (
-                                <a
-                                  href={mat.content}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-primary hover:underline mt-1 block truncate"
-                                >
-                                  {mat.content}
-                                </a>
-                              )
-                            )}
-                          </div>
-                          <div className="flex gap-1 flex-shrink-0">
-                            <button onClick={() => setMaterialModal({ open: true, material: mat })}
-                              className="p-1.5 rounded-lg text-text-muted hover:text-primary hover:bg-surface-hover transition-colors">
-                              <Edit2 size={14} />
-                            </button>
-                            <button onClick={() => handleDeleteMaterial(mat._id)}
-                              className="p-1.5 rounded-lg text-text-muted hover:text-error hover:bg-error-light transition-colors">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+              <MaterialsTab
+                materials={materials}
+                onCreate={() => setMaterialModal({ open: true, material: null })}
+                onEdit={(material) => setMaterialModal({ open: true, material })}
+                onDelete={handleDeleteMaterial}
+              />
             )}
 
-            {/* ABA DASHBOARD */}
             {activeTab === 'dashboard' && (
-              <div className="p-4 md:p-6 space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <MetricCard label="Alunos inscritos" value={students.length} icon={Users} />
-                  <MetricCard label="Aulas cadastradas" value={lessons.length} icon={BookOpen} />
-                  <MetricCard label="Materiais" value={materials.length} icon={FileText} />
-                  <MetricCard label="Ocupação" value={`${course.maxSlots > 0 ? Math.round((course.enrolledCount / course.maxSlots) * 100) : 0}%`} icon={BarChart2} />
-                </div>
-                <div className="card p-4">
-                  <h3 className="font-semibold text-text-primary mb-3 text-sm">Informações do curso</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><p className="text-text-muted text-xs">Início</p><p className="font-medium">{formatDate(course.startDate)}</p></div>
-                    <div><p className="text-text-muted text-xs">Término</p><p className="font-medium">{formatDate(course.endDate)}</p></div>
-                    <div><p className="text-text-muted text-xs">Modalidade</p><p className="font-medium">{formatModality(course.modality)}</p></div>
-                    <div><p className="text-text-muted text-xs">Local</p><p className="font-medium">{course.location || '—'}</p></div>
-                  </div>
-                </div>
-              </div>
+              <DashboardTab course={course} students={students} lessons={lessons} materials={materials} />
             )}
 
-            {/* ABA CONFIG */}
             {activeTab === 'config' && (
-              <div className="p-4 md:p-6 space-y-6">
-
-                {/* Status do Curso — somente leitura (alterado automaticamente pelas datas) */}
-                <div className="pb-6 border-b border-border">
-                  <h3 className="font-semibold text-text-primary mb-1">Status do curso</h3>
-                  <p className="text-xs text-text-muted mb-4">
-                    O status é definido automaticamente conforme as datas do curso.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { key: 'draft', label: 'Rascunho', desc: 'Oculto para alunos', dot: 'bg-text-muted' },
-                      { key: 'published', label: 'Publicado', desc: 'Visível, inscrições abertas', dot: 'bg-success' },
-                      { key: 'em_andamento', label: 'Em Andamento', desc: 'Curso em execução', dot: 'bg-blue-500' },
-                      { key: 'closed', label: 'Encerrado', desc: 'Curso finalizado', dot: 'bg-warning' },
-                    ].map(opt => {
-                      const isCurrent = course.status === opt.key
-                      return (
-                        <div
-                          key={opt.key}
-                          className={`p-3 rounded-xl border text-left ${isCurrent
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border bg-white opacity-50'
-                            }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${opt.dot}`} />
-                            <span className={`text-sm font-semibold ${isCurrent ? 'text-primary' : 'text-text-primary'}`}>
-                              {opt.label}
-                            </span>
-                            {isCurrent && <CheckCircle size={13} className="text-primary ml-auto" />}
-                          </div>
-                          <p className="text-xs text-text-muted pl-4">{opt.desc}</p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-text-primary mb-1">Acesso ao curso</h3>
-                  <p className="text-xs text-text-muted mb-4">
-                    Professores com acesso podem gerenciar aulas, materiais e notas. Admins sempre têm acesso total.
-                  </p>
-
-                  {configUsersLoading ? (
-                    <div className="flex justify-center py-8"><Spinner /></div>
-                  ) : (
-                    <div className="space-y-2">
-                      {configUsers.map(u => {
-                        const isCreator = course.professor?._id === u._id || course.professor === u._id
-                        const isAdmin = isAdminRole(u.role)
-                        const hasAccess = isCreator || isAdmin || (course.allowedProfessors || []).some(p => p._id === u._id)
-
-                        return (
-                          <div key={u._id} className="flex items-center gap-3 p-3 card">
-                            <Avatar name={u.name} size="sm" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-text-primary truncate">{u.name}</p>
-                              <p className="text-xs text-text-muted">{u.email}</p>
-                            </div>
-
-                            {isCreator ? (
-                              <Badge variant="blue">Criador</Badge>
-                            ) : isAdmin ? (
-                              <Badge variant="success">Admin</Badge>
-                            ) : hasAccess ? (
-                              <button
-                                onClick={() => handleRevokeAccess(u._id)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-success border border-success/30 bg-success/5 hover:bg-error/10 hover:text-error hover:border-error/30 px-3 py-1.5 rounded-full transition-all"
-                              >
-                                <CheckCircle size={13} /> Com acesso
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleGrantAccess(u._id)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-text-muted border border-border hover:bg-primary/5 hover:text-primary hover:border-primary/30 px-3 py-1.5 rounded-full transition-all"
-                              >
-                                <Plus size={13} /> Sem acesso
-                              </button>
-                            )}
-                          </div>
-                        )
-                      })}
-                      {configUsers.length === 0 && (
-                        <p className="text-sm text-text-muted text-center py-6">Nenhum professor ou admin encontrado.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ConfigTab
+                course={course}
+                configUsers={configUsers}
+                configUsersLoading={configUsersLoading}
+                onGrantAccess={handleGrantAccess}
+                onRevokeAccess={handleRevokeAccess}
+              />
             )}
 
           </div>
         </div>
       </div>
 
-      {/* --- Modais do Curso --- */}
+      {/* --- Modal do Curso --- */}
       <CourseModal
         open={editModal}
         onClose={() => setEditModal(false)}
@@ -1085,54 +476,6 @@ const AdminCourse = () => {
         onSave={handleSaveCourse}
         loading={saveLoading}
       />
-
-      {/* --- Modal de Conteúdo da Aula (Markdown) --- */}
-      <Modal
-        open={contentModal.open}
-        onClose={() => !contentSaving && setContentModal({ open: false, lesson: null })}
-        title={`Conteúdo — ${contentModal.lesson?.title || 'Aula'}`}
-        size="xl"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-text-muted">
-            Escreva o conteúdo da aula em Markdown. Use a barra de ferramentas, cole links do YouTube
-            (viram player) e imagens. A pré-visualização mostra como o aluno verá.
-          </p>
-          <MarkdownEditor value={contentDraft} onChange={setContentDraft} />
-          <div className="flex gap-3 pt-2">
-            <Button variant="primary" className="flex-1" onClick={handleSaveContent} loading={contentSaving}>
-              Salvar conteúdo
-            </Button>
-            <Button variant="secondary" onClick={() => setContentModal({ open: false, lesson: null })} disabled={contentSaving}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* --- Modal de Exercícios da Aula (múltipla escolha) --- */}
-      <Modal
-        open={exerciseModal.open}
-        onClose={() => !exerciseSaving && setExerciseModal({ open: false, lesson: null })}
-        title={`Exercícios — ${exerciseModal.lesson?.title || 'Aula'}`}
-        size="xl"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-text-muted">
-            Crie questões de múltipla escolha. O aluno responde no fim do conteúdo e vê na hora os
-            acertos/erros (autoavaliação — nada é salvo).
-          </p>
-          <ExerciseBuilder value={exerciseDraft} onChange={setExerciseDraft} />
-          <div className="flex gap-3 pt-2">
-            <Button variant="primary" className="flex-1" onClick={handleSaveExercises} loading={exerciseSaving}>
-              Salvar exercícios
-            </Button>
-            <Button variant="secondary" onClick={() => setExerciseModal({ open: false, lesson: null })} disabled={exerciseSaving}>
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       <Modal open={deleteModal} onClose={() => setDeleteModal(false)} title="Excluir curso" size="sm">
         <p className="text-text-secondary text-sm mb-5">
@@ -1147,282 +490,56 @@ const AdminCourse = () => {
       </Modal>
 
       {/* --- Modais de Aulas --- */}
-      <Modal open={lessonModal.open} onClose={() => setLessonModal({ open: false, lesson: null })} title={lessonModal.lesson ? 'Editar aula' : 'Nova aula'} size="md">
-        <div className="space-y-4">
-          <Input label="Título da aula *" value={lessonForm.title} onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Data *" type="date" value={lessonForm.date} onChange={e => setLessonForm(f => ({ ...f, date: e.target.value }))} />
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Modalidade</label>
-              <select value={lessonForm.modality} onChange={e => setLessonForm(f => ({ ...f, modality: e.target.value }))} className="input-field w-full">
-                <option value="presencial">Presencial</option>
-                <option value="online">Online</option>
-                <option value="hibrido">Híbrido</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Início *" type="time" value={lessonForm.startTime} onChange={e => setLessonForm(f => ({ ...f, startTime: e.target.value }))} />
-            <Input label="Fim *" type="time" value={lessonForm.endTime} onChange={e => setLessonForm(f => ({ ...f, endTime: e.target.value }))} />
-          </div>
-          <Input label="Local / Sala" value={lessonForm.location} onChange={e => setLessonForm(f => ({ ...f, location: e.target.value }))} placeholder="Ex: Lab 2" />
-          <Input label="Link da aula (online)" type="url" value={lessonForm.meetingUrl} onChange={e => setLessonForm(f => ({ ...f, meetingUrl: e.target.value }))} placeholder="https://meet.google.com/..." />
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Descrição</label>
-            <textarea value={lessonForm.description} onChange={e => setLessonForm(f => ({ ...f, description: e.target.value }))} rows={2} className="input-field w-full resize-none" />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="primary" className="flex-1" onClick={handleSaveLesson} loading={lessonSaveLoading}>
-              {lessonModal.lesson ? 'Salvar' : 'Criar aula'}
-            </Button>
-            <Button variant="secondary" onClick={() => setLessonModal({ open: false, lesson: null })}>Cancelar</Button>
-          </div>
-        </div>
-      </Modal>
+      <LessonModal
+        open={lessonModal.open}
+        lesson={lessonModal.lesson}
+        onClose={() => setLessonModal({ open: false, lesson: null })}
+        onSave={handleSaveLesson}
+        saving={lessonSaveLoading}
+      />
+      <LessonContentModal
+        open={contentModal.open}
+        lesson={contentModal.lesson}
+        onClose={() => setContentModal({ open: false, lesson: null })}
+        onSave={handleSaveContent}
+        saving={contentSaving}
+      />
+      <LessonExerciseModal
+        open={exerciseModal.open}
+        lesson={exerciseModal.lesson}
+        onClose={() => setExerciseModal({ open: false, lesson: null })}
+        onSave={handleSaveExercises}
+        saving={exerciseSaving}
+      />
 
       {/* --- Modais de Alunos e Notas --- */}
-      <Modal open={studentModal.open} onClose={() => setStudentModal({ open: false, student: null })} title={studentModal.student?.name || 'Aluno'} size="md">
-        {studentModal.student && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Avatar name={studentModal.student.name} size="lg" />
-              <div>
-                <p className="font-semibold text-text-primary">{studentModal.student.name}</p>
-                <p className="text-sm text-text-muted">{studentModal.student.email}</p>
-              </div>
-            </div>
+      <StudentDetailModal
+        open={studentModal.open}
+        student={studentModal.student}
+        grades={grades}
+        onClose={() => setStudentModal({ open: false, student: null })}
+        onOpenGrade={(student) => setGradeModal({ open: true, student })}
+        onDeleteGrade={handleDeleteGrade}
+      />
+      <GradeModal
+        open={gradeModal.open}
+        onClose={() => setGradeModal({ open: false, student: null })}
+        onSave={handleSaveGrade}
+        saving={gradeSaveLoading}
+      />
 
-            <div className="border-t border-border pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-text-primary text-sm">Notas</h4>
-                <Button variant="secondary" className="text-xs py-1.5 px-3 gap-1" onClick={() => setGradeModal({ open: true, student: studentModal.student })}>
-                  <Plus size={13} /> Lançar nota
-                </Button>
-              </div>
-              {grades.filter(g => g.student._id === studentModal.student._id).length === 0 ? (
-                <p className="text-sm text-text-muted text-center py-4">Nenhuma nota lançada ainda.</p>
-              ) : (
-                grades.filter(g => g.student._id === studentModal.student._id).map(g => (
-                  <div key={g._id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{g.title}</p>
-                      <p className="text-xs text-text-muted">{g.type}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-primary">{g.grade}</span>
-                      <span className="text-text-muted text-xs">/{g.maxGrade}</span>
-                      <button onClick={() => handleDeleteGrade(g._id)} className="p-1 text-text-muted hover:text-error transition-colors">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal open={gradeModal.open} onClose={() => setGradeModal({ open: false, student: null })} title="Lançar nota" size="sm">
-        <div className="space-y-4">
-          <Input label="Título da avaliação *" value={gradeForm.title} onChange={e => setGradeForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Prova 1" />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">Tipo</label>
-              <select value={gradeForm.type} onChange={e => setGradeForm(f => ({ ...f, type: e.target.value }))} className="input-field w-full">
-                <option value="prova">Prova</option>
-                <option value="trabalho">Trabalho</option>
-                <option value="exercicio">Exercício</option>
-                <option value="participacao">Participação</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
-            <Input label="Nota (0-10)" type="number" min="0" max="10" step="0.1" value={gradeForm.grade} onChange={e => setGradeForm(f => ({ ...f, grade: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Feedback (opcional)</label>
-            <textarea value={gradeForm.feedback} onChange={e => setGradeForm(f => ({ ...f, feedback: e.target.value }))} rows={2} className="input-field w-full resize-none" />
-          </div>
-          <div className="flex gap-3">
-            <Button variant="primary" className="flex-1" onClick={handleSaveGrade} loading={gradeSaveLoading}>Lançar nota</Button>
-            <Button variant="secondary" onClick={() => setGradeModal({ open: false, student: null })}>Cancelar</Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* --- Modal de confirmação genérico --- */}
-      <Modal open={confirmModal.open} onClose={() => setConfirmModal({ open: false, message: '', onConfirm: null })} title="Confirmar" size="sm">
-        <p className="text-text-secondary text-sm mb-5">{confirmModal.message}</p>
-        <div className="flex gap-3">
-          <button
-            onClick={async () => {
-              setConfirmModal({ open: false, message: '', onConfirm: null })
-              if (confirmModal.onConfirm) await confirmModal.onConfirm()
-            }}
-            className="flex-1 btn-primary justify-center"
-          >
-            Confirmar
-          </button>
-          <Button variant="secondary" onClick={() => setConfirmModal({ open: false, message: '', onConfirm: null })}>
-            Cancelar
-          </Button>
-        </div>
-      </Modal>
-
-      {/* --- Toast --- */}
-      <Toast show={toast.show} message={toast.message} onClose={() => setToast({ show: false, message: '' })} />
-
-      {/* --- Modais de Material --- */}
-      <Modal
+      {/* --- Modal de Material --- */}
+      <MaterialModal
         open={materialModal.open}
+        material={materialModal.material}
         onClose={() => setMaterialModal({ open: false, material: null })}
-        title={materialModal.material ? 'Editar material' : 'Novo material'}
-        size="md"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Título *"
-            value={materialForm.title}
-            onChange={e =>
-              setMaterialForm(f => ({
-                ...f,
-                title: e.target.value
-              }))
-            }
-          />
+        onSave={handleSaveMaterial}
+        saving={materialSaveLoading}
+      />
 
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              Tipo *
-            </label>
-
-            <select
-              value={materialForm.type}
-              onChange={e =>
-                setMaterialForm(f => ({
-                  ...f,
-                  type: e.target.value
-                }))
-              }
-              className="input-field w-full"
-            >
-              <option value="text">Leitura</option>
-              <option value="file">Arquivo</option>
-              <option value="link">Link Externo</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              {materialForm.type === 'text'
-                ? 'Conteúdo (texto)'
-                : materialForm.type === 'file'
-                  ? 'Arquivo'
-                  : 'URL do link'}
-            </label>
-
-            {materialForm.type === 'text' ? (
-              <textarea
-                value={materialForm.content}
-                onChange={e =>
-                  setMaterialForm(f => ({
-                    ...f,
-                    content: e.target.value
-                  }))
-                }
-                rows={5}
-                className="input-field w-full resize-none"
-                placeholder="Digite o conteúdo de leitura..."
-              />
-            ) : materialForm.type === 'link' ? (
-              <input
-                type="url"
-                value={materialForm.content}
-                onChange={e =>
-                  setMaterialForm(f => ({
-                    ...f,
-                    content: e.target.value
-                  }))
-                }
-                className="input-field w-full"
-                placeholder="https://..."
-              />
-            ) : (
-              <div>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-surface-secondary transition-colors">
-                  <div className="text-center">
-                    <p className="font-medium">
-                      Clique para selecionar um arquivo
-                    </p>
-
-                    <p className="text-sm text-text-secondary mt-1">
-                      PDF, DOCX, PPTX, ZIP...
-                    </p>
-                  </div>
-
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </label>
-
-                {materialForm.file && (
-                  <div className="mt-2 text-sm text-text-secondary">
-                    Arquivo selecionado:{' '}
-                    <span className="font-medium">
-                      {materialForm.file.name}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              Descrição
-            </label>
-
-            <textarea
-              value={materialForm.description}
-              onChange={e =>
-                setMaterialForm(f => ({
-                  ...f,
-                  description: e.target.value
-                }))
-              }
-              rows={2}
-              className="input-field w-full resize-none"
-              placeholder="Descrição opcional..."
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={handleSaveMaterial}
-              loading={materialSaveLoading}
-            >
-              {materialModal.material ? 'Salvar' : 'Criar material'}
-            </Button>
-
-            <Button
-              variant="secondary"
-              onClick={() =>
-                setMaterialModal({
-                  open: false,
-                  material: null
-                })
-              }
-            >
-              Cancelar
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
+      {/* --- Modal de confirmação genérico + Toast --- */}
+      <ConfirmModal confirmModal={confirmModal} onClose={closeConfirm} onConfirm={handleConfirm} />
+      <Toast show={toast.show} message={toast.message} onClose={closeToast} />
     </div>
   )
 }
