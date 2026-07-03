@@ -59,7 +59,8 @@ import {
   getAllCoursesAPI,
   createCourseAPI,
   updateCourseAPI,
-  deleteCourseAPI
+  deleteCourseAPI,
+  getUserEnrollmentsAPI
 } from '../api/courses'
 
 import {

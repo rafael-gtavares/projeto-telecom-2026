@@ -83,7 +83,7 @@ const getMyEnrollments = async (req, res, next) => {
 
 const getUserEnrollments = async (req, res, next) => {
   try {
-    const enrollments = await Enrollment.find({ user: req.params.id })
+    const enrollments = await Enrollment.find({ user: req.params.userId })
       .select('situation averageGrade course')
       .populate({
         path: 'course',

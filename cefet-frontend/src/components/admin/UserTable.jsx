@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { GraduationCap } from 'lucide-react'
 import { Avatar, Badge } from '../ui/index'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
+import UserEnrollmentsModal from './UserEnrollmentsModal'
 import { getRoleLabel, formatDate } from '../../utils/formatDate'
 import { useAuth } from '../../context/AuthContext'
 import { canEditUserRole, getAssignableRoles } from '../../utils/permissions'
@@ -23,6 +25,7 @@ const UserTable = ({
 
   const [confirm, setConfirm] = useState(null)
   const [permissionConfirm, setPermissionConfirm] = useState(null)
+  const [enrollmentsUser, setEnrollmentsUser] = useState(null)
 
   const assignableRoles = getAssignableRoles(myRole)
 
@@ -68,6 +71,7 @@ const UserTable = ({
                 'Cadastro',
                 'Cargo',
                 'Permissão',
+                'Matrículas',
               ].map(h => (
                 <th
                   key={h}
@@ -150,6 +154,17 @@ const UserTable = ({
                   ) : (
                     <span className="text-xs text-text-muted">—</span>
                   )}
+                </td>
+
+                {/* MATRÍCULAS */}
+                <td className="py-3 pr-4 text-center">
+                  <button
+                    onClick={() => setEnrollmentsUser(u)}
+                    title="Ver matrículas"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-full transition-all"
+                  >
+                    <GraduationCap size={13} /> Ver matrículas
+                  </button>
                 </td>
 
               </tr>
@@ -242,6 +257,13 @@ const UserTable = ({
           </div>
         )}
       </Modal>
+
+      {/* ================= MATRÍCULAS MODAL ================= */}
+      <UserEnrollmentsModal
+        open={!!enrollmentsUser}
+        user={enrollmentsUser}
+        onClose={() => setEnrollmentsUser(null)}
+      />
     </>
   )
 }
