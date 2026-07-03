@@ -4,7 +4,7 @@ import { Avatar, Badge } from '../ui/index'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import UserEnrollmentsModal from './UserEnrollmentsModal'
-import { getRoleLabel, formatDate } from '../../utils/formatDate'
+import { getRoleLabel } from '../../utils/formatDate'
 import { useAuth } from '../../context/AuthContext'
 import { canEditUserRole, getAssignableRoles } from '../../utils/permissions'
 
@@ -17,6 +17,7 @@ const roleBadge = {
 
 const UserTable = ({
   users,
+  schools = [],
   onRoleChange,
   loading,
   onToggleEditPermission
@@ -28,6 +29,16 @@ const UserTable = ({
   const [enrollmentsUser, setEnrollmentsUser] = useState(null)
 
   const assignableRoles = getAssignableRoles(myRole)
+
+  // Mapa id → nome, usado para resolver a escola do usuário mesmo que
+  // o backend não populate o campo `school` na resposta de getUsersAPI.
+  const schoolsById = Object.fromEntries(schools.map(s => [s._id, s.name]))
+
+  const getSchoolName = (user) => {
+    const schoolId = typeof user.school === 'object' ? user.school?._id : user.school
+    if (!schoolId) return null
+    return user.school?.name || schoolsById[schoolId] || null
+  }
 
   // ================= ROLE =================
   const handleChange = (user, newRole) => {
@@ -68,7 +79,7 @@ const UserTable = ({
                 'Usuário',
                 'E-mail',
                 'Função',
-                'Cadastro',
+                'Escola',
                 'Cargo',
                 'Permissão',
                 'Matrículas',
@@ -109,9 +120,9 @@ const UserTable = ({
                   </Badge>
                 </td>
 
-                {/* CREATED AT */}
-                <td className="py-3 pr-4 text-text-muted whitespace-nowrap">
-                  {formatDate(u.createdAt)}
+                {/* ESCOLA */}
+                <td className="py-3 pr-4 text-text-secondary whitespace-nowrap">
+                  {getSchoolName(u) || <span className="text-text-muted">—</span>}
                 </td>
 
                 {/* ROLE CONTROL */}

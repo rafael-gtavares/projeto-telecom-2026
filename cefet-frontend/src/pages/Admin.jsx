@@ -53,6 +53,9 @@ import { Spinner } from '../components/ui/index'
 import { useAuth } from '../context/AuthContext'
 import { canManageUsers, canManageSchools } from '../utils/permissions'
 
+// Hooks
+import { useSchools } from '../hooks/useSchools'
+
 
 // APIs
 import {
@@ -83,6 +86,8 @@ const Admin = () => {
 
   const { logout, role } = useAuth()
 
+  const { schools } = useSchools()
+
 
   // ======================================================
   // STATES
@@ -100,6 +105,7 @@ const Admin = () => {
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [schoolFilter, setSchoolFilter] = useState('all')
   const [courseSearch, setCourseSearch] = useState('')
 
   const [courseModal, setCourseModal] = useState({
@@ -213,6 +219,7 @@ const Admin = () => {
       const params = {}
       if (search.trim()) params.search = search.trim()
       if (roleFilter !== 'all') params.role = roleFilter
+      if (schoolFilter !== 'all') params.school = schoolFilter
 
       getUsersAPI(params)
         .then(response => { setUsers(response.data.data.users) })
@@ -222,7 +229,7 @@ const Admin = () => {
 
     return () => clearTimeout(timeout)
 
-  }, [tab, role, search, roleFilter])
+  }, [tab, role, search, roleFilter, schoolFilter])
 
 
   // ======================================================
@@ -678,7 +685,7 @@ const Admin = () => {
                         />
                       </div>
 
-                      {/* Select de filtro por role — fica à direita */}
+                      {/* Select de filtro por role */}
                       <select
                         value={roleFilter}
                         onChange={e => setRoleFilter(e.target.value)}
@@ -689,6 +696,19 @@ const Admin = () => {
                         <option value="professor">Professores</option>
                         <option value="admin">Admins</option>
                         <option value="superadmin">Superadmins</option>
+                      </select>
+
+                      {/* Select de filtro por escola */}
+                      <select
+                        value={schoolFilter}
+                        onChange={e => setSchoolFilter(e.target.value)}
+                        className="input-field text-sm py-2.5 w-auto"
+                      >
+                        <option value="all">Todas as escolas</option>
+                        <option value="__none__">Sem escola</option>
+                        {schools.map(s => (
+                          <option key={s._id} value={s._id}>{s.name}</option>
+                        ))}
                       </select>
 
                     </div>
@@ -706,6 +726,7 @@ const Admin = () => {
 
                       <UserTable
                         users={users}
+                        schools={schools}
                         onRoleChange={handleRoleChange}
                         loading={loading.role}
                         onToggleEditPermission={handleToggleEditPermission}

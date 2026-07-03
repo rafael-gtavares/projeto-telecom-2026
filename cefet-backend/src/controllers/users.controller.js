@@ -44,7 +44,7 @@ const updateMe = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const { search, role, page = 1 } = req.query;
+    const { search, role, school, page = 1 } = req.query;
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
     const filter = {};
     if (search) {
@@ -52,6 +52,7 @@ const getUsers = async (req, res, next) => {
       filter.$or = [{ name: new RegExp(safe, 'i') }, { email: new RegExp(safe, 'i') }];
     }
     if (role) filter.role = role;
+    if (school) filter.school = school === '__none__' ? null : school;
 
     const users = await User.find(filter, '-password')
       .populate('school', 'name city')
@@ -174,4 +175,4 @@ const updateEditPermission = async (req, res, next) => {
   }
 };
 
-module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole , updateEditPermission };
+module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole, updateEditPermission };
