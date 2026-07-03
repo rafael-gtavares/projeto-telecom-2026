@@ -78,7 +78,27 @@ const getMyEnrollments = async (req, res, next) => {
     }));
 
     res.json({ success: true, data });
-  } catch (err) { next(err); }
+  } catch (err) { return next(err); }
+};
+
+const getUserEnrollments = async (req, res, next) => {
+  try {
+    const enrollments = await Enrollment.find({ user: req.params.id })
+      .select('situation averageGrade course')
+      .populate({
+        path: 'course',
+        select: 'title startDate endDate professor',
+        populate: {
+          path: 'professor',
+          select: 'name'
+        }
+      })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json(enrollments);
+  } catch (err) {
+    return next(err);
+  }
 };
 
 const checkEnrollment = async (req, res, next) => {
@@ -204,4 +224,4 @@ const updateSituation = async (req, res, next) => {
   }
 };
 
-module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, getCourseStudents, updateSituation };
+module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, getCourseStudents, updateSituation, getUserEnrollments };
