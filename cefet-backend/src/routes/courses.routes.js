@@ -16,6 +16,7 @@ const { getCourseStudents } = require('../controllers/enrollments.controller');
 const lessonsRouter = require('./lessons.routes');
 const materialsRouter = require('./materials.routes');
 const gradesRouter = require('./grades.routes');
+const announcementsRouter = require('./announcements.routes');
 
 router.get('/', optionalAuth, getCourses);
 router.get('/all', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getAllCourses);
@@ -39,5 +40,6 @@ router.patch('/:courseId/phase', verifyJWT, requireCourseAccess, changeCoursePha
 router.use('/:courseId/lessons', lessonsRouter);
 router.use('/:courseId/materials', materialsRouter);
 router.use('/:courseId/grades', gradesRouter);
+router.use('/:courseId/announcements', announcementsRouter);
 
 module.exports = router;

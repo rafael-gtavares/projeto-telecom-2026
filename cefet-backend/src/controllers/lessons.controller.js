@@ -1,5 +1,6 @@
 const Lesson = require('../models/Lesson');
 const Course = require('../models/Course');
+const { notifyCourseStudents, removeNotificationsByRef } = require('../services/notify');
 
 // GET /courses/:courseId/lessons — lista aulas do curso
 const getLessons = async (req, res, next) => {
@@ -23,6 +24,17 @@ const createLesson = async (req, res, next) => {
       modality: modality || 'presencial',
       location: location || '',
       meetingUrl: meetingUrl || '',
+      createdBy: req.user.id,
+    });
+
+    // Notifica a turma sobre a nova aula (best-effort)
+    await notifyCourseStudents({
+      course: req.params.courseId,
+      type: 'lesson',
+      title: 'Nova aula no cronograma',
+      message: lesson.title,
+      tab: 'cronograma',
+      refId: lesson._id,
       createdBy: req.user.id,
     });
 
@@ -57,6 +69,19 @@ const updateLesson = async (req, res, next) => {
       if (req.body[field] !== undefined) lesson[field] = req.body[field];
     }
     await lesson.save();
+
+    // Notifica a turma conforme o que foi alterado (best-effort). O conteúdo e os
+    // exercícios são salvos em chamadas separadas pela UI, então cada uma gera
+    // a notificação correspondente; edições de data/horário contam como cronograma.
+    const notifyBase = { course: req.params.courseId, tab: 'cronograma', refId: lesson._id, createdBy: req.user.id };
+    if (req.body.content !== undefined) {
+      await notifyCourseStudents({ ...notifyBase, type: 'lesson', title: 'Conteúdo de aula atualizado', message: lesson.title });
+    } else if (req.body.exercises !== undefined) {
+      await notifyCourseStudents({ ...notifyBase, type: 'lesson', title: 'Exercícios de aula atualizados', message: lesson.title });
+    } else {
+      await notifyCourseStudents({ ...notifyBase, type: 'schedule', title: 'Aula atualizada', message: lesson.title });
+    }
+
     res.json({ success: true, data: lesson });
   } catch (err) { next(err); }
 };
@@ -66,6 +91,18 @@ const deleteLesson = async (req, res, next) => {
   try {
     const lesson = await Lesson.findOneAndDelete({ _id: req.params.lessonId, course: req.params.courseId });
     if (!lesson) return res.status(404).json({ success: false, message: 'Aula não encontrada' });
+
+    // Limpa notificações órfãs da aula e avisa a turma da mudança no cronograma
+    removeNotificationsByRef(lesson._id);
+    await notifyCourseStudents({
+      course: req.params.courseId,
+      type: 'schedule',
+      title: 'Aula removida do cronograma',
+      message: lesson.title,
+      tab: 'cronograma',
+      createdBy: req.user.id,
+    });
+
     res.json({ success: true, message: 'Aula excluída com sucesso' });
   } catch (err) { next(err); }
 };

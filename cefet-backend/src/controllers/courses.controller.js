@@ -16,6 +16,8 @@ const {
   updateCourseStatuses,
 } = require('../helpers/courseStatusHelper');
 
+const { notifyCourseStudents, removeNotificationsByRef } = require('../services/notify');
+
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
   try {
@@ -634,12 +636,29 @@ const updateCourse = async (req, res, next) => {
       const toDelete = existing.filter((l) => !desiredKeys.has(dateKey(l.date)));
       if (toDelete.length) {
         await Lesson.deleteMany({ _id: { $in: toDelete.map((l) => l._id) } });
+        // Limpa notificações órfãs das aulas removidas
+        toDelete.forEach((l) => removeNotificationsByRef(l._id));
       }
 
       // Cria apenas as aulas das datas novas (as existentes ficam intactas)
       const toInsert = desired.filter((l) => !existingKeys.has(dateKey(l.date)));
       if (toInsert.length) {
         await Lesson.insertMany(toInsert);
+      }
+
+      // Se a agenda realmente mudou (criou/removeu datas), avisa a turma (best-effort)
+      if (toDelete.length || toInsert.length) {
+        const parts = [];
+        if (toInsert.length) parts.push(`${toInsert.length} aula(s) adicionada(s)`);
+        if (toDelete.length) parts.push(`${toDelete.length} aula(s) removida(s)`);
+        await notifyCourseStudents({
+          course: course._id,
+          type: 'schedule',
+          title: 'Cronograma atualizado',
+          message: parts.join(' e '),
+          tab: 'cronograma',
+          createdBy: req.user.id,
+        });
       }
     }
 

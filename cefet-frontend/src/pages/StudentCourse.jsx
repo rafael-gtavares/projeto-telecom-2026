@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive } from 'lucide-react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive, Megaphone } from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Spinner, ViewToggle, Badge } from '../components/ui/index'
 import Modal from '../components/ui/Modal'
@@ -8,6 +8,7 @@ import Toast from '../components/ui/Toast'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
 import ExerciseRunner from '../components/exercises/ExerciseRunner'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI, getMyEnrollmentsAPI } from '../api/courses'
+import { getAnnouncementsAPI } from '../api/announcements'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
@@ -17,8 +18,11 @@ const tabs = [
   { value: 'sobre', label: 'Sobre' },
   { value: 'cronograma', label: 'Cronograma' },
   { value: 'material', label: 'Material' },
+  { value: 'avisos', label: 'Avisos' },
   { value: 'notas', label: 'Minhas notas' },
 ]
+
+const VALID_TABS = tabs.map((t) => t.value)
 
 // Card de aula reutilizado nas listas de próximas/anteriores.
 // isToday → destaque (aula do dia); past → esmaecido; onClick → abre o conteúdo.
@@ -57,13 +61,19 @@ const LessonCard = ({ lesson, isToday = false, past = false, onClick }) => {
 const StudentCourse = () => {
   const { courseId } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const [course, setCourse] = useState(null)
   const [lessons, setLessons] = useState([])
   const [materials, setMaterials] = useState([])
   const [myGrades, setMyGrades] = useState([])
+  const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('sobre')
+  // Aba inicial pode vir do deep-link da notificação (?tab=avisos|notas|material)
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return VALID_TABS.includes(t) ? t : 'sobre'
+  })
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null)
   const [toast, setToast] = useState({ show: false, message: '' })
@@ -90,18 +100,20 @@ const StudentCourse = () => {
     const loadData = async () => {
       setLoading(true)
       try {
-        const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: eData }] = await Promise.all([
+        const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: eData }, { data: aData }] = await Promise.all([
           getCourseAPI(courseId),
           getLessonsAPI(courseId),
           getMaterialsAPI(courseId),
           getMyGradesAPI(courseId),
-          getMyEnrollmentsAPI()
+          getMyEnrollmentsAPI(),
+          getAnnouncementsAPI(courseId)
         ])
         if (controller.signal.aborted) return
         setCourse(cData.data)
         setLessons(lData.data)
         setMaterials(mData.data)
         setMyGrades(gData.data)
+        setAnnouncements(aData.data)
 
         // getMyEnrollmentsAPI traz todas as inscrições do aluno; filtra a deste curso
         const enrollment = eData.data.find(e => (e.course?._id || e.course) === courseId)
@@ -120,6 +132,42 @@ const StudentCourse = () => {
     loadData()
     return () => controller.abort()
   }, [courseId])
+
+  // Deep-link da notificação: se a URL trouxer ?tab=... (inclusive ao clicar
+  // outra notificação já estando na página), sincroniza a aba ativa.
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (VALID_TABS.includes(t)) setActiveTab(t)
+  }, [searchParams])
+
+  // Ao abrir uma notificação já estando no curso, a URL ganha um ?r=<timestamp>
+  // que muda a cada clique. Recarrega silenciosamente o conteúdo (materiais,
+  // notas e avisos) para a pessoa ver a novidade sem F5. Ignora o load inicial.
+  const refreshKey = searchParams.get('r')
+  useEffect(() => {
+    if (!refreshKey) return
+    let active = true
+    ;(async () => {
+      try {
+        const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: aData }] = await Promise.all([
+          getCourseAPI(courseId),
+          getLessonsAPI(courseId),
+          getMaterialsAPI(courseId),
+          getMyGradesAPI(courseId),
+          getAnnouncementsAPI(courseId),
+        ])
+        if (!active) return
+        setCourse(cData.data)
+        setLessons(lData.data)
+        setMaterials(mData.data)
+        setMyGrades(gData.data)
+        setAnnouncements(aData.data)
+      } catch {
+        // silencioso: recarregar em background não deve interromper a leitura
+      }
+    })()
+    return () => { active = false }
+  }, [refreshKey, courseId])
 
   const nextMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))
   const prevMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))
@@ -492,6 +540,39 @@ const StudentCourse = () => {
                       </div>
                     )
                   })
+                )}
+              </div>
+            )}
+
+            {activeTab === 'avisos' && (
+              <div className="space-y-3">
+                {announcements.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Megaphone size={28} className="mx-auto text-text-muted mb-2 opacity-50" />
+                    <p className="text-sm text-text-muted">Nenhum aviso publicado ainda.</p>
+                  </div>
+                ) : (
+                  announcements.map(av => (
+                    <div key={av._id} className="card p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-card bg-surface-hover flex items-center justify-center flex-shrink-0 text-primary">
+                          <Megaphone size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-text-primary text-sm">{av.title}</h4>
+                            {av.audience === 'individual'
+                              ? <Badge variant="blue" className="text-[10px]">Para você</Badge>
+                              : <Badge variant="gray" className="text-[10px]">Turma</Badge>}
+                          </div>
+                          <p className="text-sm text-text-secondary mt-1 leading-relaxed whitespace-pre-line">{av.message}</p>
+                          <p className="text-[11px] text-text-muted mt-2">
+                            {av.author?.name ? `${av.author.name} · ` : ''}{formatDate(av.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}

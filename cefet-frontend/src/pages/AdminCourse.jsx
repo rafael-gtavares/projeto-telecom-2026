@@ -23,6 +23,9 @@ import MaterialModal from '../components/courses/admin/MaterialModal'
 import DashboardTab from '../components/courses/admin/DashboardTab'
 import ConfigTab from '../components/courses/admin/ConfigTab'
 
+import AnnouncementsTab from '../components/courses/admin/AnnouncementsTab'
+import AnnouncementModal from '../components/courses/admin/AnnouncementModal'
+
 import { useConfirmModal } from '../hooks/useConfirmModal'
 import { useToast } from '../hooks/useToast'
 
@@ -35,6 +38,7 @@ import {
   getCourseGradesAPI, createGradeAPI, deleteGradeAPI,
   addAllowedProfessorAPI, removeAllowedProfessorAPI, updateSituationAPI,
 } from '../api/courses'
+import { getAnnouncementsAPI, createAnnouncementAPI, deleteAnnouncementAPI } from '../api/announcements'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
 import { formatModality } from '../utils/formatModality'
@@ -44,6 +48,7 @@ const TABS = [
   { value: 'aulas', label: 'Aulas' },
   { value: 'alunos', label: 'Alunos' },
   { value: 'material', label: 'Material' },
+  { value: 'avisos', label: 'Avisos' },
   { value: 'dashboard', label: 'Dashboard' },
   { value: 'config', label: 'Config.' },
 ]
@@ -90,6 +95,11 @@ const AdminCourse = () => {
   const [materialModal, setMaterialModal] = useState({ open: false, material: null })
   const [materialSaveLoading, setMaterialSaveLoading] = useState(false)
 
+  // Avisos
+  const [announcements, setAnnouncements] = useState([])
+  const [announcementModal, setAnnouncementModal] = useState(false)
+  const [announcementSaveLoading, setAnnouncementSaveLoading] = useState(false)
+
   // Config
   const [configUsers, setConfigUsers] = useState([])
   const [configUsersLoading, setConfigUsersLoading] = useState(false)
@@ -101,18 +111,20 @@ const AdminCourse = () => {
     setLoading(true)
     setLoadError(null)
     try {
-      const [{ data: cData }, { data: lData }, { data: mData }, { data: sData }, { data: gData }] = await Promise.all([
+      const [{ data: cData }, { data: lData }, { data: mData }, { data: sData }, { data: gData }, { data: aData }] = await Promise.all([
         getCourseAPI(courseId),
         getLessonsAPI(courseId),
         getMaterialsAPI(courseId),
         getCourseStudentsAPI(courseId),
         getCourseGradesAPI(courseId),
+        getAnnouncementsAPI(courseId),
       ])
       setCourse(cData.data)
       setLessons(lData.data)
       setMaterials(mData.data)
       setStudents(sData.data)
       setGrades(gData.data)
+      setAnnouncements(aData.data)
     } catch (err) {
       if (err.response?.status === 403) {
         setLoadError('Você não tem acesso a este curso.')
@@ -273,6 +285,32 @@ const AdminCourse = () => {
         setMaterials(prev => prev.filter(m => m._id !== id))
       } catch {
         showToast('Erro ao excluir material')
+      }
+    })
+  }
+
+  // --- Handlers de Avisos ---
+  const handleCreateAnnouncement = async (form) => {
+    setAnnouncementSaveLoading(true)
+    try {
+      const { data } = await createAnnouncementAPI(courseId, form)
+      setAnnouncements(prev => [data.data, ...prev])
+      setAnnouncementModal(false)
+      showToast('Aviso enviado')
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao enviar aviso')
+    } finally {
+      setAnnouncementSaveLoading(false)
+    }
+  }
+
+  const handleDeleteAnnouncement = (id) => {
+    confirm('Deseja excluir este aviso?', async () => {
+      try {
+        await deleteAnnouncementAPI(courseId, id)
+        setAnnouncements(prev => prev.filter(a => a._id !== id))
+      } catch {
+        showToast('Erro ao excluir aviso')
       }
     })
   }
@@ -450,6 +488,14 @@ const AdminCourse = () => {
               />
             )}
 
+            {activeTab === 'avisos' && (
+              <AnnouncementsTab
+                announcements={announcements}
+                onCreate={() => setAnnouncementModal(true)}
+                onDelete={handleDeleteAnnouncement}
+              />
+            )}
+
             {activeTab === 'dashboard' && (
               <DashboardTab course={course} students={students} lessons={lessons} materials={materials} />
             )}
@@ -535,6 +581,15 @@ const AdminCourse = () => {
         onClose={() => setMaterialModal({ open: false, material: null })}
         onSave={handleSaveMaterial}
         saving={materialSaveLoading}
+      />
+
+      {/* --- Modal de Aviso --- */}
+      <AnnouncementModal
+        open={announcementModal}
+        students={students}
+        onClose={() => setAnnouncementModal(false)}
+        onSave={handleCreateAnnouncement}
+        saving={announcementSaveLoading}
       />
 
       {/* --- Modal de confirmação genérico + Toast --- */}

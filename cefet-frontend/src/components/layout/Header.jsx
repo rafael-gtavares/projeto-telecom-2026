@@ -8,6 +8,7 @@ import Button from '../ui/Button'
 import { LogOut } from 'lucide-react'
 import { getRoleLabel } from '../../utils/formatDate'
 import { canAccessAdminPanel } from '../../utils/permissions'
+import NotificationBell from '../notifications/NotificationBell'
 
 // Item de navegação com indicador da página ativa (sublinhado animado em cor primária)
 const navItemClass = ({ isActive }) =>
@@ -41,13 +42,16 @@ const Header = () => {
             <LogoSVG />
             CEFET/RJ
           </Link>
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 rounded-lg text-primary hover:bg-surface-hover transition-colors md:hidden"
-            aria-label="Abrir menu"
-          >
-            <Menu size={26} />
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            {isAuthenticated && <NotificationBell />}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="p-2 rounded-lg text-primary hover:bg-surface-hover transition-colors"
+              aria-label="Abrir menu"
+            >
+              <Menu size={26} />
+            </button>
+          </div>
           <nav className="hidden md:flex items-center gap-7">
             {isAuthenticated ? (
               <>
@@ -76,11 +80,14 @@ const Header = () => {
               </>
             )}
           </nav>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-4">
             {isAuthenticated ? (
-              <button onClick={handleLogout} className="btn-ghost w-full justify-center">
-                <LogOut size={16} /> Sair da conta
-              </button>
+              <>
+                <NotificationBell />
+                <button onClick={handleLogout} className="btn-ghost justify-center">
+                  <LogOut size={16} /> Sair da conta
+                </button>
+              </>
             ) : (
               <>
                 <Link to="/login"><Button variant="primary" className="w-full">Entrar</Button></Link>

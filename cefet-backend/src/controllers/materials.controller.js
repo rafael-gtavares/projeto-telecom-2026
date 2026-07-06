@@ -1,4 +1,5 @@
 const Material = require('../models/Material');
+const { notifyNewMaterial, removeNotificationsByRef } = require('../services/notify');
 
 // GET /courses/:courseId/materials
 const getMaterials = async (req, res, next) => {
@@ -26,6 +27,9 @@ const createMaterial = async (req, res, next) => {
       createdBy: req.user.id,
     });
 
+    // Notifica os alunos inscritos (best-effort — não bloqueia a resposta)
+    await notifyNewMaterial({ course: req.params.courseId, material, createdBy: req.user.id });
+
     res.status(201).json({ success: true, data: material });
   } catch (err) { next(err); }
 };
@@ -51,6 +55,10 @@ const deleteMaterial = async (req, res, next) => {
   try {
     const material = await Material.findOneAndDelete({ _id: req.params.materialId, course: req.params.courseId });
     if (!material) return res.status(404).json({ success: false, message: 'Material não encontrado' });
+
+    // Remove as notificações geradas por este material (best-effort)
+    removeNotificationsByRef(material._id);
+
     res.json({ success: true, message: 'Material excluído com sucesso' });
   } catch (err) { next(err); }
 };

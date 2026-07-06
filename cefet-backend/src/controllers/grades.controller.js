@@ -1,6 +1,7 @@
 const Grade = require('../models/Grade');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus')
+const { notifyNewGrade, removeNotificationsByRef } = require('../services/notify');
 
 // GET /courses/:courseId/grades — professor/admin vê todas as notas do curso
 const getCourseGrades = async (req, res, next) => {
@@ -81,6 +82,9 @@ const createGrade = async (req, res, next) => {
       }
     );
 
+    // Notifica apenas o aluno avaliado (best-effort — nota individual)
+    await notifyNewGrade({ course: req.params.courseId, studentId, grade: newGrade, createdBy: req.user.id });
+
     await newGrade.populate('student', 'name email');
     res.status(201).json({ success: true, data: newGrade });
   } catch (err) { next(err); }
@@ -149,6 +153,10 @@ const deleteGrade = async (req, res, next) => {
     );
     
     if (!gradeDoc) return res.status(404).json({ success: false, message: 'Nota não encontrada' });
+
+    // Remove as notificações geradas por esta nota (best-effort)
+    removeNotificationsByRef(gradeDoc._id);
+
     res.json({ success: true, message: 'Nota removida com sucesso' });
   } catch (err) { next(err); }
 };
