@@ -153,6 +153,7 @@ const AdminCourse = () => {
       setLessons(lData.data)
       setSelectedCalendarDay(null)
       setEditModal(false)
+      showToast('Curso atualizado com sucesso.')
     } catch {
       showToast('Erro ao salvar curso')
     } finally {
@@ -164,6 +165,7 @@ const AdminCourse = () => {
     setDeleteLoading(true)
     try {
       await deleteCourseAPI(course._id)
+      showToast('Curso excluído com sucesso.')
       navigate('/admin/cursos')
     } catch {
       showToast('Erro ao deletar curso')
@@ -183,6 +185,7 @@ const AdminCourse = () => {
       const { data } = await updateLessonAPI(courseId, lessonModal.lesson._id, form)
       setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
       setLessonModal({ open: false, lesson: null })
+      showToast('Aula atualizada com sucesso.')
     } catch {
       showToast('Erro ao salvar aula')
     } finally {
@@ -195,6 +198,7 @@ const AdminCourse = () => {
       try {
         await deleteLessonAPI(courseId, id)
         setLessons(prev => prev.filter(l => l._id !== id))
+        showToast('Aula excluída com sucesso.')
       } catch {
         showToast('Erro ao excluir aula')
       }
@@ -207,7 +211,7 @@ const AdminCourse = () => {
       const { data } = await updateLessonAPI(courseId, contentModal.lesson._id, { content })
       setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
       setContentModal({ open: false, lesson: null })
-      showToast('Conteúdo salvo')
+      showToast('Conteúdo salvo com sucesso.')
     } catch {
       showToast('Erro ao salvar conteúdo')
     } finally {
@@ -231,7 +235,7 @@ const AdminCourse = () => {
       const { data } = await updateLessonAPI(courseId, exerciseModal.lesson._id, { exercises })
       setLessons(prev => prev.map(l => l._id === data.data._id ? data.data : l))
       setExerciseModal({ open: false, lesson: null })
-      showToast('Exercícios salvos')
+      showToast('Exercícios salvos com sucesso')
     } catch {
       showToast('Erro ao salvar exercícios')
     } finally {
@@ -270,6 +274,7 @@ const AdminCourse = () => {
       }
 
       setMaterialModal({ open: false, material: null })
+      showToast('Material salvo com sucesso.')
     } catch (err) {
       showToast('Erro ao salvar material')
       console.error(JSON.stringify(err.response?.data, null, 2))
@@ -283,6 +288,7 @@ const AdminCourse = () => {
       try {
         await deleteMaterialAPI(courseId, id)
         setMaterials(prev => prev.filter(m => m._id !== id))
+        showToast('Material excluído com sucesso.')
       } catch {
         showToast('Erro ao excluir material')
       }
@@ -296,7 +302,7 @@ const AdminCourse = () => {
       const { data } = await createAnnouncementAPI(courseId, form)
       setAnnouncements(prev => [data.data, ...prev])
       setAnnouncementModal(false)
-      showToast('Aviso enviado')
+      showToast('Aviso enviado com sucesso')
     } catch (err) {
       showToast(err.response?.data?.message || 'Erro ao enviar aviso')
     } finally {
@@ -309,6 +315,7 @@ const AdminCourse = () => {
       try {
         await deleteAnnouncementAPI(courseId, id)
         setAnnouncements(prev => prev.filter(a => a._id !== id))
+        showToast('Aviso excluído com sucesso.')
       } catch {
         showToast('Erro ao excluir aviso')
       }
@@ -323,6 +330,7 @@ const AdminCourse = () => {
       const { data } = await createGradeAPI(courseId, payload)
       setGrades(prev => [data.data, ...prev])
       setGradeModal({ open: false, student: null })
+      showToast('Nota salva com sucesso.')
     } catch {
       showToast('Erro ao lançar nota')
     } finally {
@@ -335,6 +343,7 @@ const AdminCourse = () => {
       try {
         await deleteGradeAPI(courseId, id)
         setGrades(prev => prev.filter(g => g._id !== id))
+        showToast('Nota excluída com sucesso.')
       } catch {
         showToast('Erro ao excluir nota')
       }
@@ -350,7 +359,7 @@ const AdminCourse = () => {
         setStudents(prev =>
           prev.map(s => s._id === enrollmentId ? { ...s, situation: data.data.situation } : s)
         )
-        showToast('Situação atualizada')
+        showToast('Situação atualizada com sucesso')
       } catch (err) {
         showToast(err.response?.data?.message || 'Erro ao atualizar situação')
       } finally {
@@ -385,6 +394,7 @@ const AdminCourse = () => {
     try {
       const { data } = await addAllowedProfessorAPI(courseId, userId)
       setCourse(prev => ({ ...prev, allowedProfessors: data.data }))
+      showToast('Acesso concedido com sucesso.')
     } catch (err) {
       showToast(err.response?.data?.message || 'Erro ao conceder acesso')
     }
@@ -395,6 +405,7 @@ const AdminCourse = () => {
       try {
         await removeAllowedProfessorAPI(courseId, profId)
         setCourse(prev => ({ ...prev, allowedProfessors: prev.allowedProfessors.filter(p => p._id !== profId) }))
+        showToast('Acesso removido com sucesso.')
       } catch {
         showToast('Erro ao remover acesso')
       }

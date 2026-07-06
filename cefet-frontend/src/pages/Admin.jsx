@@ -257,6 +257,11 @@ const Admin = () => {
               : course
           )
         )
+
+        setToast({
+          show: true,
+          message: 'Curso atualizado com sucesso.'
+        })
       }
 
       // Criar
@@ -268,6 +273,11 @@ const Admin = () => {
           data.data,
           ...prev
         ])
+
+        setToast({
+          show: true,
+          message: 'Curso criado com sucesso.'
+        })
       }
 
       setCourseModal({
@@ -315,6 +325,11 @@ const Admin = () => {
       setDeleteModal({
         open: false,
         course: null
+      })
+
+      setToast({
+        show: true,
+        message: 'Curso excluído  acom sucesso.'
       })
 
     }
