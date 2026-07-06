@@ -13,7 +13,8 @@ const {
 } = require('../helpers/scheduleHelper');
 
 const {
-  updateCourseStatuses,
+  updateCourseStatus,
+  getCourseStatus
 } = require('../helpers/courseStatusHelper');
 
 const { notifyCourseStudents, removeNotificationsByRef } = require('../services/notify');
@@ -73,7 +74,7 @@ const getCourses = async (req, res, next) => {
 const getAllCourses = async (req, res, next) => {
   try {
 
-    await updateCourseStatuses();
+    await updateCourseStatus();
 
     const { status, page = 1 } = req.query;
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
@@ -104,7 +105,7 @@ const getAllCourses = async (req, res, next) => {
 
 const getCourse = async (req, res, next) => {
   try {
-    await updateCourseStatuses();
+    await updateCourseStatus();
 
     const course = await Course.findById(req.params.id)
       .populate('professor', 'name email')
@@ -123,7 +124,7 @@ const getCourse = async (req, res, next) => {
 
 const getCourseStats = async (req, res, next) => {
   try {
-    await updateCourseStatuses();
+    await updateCourseStatus();
 
     // =========================
     // CURSO
@@ -596,6 +597,21 @@ const updateCourse = async (req, res, next) => {
         period.endDate;
     }
 
+    const finalStartDate =
+      updates.startDate ?? course.startDate;
+
+    const finalEndDate =
+      updates.endDate ?? course.endDate;
+
+    const currentStatus =
+      updates.status ?? course.status;
+
+    updates.status = getCourseStatus({
+      status: currentStatus,
+      startDate: finalStartDate,
+      endDate: finalEndDate,
+    });
+
     const updated = await Course.findByIdAndUpdate(
       req.params.id,
       updates,
@@ -661,6 +677,8 @@ const updateCourse = async (req, res, next) => {
         });
       }
     }
+
+
 
     const newStatus = updates.status;
 

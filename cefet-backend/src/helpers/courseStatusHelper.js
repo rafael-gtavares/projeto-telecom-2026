@@ -1,6 +1,29 @@
 const Course = require('../models/Course');
 
-const updateCourseStatuses = async () => {
+
+const getCourseStatus = ({
+  status,
+  startDate,
+  endDate,
+}) => {
+  if (status === 'draft') {
+    return 'draft';
+  }
+
+  const now = new Date();
+
+  if (now < startDate) {
+    return 'published';
+  }
+
+  if (now > endDate) {
+    return 'closed';
+  }
+
+  return 'em_andamento';
+};
+
+const updateCourseStatus = async () => {
   const now = new Date();
 
   await Course.updateMany(
@@ -26,5 +49,6 @@ const updateCourseStatuses = async () => {
 };
 
 module.exports = {
-  updateCourseStatuses,
+  updateCourseStatus,
+  getCourseStatus
 };
