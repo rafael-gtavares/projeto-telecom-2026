@@ -1,6 +1,7 @@
 node_modules/
 uploads/*
 scripts/
+!scripts/seedFeedbacks.js
 !uploads/.gitkeep
 package-lock.json
 
