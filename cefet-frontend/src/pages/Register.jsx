@@ -23,6 +23,8 @@ const schoolLevelOptions = [
   { value: 'ultimo_ano_em', label: 'Último ano do Ensino Médio' },
   { value: 'ensino_medio_finalizado', label: 'Ensino Médio Finalizado' },
   { value: 'eja', label: 'EJA' },
+  { value: 'superior_completo', label: 'Ensino Superior Completo' },
+  { value: 'superior_incompleto', label: 'Ensino Superior Incompleto' },
 ]
 
 const Register = () => {

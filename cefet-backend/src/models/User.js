@@ -17,7 +17,9 @@ const userSchema = new mongoose.Schema({
       '1_ou_2_ano_em',
       'ultimo_ano_em',
       'ensino_medio_finalizado',
-      'eja'
+      'eja',
+      'superior_completo',
+      'superior_incompleto'
     ]
   },
   incomeRange: {

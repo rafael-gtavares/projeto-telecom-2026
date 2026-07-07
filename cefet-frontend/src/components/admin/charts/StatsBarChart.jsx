@@ -28,7 +28,7 @@ const StatsBarChart = ({ data }) => {
             <div className="absolute inset-0 bg-primary rounded-t-sm opacity-80" />
           </div>
 
-          <span className="text-[10px] text-text-muted text-center">
+          <span className="text-[10px] text-text-muted text-center whitespace-nowrap">
             {label}
           </span>
 

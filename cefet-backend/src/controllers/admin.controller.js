@@ -159,7 +159,9 @@ const getStats = async (req, res, next) => {
       '1_ou_2_ano_em': 0,
       ultimo_ano_em: 0,
       ensino_medio_finalizado: 0,
-      eja: 0
+      eja: 0,
+      superior_completo: 0,
+      superior_incompleto: 0
     };
 
     const incomeRangeStats = {

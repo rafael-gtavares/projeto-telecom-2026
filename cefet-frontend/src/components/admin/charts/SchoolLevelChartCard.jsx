@@ -5,10 +5,14 @@ const schoolLabels = {
   '1_ou_2_ano_em': '1º/2º EM',
   ultimo_ano_em: '3º EM',
   ensino_medio_finalizado: 'EM Finalizado',
-  eja: 'EJA'
+  eja: 'EJA',
+  superior_completo: 'Superior Completo',
+  superior_incompleto: 'Superior Incompleto'
 }
 
 const SchoolLevelChartCard = ({ data }) => {
+
+  console.log("Dados que chegaram no gráfico:", data)
 
   const chartData = data
     ? Object.entries(data).map(([key, value]) => ({

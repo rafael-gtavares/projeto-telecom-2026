@@ -296,6 +296,8 @@ const getCourseStats = async (req, res, next) => {
       ultimo_ano_em: 0,
       ensino_medio_finalizado: 0,
       eja: 0,
+      superior_completo: 0,
+      superior_incompleto: 0
     };
 
     const incomeRangeStats = {
