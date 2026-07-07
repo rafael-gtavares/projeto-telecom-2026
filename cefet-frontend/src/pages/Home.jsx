@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Zap, Briefcase, Globe, BookOpen } from 'lucide-react'
+import { ArrowRight, Zap, Briefcase, Globe, BookOpen, Star, Quote } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import EventCard from '../components/courses/EventCard'
@@ -11,6 +11,7 @@ import Toast from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
 import { getCoursesAPI } from '../api/courses'
+import { getFeaturedFeedbacksAPI } from '../api/feedbacks'
 import { mockCourses, mockPartners } from '../mockData/courses'
 import { MODALITY_LABELS } from '../utils/formatModality'
 
@@ -48,6 +49,16 @@ const Home = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [visibleCourses, setVisibleCourses] = useState(3)
   const [modalityFilter, setModalityFilter] = useState('all')
+
+  const [featuredFeedbacks, setFeaturedFeedbacks] = useState([])
+  const [loadingFeedbacks, setLoadingFeedbacks] = useState(true)
+
+  useEffect(() => {
+    getFeaturedFeedbacksAPI()
+      .then(r => setFeaturedFeedbacks(r.data.data))
+      .catch(() => setFeaturedFeedbacks([]))
+      .finally(() => setLoadingFeedbacks(false))
+  }, [])
 
   // Refaz a busca quando o login/logout muda — assim os flags isEnrolled/isWaitlisted
   // acompanham o usuário atual (ao deslogar, os botões voltam para "Inscrever-se").
@@ -195,8 +206,8 @@ const Home = () => {
                   src={p.logo}
                   alt={p.name}
                   className={`object-contain ${p.name === 'Anatel'
-                      ? 'h-18 w-auto'
-                      : 'h-8 w-auto'
+                    ? 'h-18 w-auto'
+                    : 'h-8 w-auto'
                     }`}
                 />
               </div>
@@ -241,11 +252,10 @@ const Home = () => {
                 <button
                   key={mod}
                   onClick={() => handleModalityFilter(mod)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${
-                    modalityFilter === mod
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'bg-surface-page text-text-secondary border border-border hover:border-primary hover:text-primary'
-                  }`}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-150 ${modalityFilter === mod
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-surface-page text-text-secondary border border-border hover:border-primary hover:text-primary'
+                    }`}
                 >
                   {mod === 'all' ? 'Todos' : MODALITY_LABELS[mod]}
                 </button>
@@ -302,6 +312,49 @@ const Home = () => {
           )}
         </div>
       </section>
+
+      {/* Feedbacks em destaque */}
+      {(loadingFeedbacks || featuredFeedbacks.length > 0) && (
+        <section id="feedbacks" className="py-16 bg-surface-page">
+          <div className="max-w-6xl mx-auto px-4 md:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-2xl md:text-3xl font-bold text-text-primary mb-3">O que dizem nossos alunos</h2>
+              <p className="text-text-secondary max-w-xl mx-auto">Depoimentos de quem já passou pelos nossos cursos</p>
+            </div>
+
+            {loadingFeedbacks ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="card p-6 animate-pulse h-40" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {featuredFeedbacks.map(f => (
+                  <div key={f._id} className="card p-6 flex flex-col hover:shadow-hover transition-all duration-200">
+                    <Quote size={20} className="text-primary/30 mb-3" />
+
+                    <p className="text-text-secondary text-sm leading-relaxed flex-1 mb-4">
+                      {f.content}
+                    </p>
+
+                    <div className="flex items-center gap-0.5 mb-3">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <Star key={n} size={14} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
+                      ))}
+                    </div>
+
+                    <div className="pt-3 border-t border-border">
+                      <p className="text-sm font-semibold text-text-primary">{f.user?.name || 'Aluno'}</p>
+                      <p className="text-xs text-text-muted mt-0.5">{f.course?.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <Footer />
 

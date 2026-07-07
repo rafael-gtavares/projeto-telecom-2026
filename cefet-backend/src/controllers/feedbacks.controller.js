@@ -49,7 +49,7 @@ const getFeaturedFeedbacks = async (req, res, next) => {
 // Criação de feedback
 const createFeedback = async (req, res, next) => {
     try {
-        const userId = req.user.id; // ajuste conforme o nome real usado no seu middleware de auth
+        const userId = req.user.id;
         const { course, content, stars } = req.body;
 
         if (!course || !content || !stars) {

@@ -212,24 +212,13 @@ const MyCourses = () => {
 
                         {/* AÇÕES LATERAIS */}
                         <div className="flex md:flex-col justify-center items-stretch gap-3 mt-4 md:mt-0 md:pl-6 md:border-l md:border-border min-w-[140px]">
-                          {(status === 'ativo' || status === 'concluido') ? (
-                            <Button
-                              variant="primary"
-                              className="text-[13px] py-2 px-4 w-full"
-                              onClick={() => navigate(`/meu-curso/${course._id}`)}
-                            >
-                              {status === 'concluido' ? 'Ver curso' : 'Acessar curso'}
-                              <ChevronRight size={14} />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="secondary"
-                              className="text-[13px] py-2 px-4 w-full"
-                              onClick={() => navigate(`/meu-curso/${course._id}`)}
-                            >
-                              Ver Detalhes
-                            </Button>
-                          )}
+                          <Button
+                            variant="secondary"
+                            className="text-[13px] py-2 px-4 w-full"
+                            onClick={() => navigate(`/meu-curso/${course._id}`)}
+                          >
+                            Ver Detalhes
+                          </Button>
 
                           {status !== 'closed' && (
                             <Button

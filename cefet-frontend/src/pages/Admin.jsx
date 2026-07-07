@@ -2,14 +2,7 @@ import { useState, useEffect } from 'react'
 
 import { useNavigate, useParams } from 'react-router-dom'
 
-import {
-  Plus,
-  Search,
-  Trash2,
-  AlertCircle,
-  BookOpen,
-} from 'lucide-react'
-
+import { Plus, Search, Trash2, AlertCircle, BookOpen, Star, MessageSquareText } from 'lucide-react'
 
 // Layout
 import Sidebar from '../components/layout/Sidebar'
@@ -73,6 +66,12 @@ import {
   updateEditPermissionAPI
 } from '../api/users'
 
+import { 
+  getAllFeedbacksAPI,
+  deleteFeedbackAPI,
+  toggleFeaturedFeedbackAPI
+} from '../api/feedbacks'
+
 
 // Mock
 import { mockCourses } from '../mockData/courses'
@@ -108,6 +107,11 @@ const Admin = () => {
   const [schoolFilter, setSchoolFilter] = useState('all')
   const [courseSearch, setCourseSearch] = useState('')
 
+  const [feedbacks, setFeedbacks] = useState([])
+  const [feedbackSearch, setFeedbackSearch] = useState('')
+  const [feedbackStarsFilter, setFeedbackStarsFilter] = useState(null) // null = todas
+  const [deleteFeedbackModal, setDeleteFeedbackModal] = useState({ open: false, feedback: null })
+
   const [courseModal, setCourseModal] = useState({
     open: false,
     course: null
@@ -124,9 +128,11 @@ const Admin = () => {
     stats: true,
     courses: true,
     users: true,
+    feedbacks: true,
     save: false,
     delete: false,
-    role: false
+    role: false,
+    featuring: false
   })
 
 
@@ -149,6 +155,23 @@ const Admin = () => {
         (c.instructor || '').toLowerCase().includes(q)
     })
     : courses
+
+  // Filtro de feedbacks: busca por nome, email, curso e comentário + filtro por estrelas
+  const filteredFeedbacks = feedbacks
+    .filter(f => {
+      if (feedbackStarsFilter !== null && f.stars !== feedbackStarsFilter) return false
+      if (!feedbackSearch.trim()) return true
+      const q = feedbackSearch.trim().toLowerCase()
+      return (
+        (f.user?.name || '').toLowerCase().includes(q) ||
+        (f.user?.email || '').toLowerCase().includes(q) ||
+        (f.course?.title || '').toLowerCase().includes(q) ||
+        (f.content || '').toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => (b.isFeatured === a.isFeatured ? 0 : b.isFeatured ? 1 : -1)) // destacados primeiro
+
+  const featuredCount = feedbacks.filter(f => f.isFeatured).length
 
 
   // ======================================================
@@ -230,6 +253,24 @@ const Admin = () => {
     return () => clearTimeout(timeout)
 
   }, [tab, role, search, roleFilter, schoolFilter])
+
+  useEffect(() => {
+    if (tab !== 'feedbacks') return
+
+    setLoad('feedbacks', true)
+
+    getAllFeedbacksAPI()
+      .then(response => {
+        setFeedbacks(response.data.data)
+      })
+      .catch(() => {
+        setFeedbacks([])
+      })
+      .finally(() => {
+        setLoad('feedbacks', false)
+      })
+
+  }, [tab])
 
 
   // ======================================================
@@ -433,6 +474,69 @@ const Admin = () => {
       })
     } finally {
       setLoad('role', false)
+    }
+  }
+
+  // ======================================================
+  // EXCLUIR FEEDBACK
+  // ======================================================
+
+  const handleDeleteFeedback = async () => {
+    if (!deleteFeedbackModal.feedback) return
+
+    setLoad('delete', true)
+
+    try {
+      await deleteFeedbackAPI(deleteFeedbackModal.feedback._id)
+
+      setFeedbacks(prev =>
+        prev.filter(f => f._id !== deleteFeedbackModal.feedback._id)
+      )
+
+      setDeleteFeedbackModal({ open: false, feedback: null })
+
+      setToast({ show: true, message: 'Feedback excluído com sucesso.' })
+    } catch (err) {
+      setToast({
+        show: true,
+        message: err.response?.data?.message || 'Erro ao excluir feedback',
+      })
+    } finally {
+      setLoad('delete', false)
+    }
+  }
+
+  // ======================================================
+  // DESTACAR / REMOVER DESTAQUE DO FEEDBACK
+  // ======================================================
+
+  const handleToggleFeatured = async (feedback) => {
+    // Aviso amigável antes de tentar — o backend também bloqueia, mas evita a viagem
+    if (!feedback.isFeatured && featuredCount >= 6) {
+      setToast({ show: true, message: 'Já existem 6 feedbacks em destaque. Remova um antes de adicionar outro.' })
+      return
+    }
+
+    setLoad('featuring', true)
+
+    try {
+      const { data } = await toggleFeaturedFeedbackAPI(feedback._id)
+
+      setFeedbacks(prev =>
+        prev.map(f => (f._id === data.data._id ? data.data : f))
+      )
+
+      setToast({
+        show: true,
+        message: data.data.isFeatured ? 'Feedback destacado na Home.' : 'Feedback removido dos destaques.'
+      })
+    } catch (err) {
+      setToast({
+        show: true,
+        message: err.response?.data?.message || 'Erro ao atualizar destaque',
+      })
+    } finally {
+      setLoad('featuring', false)
     }
   }
 
@@ -770,6 +874,134 @@ const Admin = () => {
 
             </div>
           )}
+
+          {/* ======================================================
+              FEEDBACKS
+          ====================================================== */}
+
+          {tab === 'feedbacks' && (
+
+            <div className="animate-fadeIn">
+
+              <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-text-primary">
+                    Feedbacks
+                  </h1>
+                  <p className="text-sm text-text-muted mt-1">
+                    {featuredCount}/6 em destaque na Home
+                  </p>
+                </div>
+              </div>
+
+              <div className="card overflow-hidden">
+
+                {/* Busca + filtro por estrelas */}
+                <div className="p-4 border-b border-border space-y-3">
+                  <div className="relative">
+                    <Search
+                      size={15}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+                    />
+                    <input
+                      placeholder="Buscar por aluno, e-mail, curso ou comentário..."
+                      value={feedbackSearch}
+                      onChange={e => setFeedbackSearch(e.target.value)}
+                      className="input-field pl-9 text-sm py-2.5 w-full"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <button
+                      onClick={() => setFeedbackStarsFilter(null)}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${feedbackStarsFilter === null ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
+                    >
+                      Todas
+                    </button>
+                    {[5, 4, 3, 2, 1].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setFeedbackStarsFilter(n)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${feedbackStarsFilter === n ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
+                      >
+                        {n} <Star size={11} className={feedbackStarsFilter === n ? 'fill-white' : 'fill-warning text-warning'} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-4 md:p-6">
+
+                  {loading.feedbacks ? (
+
+                    <div className="flex justify-center py-12">
+                      <Spinner />
+                    </div>
+
+                  ) : filteredFeedbacks.length === 0 ? (
+
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <MessageSquareText size={36} className="text-text-muted mb-3" />
+                      <p className="font-semibold text-text-primary mb-1">Nenhum feedback encontrado</p>
+                      <p className="text-sm text-text-muted">
+                        {feedbackSearch.trim() || feedbackStarsFilter !== null
+                          ? 'Nenhum feedback corresponde ao filtro.'
+                          : 'Ainda não há feedbacks na plataforma.'}
+                      </p>
+                    </div>
+
+                  ) : (
+
+                    <div className="space-y-3">
+                      {filteredFeedbacks.map(f => (
+                        <div
+                          key={f._id}
+                          className={`card p-4 ${f.isFeatured ? 'ring-2 ring-primary bg-surface-blue' : ''}`}
+                        >
+                          <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold text-text-primary">{f.user?.name || 'Aluno'}</p>
+                                <span className="text-xs text-text-muted">{f.user?.email}</span>
+                              </div>
+                              <p className="text-xs text-text-muted mt-0.5">{f.course?.title}</p>
+                            </div>
+
+                            <div className="flex items-center gap-0.5 flex-shrink-0">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <Star key={n} size={13} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
+                              ))}
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-text-secondary mt-2 leading-relaxed">{f.content}</p>
+
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                            <Button
+                              variant={f.isFeatured ? 'secondary' : 'primary'}
+                              className="text-xs py-1.5 px-3"
+                              onClick={() => handleToggleFeatured(f)}
+                              disabled={loading.featuring}
+                            >
+                              {f.isFeatured ? 'Remover destaque' : 'Destacar na Home'}
+                            </Button>
+
+                            <button
+                              onClick={() => setDeleteFeedbackModal({ open: true, feedback: f })}
+                              className="text-text-muted hover:text-error transition-colors p-1.5"
+                              title="Excluir feedback"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -855,6 +1087,43 @@ const Admin = () => {
 
         </div>
       </Modal>
+
+      {/* ======================================================
+          MODAL EXCLUIR FEEDBACK
+      ====================================================== */}
+
+      <Modal
+        open={deleteFeedbackModal.open}
+        onClose={() => setDeleteFeedbackModal({ open: false, feedback: null })}
+        title="Excluir feedback"
+        size="sm"
+      >
+        <p className="text-text-secondary text-sm mb-5">
+          Tem certeza que deseja excluir o feedback de{' '}
+          <strong className="text-text-primary">{deleteFeedbackModal.feedback?.user?.name}</strong>?
+          Esta ação não pode ser desfeita.
+        </p>
+
+        <div className="flex gap-3">
+          <Button
+            onClick={handleDeleteFeedback}
+            loading={loading.delete}
+            className="flex-1 bg-error hover:bg-error-text border-0"
+          >
+            <Trash2 size={14} />
+            Excluir
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteFeedbackModal({ open: false, feedback: null })}
+            disabled={loading.delete}
+          >
+            Cancelar
+          </Button>
+        </div>
+      </Modal>
+
     </div>
   )
 }
