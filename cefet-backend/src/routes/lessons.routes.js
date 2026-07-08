@@ -1,8 +1,11 @@
 const router = require('express').Router({ mergeParams: true }); // mergeParams para acessar :courseId
-const { getLessons, createLesson, updateLesson, deleteLesson } = require('../controllers/lessons.controller');
+const { getLessons, getCalendarLessons, createLesson, updateLesson, deleteLesson } = require('../controllers/lessons.controller');
 const verifyJWT = require('../middleware/auth');
 const requireCourseAccess = require('../middleware/courseAccess');
 const requireCourseView = require('../middleware/courseView');
+
+// Todos podem visualizar
+router.get('/lessons', getCalendarLessons);
 
 // Apenas gestores do curso ou alunos inscritos podem ver as aulas
 router.get('/', verifyJWT, requireCourseView, getLessons);

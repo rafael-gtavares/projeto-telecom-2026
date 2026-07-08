@@ -11,6 +11,29 @@ const getLessons = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// GET /courses/lessons
+const getCalendarLessons = async (req, res, next) => {
+  try {
+    const lessons = await Lesson.find()
+      .populate({
+        path: 'course',
+        match: { status: { $ne: 'rascunho' } },
+        select: '_id title startDate endDate status modality location'
+      })
+      .sort({ date: 1, startTime: 1 });
+
+    // Remove aulas cujo curso foi filtrado pelo populate (status = rascunho)
+    const calendarLessons = lessons.filter(lesson => lesson.course);
+
+    return res.status(200).json({
+      success: true,
+      data: calendarLessons
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 // POST /courses/:courseId/lessons
 const createLesson = async (req, res, next) => {
   try {
@@ -107,4 +130,4 @@ const deleteLesson = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getLessons, createLesson, updateLesson, deleteLesson };
+module.exports = { getLessons, getCalendarLessons, createLesson, updateLesson, deleteLesson };
