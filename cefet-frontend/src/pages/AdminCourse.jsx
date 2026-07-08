@@ -37,8 +37,10 @@ import {
   getCourseStudentsAPI,
   getCourseGradesAPI, createGradeAPI, deleteGradeAPI,
   addAllowedProfessorAPI, removeAllowedProfessorAPI, updateSituationAPI,
+  releaseCertificateAPI, getCertificatePdfAPI,
 } from '../api/courses'
 import { getAnnouncementsAPI, createAnnouncementAPI, deleteAnnouncementAPI } from '../api/announcements'
+import { readBlobError } from '../utils/blobError'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
 import { formatModality } from '../utils/formatModality'
@@ -89,6 +91,8 @@ const AdminCourse = () => {
   const [gradeModal, setGradeModal] = useState({ open: false, student: null })
   const [gradeSaveLoading, setGradeSaveLoading] = useState(false)
   const [situationLoading, setSituationLoading] = useState(null) // _id do enrollment em atualização
+  const [certificateSavingId, setCertificateSavingId] = useState(null) // _id do enrollment liberando certificado
+  const [certPreview, setCertPreview] = useState({ open: false, url: null, loading: false, name: '' })
 
   // Material
   const [materials, setMaterials] = useState([])
@@ -368,6 +372,60 @@ const AdminCourse = () => {
     })
   }
 
+  const handleReleaseCertificate = (enrollmentId, status) => {
+    const emitir = status === 'emitido'
+    confirm(
+      emitir
+        ? 'Emitir o certificado deste aluno? Ele será notificado e poderá baixar o PDF.'
+        : 'Revogar o certificado deste aluno? Ele voltará para "em análise".',
+      async () => {
+        setCertificateSavingId(enrollmentId)
+        try {
+          const { data } = await releaseCertificateAPI(enrollmentId, status)
+          setStudents(prev =>
+            prev.map(s => s._id === enrollmentId ? { ...s, certificateStatus: data.data.certificateStatus } : s)
+          )
+          showToast(emitir ? 'Certificado emitido' : 'Certificado revogado')
+        } catch (err) {
+          showToast(err.response?.data?.message || 'Erro ao atualizar certificado')
+        } finally {
+          setCertificateSavingId(null)
+        }
+      }
+    )
+  }
+
+  const handlePreviewCertificate = async (enrollment) => {
+    const name = enrollment.user?.name || 'Aluno'
+    const studentId = enrollment.user?._id || enrollment.user
+    setCertPreview({ open: true, url: null, loading: true, name })
+    try {
+      const res = await getCertificatePdfAPI(courseId, { studentId })
+      const url = URL.createObjectURL(res.data)
+      setCertPreview({ open: true, url, loading: false, name })
+    } catch (err) {
+      showToast(await readBlobError(err, 'Erro ao carregar certificado'))
+      setCertPreview({ open: false, url: null, loading: false, name: '' })
+    }
+  }
+
+  const closeCertPreview = () => {
+    setCertPreview((prev) => {
+      if (prev.url) URL.revokeObjectURL(prev.url)
+      return { open: false, url: null, loading: false, name: '' }
+    })
+  }
+
+  const downloadCertPreview = () => {
+    if (!certPreview.url) return
+    const a = document.createElement('a')
+    a.href = certPreview.url
+    a.download = `certificado-${certPreview.name.replace(/\s+/g, '-').toLowerCase()}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
   // --- Handlers Config ---
   useEffect(() => {
     if (activeTab !== 'config' || !course) return
@@ -484,9 +542,12 @@ const AdminCourse = () => {
                 students={students}
                 course={course}
                 situationLoading={situationLoading}
+                certificateSavingId={certificateSavingId}
                 onOpenStudent={(student) => setStudentModal({ open: true, student })}
                 onOpenGrade={(student) => setGradeModal({ open: true, student })}
                 onChangeSituation={handleChangeSituation}
+                onReleaseCertificate={handleReleaseCertificate}
+                onPreviewCertificate={handlePreviewCertificate}
               />
             )}
 
@@ -602,6 +663,24 @@ const AdminCourse = () => {
         onSave={handleCreateAnnouncement}
         saving={announcementSaveLoading}
       />
+
+      {/* --- Modal de pré-visualização do certificado (admin) --- */}
+      <Modal open={certPreview.open} onClose={closeCertPreview} title={`Certificado — ${certPreview.name}`} size="lg">
+        {certPreview.loading ? (
+          <div className="flex justify-center py-16"><Spinner /></div>
+        ) : certPreview.url ? (
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <Button variant="primary" className="text-sm" onClick={downloadCertPreview}>
+                Baixar PDF
+              </Button>
+            </div>
+            <div className="w-full rounded-card border border-border overflow-hidden bg-surface-page" style={{ height: '65vh' }}>
+              <iframe title="Certificado do aluno" src={certPreview.url} className="w-full h-full" />
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       {/* --- Modal de confirmação genérico + Toast --- */}
       <ConfirmModal confirmModal={confirmModal} onClose={closeConfirm} onConfirm={handleConfirm} />

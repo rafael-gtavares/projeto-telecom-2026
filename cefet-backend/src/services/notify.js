@@ -76,6 +76,23 @@ const notifyNewGrade = async ({ course, studentId, grade, createdBy }) => {
   }
 };
 
+// Certificado liberado → notifica APENAS o aluno
+const notifyCertificate = async ({ course, studentId, createdBy }) => {
+  try {
+    await createNotifications([studentId], {
+      type: 'certificate',
+      course,
+      title: 'Certificado disponível',
+      message: 'Seu certificado de conclusão já pode ser acessado.',
+      tab: 'certificado',
+      refId: null,
+      createdBy,
+    });
+  } catch (err) {
+    console.error('[notify] notifyCertificate falhou:', err.message);
+  }
+};
+
 // Aviso → turma inteira ou um aluno específico
 const notifyAnnouncement = async ({ course, announcement, createdBy }) => {
   try {
@@ -115,5 +132,6 @@ module.exports = {
   notifyNewMaterial,
   notifyNewGrade,
   notifyAnnouncement,
+  notifyCertificate,
   removeNotificationsByRef,
 };

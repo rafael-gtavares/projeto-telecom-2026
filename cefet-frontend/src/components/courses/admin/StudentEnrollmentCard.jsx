@@ -1,4 +1,4 @@
-import { Plus, ChevronRight as ChevronRightIcon } from 'lucide-react'
+import { Plus, ChevronRight as ChevronRightIcon, Award, Eye } from 'lucide-react'
 import { Badge, Avatar } from '../../ui/index'
 import Button from '../../ui/Button'
 import { SITUATIONS, SITUATION_OPTIONS } from '../../../constants/enrollmentSitutation'
@@ -10,11 +10,15 @@ const StudentEnrollmentCard = ({
   enrollment,
   situationEditable,
   situationSaving,
+  certificateEditable,
+  certificateSaving,
   onOpenStudent,
   onOpenGrade,
   onChangeSituation,
+  onReleaseCertificate,
+  onPreviewCertificate,
 }) => {
-  const { _id, user: student, status, averageGrade, situation } = enrollment
+  const { _id, user: student, status, averageGrade, situation, certificateStatus } = enrollment
 
   return (
     <div className="card p-3 space-y-3">
@@ -74,6 +78,46 @@ const StudentEnrollmentCard = ({
           </Button>
         </div>
       </div>
+
+      {/* Certificado — só com o curso encerrado */}
+      {certificateEditable && (
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
+          <Award size={14} className="text-primary flex-shrink-0" />
+          <span className="text-xs text-text-muted flex-shrink-0">Certificado:</span>
+          <Badge variant={certificateStatus === 'emitido' ? 'success' : 'warning'}>
+            {certificateStatus === 'emitido' ? 'Emitido' : 'Em análise'}
+          </Badge>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              variant="ghost"
+              className="text-xs py-1 px-2"
+              onClick={() => onPreviewCertificate(enrollment)}
+            >
+              <Eye size={13} /> Ver
+            </Button>
+            {certificateStatus === 'emitido' ? (
+              <Button
+                variant="secondary"
+                className="text-xs py-1 px-2"
+                loading={certificateSaving}
+                onClick={() => onReleaseCertificate(_id, 'em_analise')}
+              >
+                Revogar
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                className="text-xs py-1.5 px-3"
+                loading={certificateSaving}
+                onClick={() => onReleaseCertificate(_id, 'emitido')}
+              >
+                Emitir certificado
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
