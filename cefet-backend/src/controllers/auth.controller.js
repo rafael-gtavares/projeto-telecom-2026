@@ -7,7 +7,7 @@ const { sendVerificationEmail, sendPasswordResetEmail } = require('../config/ema
 
 // Opções permitidas (devem refletir os enums do model User)
 const ALLOWED_GENDERS = ['masculino', 'feminino', 'prefiro_nao_informar'];
-const ALLOWED_SCHOOL_LEVELS = ['ensino_fundamental', '1_ou_2_ano_em', 'ultimo_ano_em', 'ensino_medio_finalizado', 'eja'];
+const ALLOWED_SCHOOL_LEVELS = ['ensino_fundamental', '1_ou_2_ano_em', 'ultimo_ano_em', 'ensino_medio_finalizado', 'eja', 'superior_completo', 'superior_incompleto'];
 const ALLOWED_INCOME = ['ate_1sm', '1_a_2sm', '2_a_3sm', '3_a_5sm', 'acima_5sm', 'prefiro_nao_informar'];
 
 // ─── REGISTER ───────────────────────────────────────────────────────────────
