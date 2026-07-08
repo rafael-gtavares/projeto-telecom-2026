@@ -703,129 +703,159 @@ const StudentCourse = () => {
               </div>
             )}
 
-            {activeTab === 'feedbacks' && (
-              <div className="space-y-5">
+            {activeTab === 'feedbacks' && (() => {
+              const averageStars = feedbacks.length > 0
+                ? (feedbacks.reduce((sum, f) => sum + f.stars, 0) / feedbacks.length).toFixed(1)
+                : null
 
-                {/* Botão / aviso de adicionar feedback */}
-                <div className="card p-4">
-                  {myFeedback ? (
-                    <p className="text-sm text-text-muted text-center py-1">
-                      Você já avaliou este curso. Máximo de feedbacks adicionados.
-                    </p>
-                  ) : !hasCompletedCourse ? (
-                    <div className="text-center py-1">
-                      <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
+              return (
+                <div className="space-y-5">
+
+                  {/* Botão / aviso de adicionar feedback */}
+                  <div className="card p-4">
+                    {myFeedback ? (
+                      <p className="text-sm text-text-muted text-center py-1">
+                        Você já avaliou este curso. Máximo de feedbacks adicionados.
+                      </p>
+                    ) : !hasCompletedCourse ? (
+                      <div className="text-center py-1">
+                        <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
+                          <Plus size={16} /> Adicionar feedback
+                        </button>
+                        <p className="text-xs text-text-muted mt-2">Conclua o curso para adicionar feedback.</p>
+                      </div>
+                    ) : !showFeedbackForm ? (
+                      <button onClick={() => setShowFeedbackForm(true)} className="btn-primary w-full">
                         <Plus size={16} /> Adicionar feedback
                       </button>
-                      <p className="text-xs text-text-muted mt-2">Conclua o curso para adicionar feedback.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-1 justify-center">
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <button key={n} type="button" onClick={() => setFeedbackStars(n)}>
+                              <Star
+                                size={24}
+                                className={n <= feedbackStars ? 'fill-warning text-warning' : 'text-border'}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <textarea
+                          value={feedbackContent}
+                          onChange={(e) => setFeedbackContent(e.target.value)}
+                          placeholder="Conte como foi sua experiência no curso..."
+                          className="w-full p-3 border border-border rounded-card text-sm resize-none"
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setShowFeedbackForm(false); setFeedbackContent(''); setFeedbackStars(0) }}
+                            className="btn-secondary flex-1"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={handleCreateFeedback}
+                            disabled={submittingFeedback}
+                            className="btn-primary flex-1"
+                          >
+                            {submittingFeedback ? 'Enviando...' : 'Enviar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cabeçalho + média (mesmo padrão do FeedbacksTab do admin) */}
+                  <div className="pb-5 border-b border-border">
+                    <h3 className="font-semibold text-text-primary mb-1">Feedbacks dos alunos</h3>
+                    <p className="text-xs text-text-muted mb-4">
+                      Avaliações enviadas por alunos que concluíram este curso.
+                    </p>
+
+                    {averageStars && (
+                      <div className="flex items-center gap-2 p-3 bg-surface-page rounded-card w-fit">
+                        <span className="text-2xl font-bold text-text-primary">{averageStars}</span>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map(n => (
+                            <Star
+                              key={n}
+                              size={14}
+                              className={n <= Math.round(averageStars) ? 'fill-warning text-warning' : 'text-border'}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-text-muted ml-1">({feedbacks.length} avaliações)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Feedback próprio em destaque */}
+                  {myFeedback && (
+                    <div className="card p-4 ring-2 ring-primary bg-surface-blue">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <Star key={n} size={14} className={n <= myFeedback.stars ? 'fill-warning text-warning' : 'text-border'} />
+                            ))}
+                          </div>
+                          <p className="text-xs font-semibold text-primary mt-1">Seu feedback</p>
+                        </div>
+                        <button onClick={() => handleDeleteFeedback(myFeedback._id)} className="text-text-muted hover:text-error transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                      <p className="text-sm text-text-secondary mt-2 leading-relaxed">{myFeedback.content}</p>
                     </div>
-                  ) : !showFeedbackForm ? (
-                    <button onClick={() => setShowFeedbackForm(true)} className="btn-primary w-full">
-                      <Plus size={16} /> Adicionar feedback
-                    </button>
+                  )}
+
+                  {/* Filtro por estrelas */}
+                  {feedbacks.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <button
+                        onClick={() => setStarsFilter(null)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${starsFilter === null ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
+                      >
+                        Todas
+                      </button>
+                      {[5, 4, 3, 2, 1].map(n => (
+                        <button
+                          key={n}
+                          onClick={() => setStarsFilter(n)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${starsFilter === n ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
+                        >
+                          {n} <Star size={11} className={starsFilter === n ? 'fill-white' : 'fill-warning text-warning'} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Lista dos demais feedbacks */}
+                  {othersFeedbacks.length === 0 ? (
+                    <p className="text-sm text-text-muted text-center py-8">
+                      {feedbacks.length === 0 ? 'Nenhum feedback ainda.' : 'Nenhum feedback com essa quantidade de estrelas.'}
+                    </p>
                   ) : (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-1 justify-center">
-                        {[1, 2, 3, 4, 5].map(n => (
-                          <button key={n} type="button" onClick={() => setFeedbackStars(n)}>
-                            <Star
-                              size={24}
-                              className={n <= feedbackStars ? 'fill-warning text-warning' : 'text-border'}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                      <textarea
-                        value={feedbackContent}
-                        onChange={(e) => setFeedbackContent(e.target.value)}
-                        placeholder="Conte como foi sua experiência no curso..."
-                        className="w-full p-3 border border-border rounded-card text-sm resize-none"
-                        rows={3}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => { setShowFeedbackForm(false); setFeedbackContent(''); setFeedbackStars(0) }}
-                          className="btn-secondary flex-1"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={handleCreateFeedback}
-                          disabled={submittingFeedback}
-                          className="btn-primary flex-1"
-                        >
-                          {submittingFeedback ? 'Enviando...' : 'Enviar'}
-                        </button>
-                      </div>
+                      {othersFeedbacks.map(f => (
+                        <div key={f._id} className="card p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-text-primary">{f.user?.name || 'Aluno'}</p>
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <Star key={n} size={13} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-sm text-text-secondary mt-1.5 leading-relaxed">{f.content}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-
-                {/* Feedback próprio em destaque */}
-                {myFeedback && (
-                  <div className="card p-4 ring-2 ring-primary bg-surface-blue">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <Star key={n} size={14} className={n <= myFeedback.stars ? 'fill-warning text-warning' : 'text-border'} />
-                          ))}
-                        </div>
-                        <p className="text-xs font-semibold text-primary mt-1">Seu feedback</p>
-                      </div>
-                      <button onClick={() => handleDeleteFeedback(myFeedback._id)} className="text-text-muted hover:text-error transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                    <p className="text-sm text-text-secondary mt-2 leading-relaxed">{myFeedback.content}</p>
-                  </div>
-                )}
-
-                {/* Filtro por estrelas */}
-                {feedbacks.length > 0 && (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <button
-                      onClick={() => setStarsFilter(null)}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold border ${starsFilter === null ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
-                    >
-                      Todas
-                    </button>
-                    {[5, 4, 3, 2, 1].map(n => (
-                      <button
-                        key={n}
-                        onClick={() => setStarsFilter(n)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${starsFilter === n ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
-                      >
-                        {n} <Star size={11} className={starsFilter === n ? 'fill-white' : 'fill-warning text-warning'} />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Lista dos demais feedbacks */}
-                {othersFeedbacks.length === 0 ? (
-                  <p className="text-sm text-text-muted text-center py-8">
-                    {feedbacks.length === 0 ? 'Nenhum feedback ainda.' : 'Nenhum feedback com essa quantidade de estrelas.'}
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {othersFeedbacks.map(f => (
-                      <div key={f._id} className="card p-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-text-primary">{f.user?.name || 'Aluno'}</p>
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map(n => (
-                              <Star key={n} size={13} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-sm text-text-secondary mt-1.5 leading-relaxed">{f.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              )
+            })()}
 
           </div>
         </div>
