@@ -714,7 +714,13 @@ const StudentCourse = () => {
             )}
 
             {activeTab === 'certificado' && course?.status === 'closed' && (
-              <CertificateTab courseId={courseId} enrollment={myEnrollment} />
+              <CertificateTab
+                courseId={courseId}
+                enrollment={myEnrollment}
+                course={course}
+                lessons={lessons}
+                studentName={user?.name}
+              />
             )}
 
             {activeTab === 'feedbacks' && (() => {

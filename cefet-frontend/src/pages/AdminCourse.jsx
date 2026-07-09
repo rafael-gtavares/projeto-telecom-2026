@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Edit2, Trash2, Download, ExternalLink } from 'lucide-react'
 import { Tabs, Spinner, Badge } from '../components/ui/index'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
@@ -25,6 +25,7 @@ import ConfigTab from '../components/courses/admin/ConfigTab'
 
 import AnnouncementsTab from '../components/courses/admin/AnnouncementsTab'
 import AnnouncementModal from '../components/courses/admin/AnnouncementModal'
+import CertificateCard from '../components/courses/CertificateCard'
 
 import FeedbacksTab from '../components/courses/admin/FeedbacksTab'
 
@@ -96,7 +97,7 @@ const AdminCourse = () => {
   const [gradeSaveLoading, setGradeSaveLoading] = useState(false)
   const [situationLoading, setSituationLoading] = useState(null) // _id do enrollment em atualização
   const [certificateSavingId, setCertificateSavingId] = useState(null) // _id do enrollment liberando certificado
-  const [certPreview, setCertPreview] = useState({ open: false, url: null, loading: false, name: '' })
+  const [certPreview, setCertPreview] = useState({ open: false, url: null, name: '', enrollment: null })
 
   // Material
   const [materials, setMaterials] = useState([])
@@ -416,21 +417,21 @@ const AdminCourse = () => {
   const handlePreviewCertificate = async (enrollment) => {
     const name = enrollment.user?.name || 'Aluno'
     const studentId = enrollment.user?._id || enrollment.user
-    setCertPreview({ open: true, url: null, loading: true, name })
+    // Abre o card imediatamente; o PDF é buscado em segundo plano (para os botões)
+    setCertPreview({ open: true, url: null, name, enrollment })
     try {
       const res = await getCertificatePdfAPI(courseId, { studentId })
       const url = URL.createObjectURL(res.data)
-      setCertPreview({ open: true, url, loading: false, name })
+      setCertPreview((prev) => (prev.open ? { ...prev, url } : prev))
     } catch (err) {
-      showToast(await readBlobError(err, 'Erro ao carregar certificado'))
-      setCertPreview({ open: false, url: null, loading: false, name: '' })
+      showToast(await readBlobError(err, 'Não foi possível preparar o PDF do certificado'))
     }
   }
 
   const closeCertPreview = () => {
     setCertPreview((prev) => {
       if (prev.url) URL.revokeObjectURL(prev.url)
-      return { open: false, url: null, loading: false, name: '' }
+      return { open: false, url: null, name: '', enrollment: null }
     })
   }
 
@@ -691,20 +692,30 @@ const AdminCourse = () => {
 
       {/* --- Modal de pré-visualização do certificado (admin) --- */}
       <Modal open={certPreview.open} onClose={closeCertPreview} title={`Certificado — ${certPreview.name}`} size="lg">
-        {certPreview.loading ? (
-          <div className="flex justify-center py-16"><Spinner /></div>
-        ) : certPreview.url ? (
-          <div className="space-y-3">
-            <div className="flex justify-end">
-              <Button variant="primary" className="text-sm" onClick={downloadCertPreview}>
-                Baixar PDF
+        {certPreview.enrollment && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <Button
+                variant="secondary"
+                className="text-sm"
+                onClick={() => certPreview.url && window.open(certPreview.url, '_blank')}
+                disabled={!certPreview.url}
+              >
+                <ExternalLink size={15} /> Abrir em outra página
+              </Button>
+              <Button variant="primary" className="text-sm" onClick={downloadCertPreview} disabled={!certPreview.url}>
+                <Download size={15} /> Baixar PDF
               </Button>
             </div>
-            <div className="w-full rounded-card border border-border overflow-hidden bg-surface-page" style={{ height: '65vh' }}>
-              <iframe title="Certificado do aluno" src={certPreview.url} className="w-full h-full" />
-            </div>
+            <CertificateCard
+              studentName={certPreview.enrollment.user?.name}
+              course={course}
+              lessons={lessons}
+              issuedAt={certPreview.enrollment.certificateIssuedAt}
+              enrollmentId={certPreview.enrollment._id}
+            />
           </div>
-        ) : null}
+        )}
       </Modal>
 
       {/* --- Modal de confirmação genérico + Toast --- */}

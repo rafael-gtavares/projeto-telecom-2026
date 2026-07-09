@@ -4,10 +4,11 @@ const Lesson = require('../models/Lesson');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { createCertificateDoc, formatWorkload } = require('../services/certificate');
 
+// Mesmos rótulos da UI (utils/formatModality) para o PDF bater com a prévia
 const MODALITY_LABELS = {
   presencial: 'Presencial',
-  ead: 'EAD (a distância)',
-  semi_presencial: 'Semipresencial',
+  ead: 'EAD',
+  semi_presencial: 'Semi-presencial',
   palestra: 'Palestra',
   workshop: 'Workshop',
   outro: 'Outro',

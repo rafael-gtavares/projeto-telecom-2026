@@ -1,31 +1,32 @@
 import { useState, useEffect } from 'react'
-import { Download, Clock, CheckCircle, Award } from 'lucide-react'
-import { Spinner, Badge } from '../ui/index'
+import { Download, Clock, ExternalLink } from 'lucide-react'
+import { Badge } from '../ui/index'
 import Button from '../ui/Button'
+import CertificateCard from './CertificateCard'
 import { getCertificatePdfAPI } from '../../api/courses'
 import { readBlobError } from '../../utils/blobError'
 
 // Aba "Certificado" do aluno (só aparece com o curso concluído).
-// Em análise → aviso; Emitido → prévia do PDF + download.
-const CertificateTab = ({ courseId, enrollment }) => {
+// Em análise → aviso; Emitido → prévia visual (card) + abrir em nova aba + download.
+const CertificateTab = ({ courseId, enrollment, course, lessons = [], studentName }) => {
   const emitido = enrollment?.certificateStatus === 'emitido'
   const [pdfUrl, setPdfUrl] = useState(null)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // O PDF é buscado em segundo plano só para os botões (abrir/baixar);
+  // a prévia (card) aparece na hora, a partir dos dados.
   useEffect(() => {
     if (!emitido) return
     let objectUrl
-    setLoading(true)
     setError('')
     getCertificatePdfAPI(courseId)
       .then((res) => { objectUrl = URL.createObjectURL(res.data); setPdfUrl(objectUrl) })
-      .catch(async (err) => setError(await readBlobError(err, 'Não foi possível carregar o certificado. Tente novamente.')))
-      .finally(() => setLoading(false))
+      .catch(async (err) => setError(await readBlobError(err, 'Não foi possível preparar o PDF para download.')))
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [emitido, courseId])
 
-  const handleDownload = () => {
+  const openInNewTab = () => { if (pdfUrl) window.open(pdfUrl, '_blank') }
+  const download = () => {
     if (!pdfUrl) return
     const a = document.createElement('a')
     a.href = pdfUrl
@@ -52,30 +53,29 @@ const CertificateTab = ({ courseId, enrollment }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
-          <Badge variant="success" className="flex items-center gap-1">
-            <CheckCircle size={12} /> Emitido
-          </Badge>
-          <span className="text-sm text-text-muted truncate">Seu certificado de conclusão está pronto.</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge variant="success">Emitido</Badge>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" className="text-sm" onClick={openInNewTab} disabled={!pdfUrl}>
+            <ExternalLink size={15} /> Abrir em outra página
+          </Button>
+          <Button variant="primary" className="text-sm" onClick={download} disabled={!pdfUrl}>
+            <Download size={15} /> Baixar PDF
+          </Button>
         </div>
-        <Button variant="primary" className="text-sm flex-shrink-0" onClick={handleDownload} disabled={!pdfUrl}>
-          <Download size={15} /> Baixar PDF
-        </Button>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16"><Spinner /></div>
-      ) : error ? (
-        <div className="text-center py-12">
-          <Award size={28} className="mx-auto text-text-muted opacity-40 mb-2" />
-          <p className="text-sm text-error">{error}</p>
-        </div>
-      ) : pdfUrl ? (
-        <div className="w-full rounded-card border border-border overflow-hidden bg-surface-page" style={{ height: '70vh' }}>
-          <iframe title="Certificado de conclusão" src={pdfUrl} className="w-full h-full" />
-        </div>
-      ) : null}
+      {error && <p className="text-xs text-error">{error}</p>}
+
+      <div className="max-w-3xl mx-auto">
+        <CertificateCard
+          studentName={studentName}
+          course={course}
+          lessons={lessons}
+          issuedAt={enrollment.certificateIssuedAt}
+          enrollmentId={enrollment._id}
+        />
+      </div>
     </div>
   )
 }
