@@ -6,9 +6,12 @@ const StudentsTab = ({
   students,
   course,
   situationLoading,
+  certificateSavingId,
   onOpenStudent,
   onOpenGrade,
   onChangeSituation,
+  onReleaseCertificate,
+  onPreviewCertificate,
 }) => {
   const [situationFilter, setSituationFilter] = useState('all')
 
@@ -60,9 +63,13 @@ const StudentsTab = ({
               enrollment={enrollment}
               situationEditable={situationEditable}
               situationSaving={situationLoading === enrollment._id}
+              certificateEditable={situationEditable}
+              certificateSaving={certificateSavingId === enrollment._id}
               onOpenStudent={onOpenStudent}
               onOpenGrade={onOpenGrade}
               onChangeSituation={onChangeSituation}
+              onReleaseCertificate={onReleaseCertificate}
+              onPreviewCertificate={onPreviewCertificate}
             />
           ))}
         </div>

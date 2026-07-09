@@ -7,6 +7,7 @@ import Modal from '../components/ui/Modal'
 import Toast from '../components/ui/Toast'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
 import ExerciseRunner from '../components/exercises/ExerciseRunner'
+import CertificateTab from '../components/courses/CertificateTab'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI, getMyEnrollmentsAPI } from '../api/courses'
 import { getAnnouncementsAPI } from '../api/announcements'
 import { getCourseFeedbacksAPI, createFeedbackAPI, deleteFeedbackAPI } from '../api/feedbacks'
@@ -26,7 +27,10 @@ const tabs = [
   { value: 'feedbacks', label: 'Feedbacks' }
 ]
 
-const VALID_TABS = tabs.map((t) => t.value)
+// A aba "Certificado" só é exibida quando o curso está concluído (closed),
+// mas é um destino válido de deep-link das notificações.
+const CERTIFICATE_TAB = { value: 'certificado', label: 'Certificado' }
+const VALID_TABS = [...tabs.map((t) => t.value), CERTIFICATE_TAB.value]
 
 // Card de aula reutilizado nas listas de próximas/anteriores.
 // isToday → destaque (aula do dia); past → esmaecido; onClick → abre o conteúdo.
@@ -173,12 +177,13 @@ const StudentCourse = () => {
     let active = true
       ; (async () => {
         try {
-          const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: aData }] = await Promise.all([
+          const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: aData }, { data: eData }] = await Promise.all([
             getCourseAPI(courseId),
             getLessonsAPI(courseId),
             getMaterialsAPI(courseId),
             getMyGradesAPI(courseId),
             getAnnouncementsAPI(courseId),
+            getMyEnrollmentsAPI(),
           ])
           if (!active) return
           setCourse(cData.data)
@@ -186,6 +191,7 @@ const StudentCourse = () => {
           setMaterials(mData.data)
           setMyGrades(gData.data)
           setAnnouncements(aData.data)
+          setMyEnrollment(eData.data.find(e => (e.course?._id || e.course) === courseId) || null)
         } catch {
           // silencioso: recarregar em background não deve interromper a leitura
         }
@@ -283,7 +289,11 @@ const StudentCourse = () => {
           </div>
 
           <div className="border-b border-border bg-white rounded-t-card px-4">
-            <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+            <Tabs
+              tabs={course?.status === 'closed' ? [...tabs, CERTIFICATE_TAB] : tabs}
+              active={activeTab}
+              onChange={setActiveTab}
+            />
           </div>
 
           <div className="bg-white rounded-b-card border border-border border-t-0 p-4">
@@ -701,6 +711,16 @@ const StudentCourse = () => {
                   ))
                 )}
               </div>
+            )}
+
+            {activeTab === 'certificado' && course?.status === 'closed' && (
+              <CertificateTab
+                courseId={courseId}
+                enrollment={myEnrollment}
+                course={course}
+                lessons={lessons}
+                studentName={user?.name}
+              />
             )}
 
             {activeTab === 'feedbacks' && (() => {

@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   type: {
     type: String,
-    enum: ['material', 'grade', 'announcement', 'lesson', 'schedule'],
+    enum: ['material', 'grade', 'announcement', 'lesson', 'schedule', 'certificate'],
     required: true,
   },
   course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
@@ -17,7 +17,7 @@ const notificationSchema = new mongoose.Schema({
   message: { type: String, default: '' },                  // resumo curto
 
   // Aba do curso que o clique deve abrir (deep-link no front)
-  tab: { type: String, enum: ['material', 'notas', 'avisos', 'cronograma'], required: true },
+  tab: { type: String, enum: ['material', 'notas', 'avisos', 'cronograma', 'certificado'], required: true },
   refId: { type: mongoose.Schema.Types.ObjectId, default: null }, // id do material/nota/aviso/aula
 
   read: { type: Boolean, default: false },

@@ -14,6 +14,18 @@ export const cancelEnrollmentAPI = (courseId) => api.delete(`/enrollments/${cour
 export const updateSituationAPI = (id, data) => api.put(`/enrollments/${id}/situation`, data)
 export const getUserEnrollmentsAPI = (userId) => api.get(`/enrollments/user/${userId}`)
 
+// Certificado
+export const releaseCertificateAPI = (enrollmentId, status) =>
+  api.patch(`/enrollments/${enrollmentId}/certificate`, { status })
+// Baixa/visualiza o PDF do certificado como blob (mantém o token via axios).
+// studentId (opcional) permite ao gestor pré-visualizar o certificado de um aluno.
+export const getCertificatePdfAPI = (courseId, { download = false, studentId } = {}) => {
+  const params = {}
+  if (download) params.download = 1
+  if (studentId) params.student = studentId
+  return api.get(`/courses/${courseId}/certificate/pdf`, { params, responseType: 'blob' })
+}
+
 // Aulas
 export const getLessonsAPI = (courseId) => api.get(`/courses/${courseId}/lessons`)
 export const getCalendarLessons = () => api.get('/courses/lessons')

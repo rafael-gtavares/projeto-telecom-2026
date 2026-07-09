@@ -2,6 +2,7 @@ const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { notifyCertificate } = require('../services/notify');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
@@ -140,6 +141,12 @@ const cancelEnrollment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Não é possível cancelar um curso já concluído' });
     }
 
+    // Curso encerrado (concluído) não pode ter a inscrição cancelada
+    const enrolledCourse = await Course.findById(courseId).select('status');
+    if (enrolledCourse?.status === 'closed') {
+      return res.status(400).json({ success: false, message: 'Não é possível cancelar um curso concluído' });
+    }
+
     const wasWaitlisted = enrollment.status === ENROLLMENT_STATUS.WAITING_LIST;
     await enrollment.deleteOne();
 
@@ -224,4 +231,40 @@ const updateSituation = async (req, res, next) => {
   }
 };
 
-module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, getCourseStudents, updateSituation, getUserEnrollments };
+// PATCH /enrollments/:id/certificate — gestor do curso libera/revoga o certificado
+// de um aluno. Só com o curso encerrado. Ao emitir, notifica o aluno.
+const releaseCertificate = async (req, res, next) => {
+  try {
+    const { status } = req.body; // 'emitido' | 'em_analise'
+    if (!['emitido', 'em_analise'].includes(status))
+      return res.status(400).json({ success: false, message: 'Status de certificado inválido' });
+
+    const enrollment = await Enrollment.findById(req.params.id);
+    if (!enrollment)
+      return res.status(404).json({ success: false, message: 'Inscrição não encontrada' });
+
+    const course = await Course.findById(enrollment.course);
+    if (!course)
+      return res.status(404).json({ success: false, message: 'Curso não encontrado' });
+    if (!course.hasManageAccess(req.user.id, req.user.role))
+      return res.status(403).json({ success: false, message: 'Sem permissão para este curso' });
+    if (course.status !== 'closed')
+      return res.status(400).json({ success: false, message: 'O certificado só pode ser liberado com o curso encerrado' });
+
+    enrollment.certificateStatus = status;
+    if (status === 'emitido') {
+      enrollment.certificateIssuedAt = new Date();
+      enrollment.certificateIssuedBy = req.user.id;
+      await enrollment.save();
+      await notifyCertificate({ course: course._id, studentId: enrollment.user, createdBy: req.user.id });
+    } else {
+      enrollment.certificateIssuedAt = null;
+      enrollment.certificateIssuedBy = null;
+      await enrollment.save();
+    }
+
+    res.json({ success: true, data: enrollment });
+  } catch (err) { next(err); }
+};
+
+module.exports = { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, getCourseStudents, updateSituation, getUserEnrollments, releaseCertificate };

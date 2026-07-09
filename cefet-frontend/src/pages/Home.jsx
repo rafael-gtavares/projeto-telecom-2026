@@ -8,7 +8,7 @@ import CourseDetailModal from '../components/courses/CourseDetailModal'
 //import CalendarLessons from '../components/home/CalendarLessons'
 import HeroBackground from '../components/home/HeroBackground'
 import HeroTransmitter from '../components/home/HeroTransmitter'
-import CalendarLessons from '../components/home/CalendarLessons'
+import ScheduleCalendar from '../components/home/ScheduleCalendar'
 import Toast from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
@@ -328,11 +328,17 @@ const Home = () => {
         </div>
       </section>
 
-      {/* CALENDÁRIO */}
-      <section>
-        <CalendarLessons
-          lessons={allLessons}
-        />
+      {/* Agenda semanal — horários de todos os cursos e conflitos */}
+      <section id="agenda" className="py-16 bg-surface-page">
+        <div className="max-w-6xl mx-auto px-4 md:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-text-primary mb-2">Agenda de horários</h2>
+            <p className="text-text-secondary max-w-xl mx-auto">
+              Veja os horários de todos os cursos numa semana típica e identifique conflitos antes de se inscrever
+            </p>
+          </div>
+          <ScheduleCalendar />
+        </div>
       </section>
 
       {/* Feedbacks em destaque */}

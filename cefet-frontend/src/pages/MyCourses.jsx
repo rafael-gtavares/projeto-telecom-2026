@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { BookOpen, Clock, Calendar, User, XCircle, MapPin, ChevronRight, AlertTriangle, LayoutList, LayoutGrid } from 'lucide-react'
+import { BookOpen, Clock, Calendar, User, XCircle, MapPin, ChevronRight, AlertTriangle, LayoutList, LayoutGrid, Award } from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Badge, Spinner } from '../components/ui/index'
 import Modal from '../components/ui/Modal'
@@ -220,7 +220,15 @@ const MyCourses = () => {
                             Ver Detalhes
                           </Button>
 
-                          {status !== 'closed' && (
+                          {course.status === 'closed' ? (
+                            <Button
+                              variant="secondary"
+                              className="text-[13px] py-2 px-4 w-full"
+                              onClick={() => navigate(`/meu-curso/${course._id}?tab=certificado`)}
+                            >
+                              <Award size={14} /> Certificado
+                            </Button>
+                          ) : (
                             <Button
                               variant="ghost"
                               className="text-[13px] py-2 px-4 w-full border border-error/20"
@@ -317,7 +325,14 @@ const MyCourses = () => {
                                 Ver Detalhes
                               </Button>
                             )}
-                            {status !== 'closed' && (
+                            {course.status === 'closed' ? (
+                              <button
+                                onClick={() => navigate(`/meu-curso/${course._id}?tab=certificado`)}
+                                className="w-full text-xs text-primary hover:underline transition-colors py-1 flex items-center justify-center gap-1"
+                              >
+                                <Award size={13} /> Ver certificado
+                              </button>
+                            ) : (
                               <button
                                 onClick={() => setCancelModal({ open: true, enrollment: { _id, course, status } })}
                                 className="w-full text-xs text-error/70 hover:text-error transition-colors py-1"
