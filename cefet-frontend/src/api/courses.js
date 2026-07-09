@@ -28,7 +28,6 @@ export const getCertificatePdfAPI = (courseId, { download = false, studentId } =
 
 // Aulas
 export const getLessonsAPI = (courseId) => api.get(`/courses/${courseId}/lessons`)
-export const getCalendarLessons = () => api.get('/courses/lessons')
 export const createLessonAPI = (courseId, data) => api.post(`/courses/${courseId}/lessons`, data)
 export const updateLessonAPI = (courseId, lessonId, data) => api.put(`/courses/${courseId}/lessons/${lessonId}`, data)
 export const deleteLessonAPI = (courseId, lessonId) => api.delete(`/courses/${courseId}/lessons/${lessonId}`)

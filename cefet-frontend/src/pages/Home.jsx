@@ -5,14 +5,13 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import EventCard from '../components/courses/EventCard'
 import CourseDetailModal from '../components/courses/CourseDetailModal'
-//import CalendarLessons from '../components/home/CalendarLessons'
 import HeroBackground from '../components/home/HeroBackground'
 import HeroTransmitter from '../components/home/HeroTransmitter'
 import ScheduleCalendar from '../components/home/ScheduleCalendar'
 import Toast from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
-import { getCoursesAPI, getCalendarLessons } from '../api/courses'
+import { getCoursesAPI } from '../api/courses'
 import { getFeaturedFeedbacksAPI } from '../api/feedbacks'
 import { mockCourses, mockPartners } from '../mockData/courses'
 import { MODALITY_LABELS } from '../utils/formatModality'
@@ -46,7 +45,6 @@ const Home = () => {
     return () => mq.removeEventListener('change', onChange)
   }, [])
   const [courses, setCourses] = useState([])
-  const [allLessons, setAllLessons] = useState([])
   const [toast, setToast] = useState({ show: false, message: '' })
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -55,18 +53,6 @@ const Home = () => {
 
   const [featuredFeedbacks, setFeaturedFeedbacks] = useState([])
   const [loadingFeedbacks, setLoadingFeedbacks] = useState(true)
-
-  useEffect(() => {
-    const getLessons = async () => {
-      try {
-        const data = await getCalendarLessons()
-        setAllLessons(data)
-      } catch (err) {
-        console.error('Erro ao buscar aulas: ', err)
-      }
-    }
-    getLessons()
-  }, [])
 
   useEffect(() => {
     getFeaturedFeedbacksAPI()
