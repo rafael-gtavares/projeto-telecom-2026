@@ -12,6 +12,7 @@ const { ROLES } = require('../constants/roles');
 const requireCourseAccess = require('../middleware/courseAccess');
 const { getCourseStudents } = require('../controllers/enrollments.controller');
 const { getCertificatePdf } = require('../controllers/certificate.controller');
+const { getCalendar } = require('../controllers/calendar.controller');
 
 // Sub-rotas aninhadas
 const lessonsRouter = require('./lessons.routes');
@@ -20,6 +21,8 @@ const gradesRouter = require('./grades.routes');
 const announcementsRouter = require('./announcements.routes');
 
 router.get('/', optionalAuth, getCourses);
+// Agenda pública (aulas de todos os cursos) — antes de /:id para não ser capturada
+router.get('/calendar', optionalAuth, getCalendar);
 router.get('/all', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getAllCourses);
 router.get('/:id', verifyJWT, getCourse); // Obs.: Essa rota está deixando qualquer usuário autenticado acessar
 router.get('/:id/stats', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getCourseStats)

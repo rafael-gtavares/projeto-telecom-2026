@@ -7,7 +7,9 @@ import { Badge, Spinner } from '../ui/index'
 import Toast from '../ui/Toast'
 import { useAuth } from '../../context/AuthContext'
 import { enrollAPI, checkEnrollmentAPI, cancelEnrollmentAPI } from '../../api/courses'
+import { getCourseConflictsAPI } from '../../api/calendar'
 import { formatDate } from '../../utils/formatDate'
+import { WEEKDAY_LABELS } from '../../utils/scheduleConflicts'
 
 const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange }) => {
   const { isAuthenticated } = useAuth()
@@ -16,11 +18,13 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const [waitlistPosition, setWaitlistPosition] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const [conflicts, setConflicts] = useState([])
   const [toast, setToast] = useState({ show: false, message: '' })
 
   useEffect(() => {
     if (!open || !course) return
     setConfirmCancel(false)
+    setConflicts([])
 
     if (!isAuthenticated) {
       setEnrollmentStatus(null)
@@ -42,7 +46,18 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       }
     }
 
+    // Choques de horário com a agenda atual do aluno (aviso antes de inscrever)
+    const loadConflicts = async () => {
+      try {
+        const { data } = await getCourseConflictsAPI(course._id)
+        setConflicts(data.data.conflicts || [])
+      } catch {
+        setConflicts([])
+      }
+    }
+
     checkStatus()
+    loadConflicts()
   }, [open, course, isAuthenticated])
 
   if (!course) return null
@@ -422,6 +437,31 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                     Este curso está <strong>sem vagas</strong>. Você pode entrar na fila de espera, mas
                     {' '}<strong>só fará o curso se houver alguma desistência</strong>.
                   </p>
+                </div>
+              )}
+              {conflicts.length > 0 && course.status !== 'closed' && (
+                <div className="flex items-start gap-2 bg-error/5 border border-error/20 rounded-lg px-3 py-2.5">
+                  <AlertTriangle size={15} className="text-error flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-text-primary">
+                    <p className="mb-1">
+                      <strong>Conflito de horário</strong> com {conflicts.length === 1 ? 'um curso que você já faz' : 'cursos que você já faz'}:
+                    </p>
+                    <ul className="space-y-0.5">
+                      {conflicts.map((c) => (
+                        <li key={c.course._id} className="text-text-secondary">
+                          <span className="font-medium text-text-primary">{c.course.title}</span>
+                          {' — '}
+                          {c.slots.map((s, i) => (
+                            <span key={i}>
+                              {i > 0 && '; '}
+                              {WEEKDAY_LABELS[s.weekday]} {s.startTime}–{s.endTime}
+                            </span>
+                          ))}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1 text-text-muted">Você ainda pode se inscrever, mas os horários se sobrepõem.</p>
+                  </div>
                 </div>
               )}
               <Button
