@@ -50,9 +50,18 @@ const MyProfile = () => {
     setForm(f => ({ ...f, [k]: val }))
   }
 
+  // Admin e professores sempre podem editar nome/nascimento; aluno só com permissão.
+  const canEditIdentity = user?.canEditPersonalInfo || role !== 'aluno'
+
   const handleSave = async () => {
     setError(''); setSuccess('')
     const payload = { ...form }
+    // Não envia nome/nascimento quando o usuário não pode editá-los (evita 403
+    // desnecessário ao salvar apenas os demais campos).
+    if (!canEditIdentity) {
+      delete payload.name
+      delete payload.birthDate
+    }
     if (showPassSection && passwords.password) {
       if (!passwords.current) { setError('Informe sua senha atual'); return }
       if (passwords.password !== passwords.confirm) { setError('As senhas não coincidem'); return }
@@ -76,14 +85,13 @@ const MyProfile = () => {
   const handleCancel = () => {
     setForm({
       name: user?.name || '', birthDate: user?.birthDate?.slice(0, 10) || '',
-      gender: user?.gender || 'prefiro_nao_informar', schoolLevel: user?.schoolLevel || false,
+      gender: user?.gender || 'prefiro_nao_informar', schoolLevel: user?.schoolLevel || '',
       incomeRange: user?.incomeRange || 'prefiro_nao_informar',
       school: user?.school?._id || user?.school || '',
     })
     setError(''); setSuccess(''); setShowPassSection(false)
+    setPasswords({ current: '', password: '', confirm: '' })
   }
-
-  const canEditPersonalInfo = user?.canEditPersonalInfo;
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -104,9 +112,9 @@ const MyProfile = () => {
             {error && <div className="bg-error-light border border-error/20 text-error text-sm rounded-lg px-4 py-3 mb-5">{error}</div>}
 
             <div className="space-y-4">
-              <Input label="Nome completo" value={form.name} onChange={set('name')} disabled={!canEditPersonalInfo}/>
+              <Input label="Nome completo" value={form.name} onChange={set('name')} disabled={!canEditIdentity}/>
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} disabled={!canEditPersonalInfo}/>
+                <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} disabled={!canEditIdentity}/>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Sexo</label>
                   <select value={form.gender} onChange={set('gender')} className="input-field">
