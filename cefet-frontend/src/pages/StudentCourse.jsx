@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive, Megaphone, Star, Trash2, Plus } from 'lucide-react'
+import { ArrowLeft, BookOpen, Calendar, FileText, Video, FileQuestion, Link as LinkIcon, File, ChevronLeft, ChevronRight, User, MapPin, Clock, Users, FileArchive, Megaphone } from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Spinner, ViewToggle, Badge } from '../components/ui/index'
 import Modal from '../components/ui/Modal'
@@ -8,14 +8,13 @@ import Toast from '../components/ui/Toast'
 import MarkdownPreview from '../components/markdown/MarkdownPreview'
 import ExerciseRunner from '../components/exercises/ExerciseRunner'
 import CertificateTab from '../components/courses/CertificateTab'
+import StudentFeedbackTab from '../components/courses/StudentFeedbackTab'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI, getMyEnrollmentsAPI } from '../api/courses'
 import { getAnnouncementsAPI } from '../api/announcements'
-import { getCourseFeedbacksAPI, createFeedbackAPI, deleteFeedbackAPI } from '../api/feedbacks'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
 import { SITUATIONS, SITUATION_LABELS } from '../constants/enrollmentSitutation'
-import { STATUS } from '../constants/enrollmentStatus'
 import { useAuth } from '../context/AuthContext'
 
 const tabs = [
@@ -24,13 +23,14 @@ const tabs = [
   { value: 'material', label: 'Material' },
   { value: 'avisos', label: 'Avisos' },
   { value: 'notas', label: 'Minhas notas' },
-  { value: 'feedbacks', label: 'Feedbacks' }
 ]
 
 // A aba "Certificado" só é exibida quando o curso está concluído (closed),
 // mas é um destino válido de deep-link das notificações.
 const CERTIFICATE_TAB = { value: 'certificado', label: 'Certificado' }
-const VALID_TABS = [...tabs.map((t) => t.value), CERTIFICATE_TAB.value]
+// A aba "Feedback" também só aparece com o curso concluído (destino de deep-link)
+const FEEDBACK_TAB = { value: 'feedback', label: 'Feedback' }
+const VALID_TABS = [...tabs.map((t) => t.value), CERTIFICATE_TAB.value, FEEDBACK_TAB.value]
 
 // Card de aula reutilizado nas listas de próximas/anteriores.
 // isToday → destaque (aula do dia); past → esmaecido; onClick → abre o conteúdo.
@@ -93,12 +93,6 @@ const StudentCourse = () => {
   const [viewLesson, setViewLesson] = useState(null)
   const [quizLesson, setQuizLesson] = useState(null)
   const [myEnrollment, setMyEnrollment] = useState(null)
-  const [feedbacks, setFeedbacks] = useState([])
-  const [starsFilter, setStarsFilter] = useState(null) // null = todas
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false)
-  const [feedbackContent, setFeedbackContent] = useState('')
-  const [feedbackStars, setFeedbackStars] = useState(0)
-  const [submittingFeedback, setSubmittingFeedback] = useState(false)
 
   const openLesson = (lesson) => setViewLesson(lesson)
   const startQuiz = () => { setQuizLesson(viewLesson); setViewLesson(null) }
@@ -147,20 +141,6 @@ const StudentCourse = () => {
     return () => controller.abort()
   }, [courseId])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const loadFeedbacks = async () => {
-      try {
-        const { data } = await getCourseFeedbacksAPI(courseId)
-        if (controller.signal.aborted) return
-        setFeedbacks(data.data)
-      } catch (err) {
-        // silencioso
-      }
-    }
-    loadFeedbacks()
-    return () => controller.abort()
-  }, [courseId])
   // Deep-link da notificação: se a URL trouxer ?tab=... (inclusive ao clicar
   // outra notificação já estando na página), sincroniza a aba ativa.
   useEffect(() => {
@@ -209,62 +189,6 @@ const StudentCourse = () => {
     </>
   )
 
-  const myFeedback = feedbacks.find(f => f.user?._id === user?._id)
-
-  const othersFeedbacks = feedbacks
-    .filter(f => f._id !== myFeedback?._id)
-    .filter(f => starsFilter === null || f.stars === starsFilter)
-    .sort((a, b) => b.stars - a.stars)
-
-  const hasCompletedCourse =
-    myEnrollment?.status === STATUS.COMPLETED &&
-    myEnrollment?.situation !== SITUATIONS.DESISTENTE
-
-  const handleCreateFeedback = async () => {
-    if (!feedbackContent.trim() || feedbackStars === 0) {
-      setToast({ show: true, message: 'Preencha o comentário e selecione uma nota.' })
-      return
-    }
-    setSubmittingFeedback(true)
-    try {
-      const { data } = await createFeedbackAPI({
-        course: courseId,
-        content: feedbackContent.trim(),
-        stars: feedbackStars
-      })
-
-      const novoFeedbackFormatado = {
-        ...data.data,
-        user: {
-          _id: user?._id,
-          name: user?.name,
-          email: user?.email
-        }
-      }
-
-      // Adiciona o feedback perfeitamente formatado no estado
-      setFeedbacks(prev => [novoFeedbackFormatado, ...prev])
-
-      setShowFeedbackForm(false)
-      setFeedbackContent('')
-      setFeedbackStars(0)
-      setToast({ show: true, message: 'Feedback enviado com sucesso!' })
-    } catch (err) {
-      setToast({ show: true, message: err.response?.data?.message || 'Erro ao enviar feedback.' })
-    } finally {
-      setSubmittingFeedback(false)
-    }
-  }
-
-  const handleDeleteFeedback = async (id) => {
-    try {
-      await deleteFeedbackAPI(id)
-      setFeedbacks(prev => prev.filter(f => f._id !== id))
-      setToast({ show: true, message: 'Feedback excluído.' })
-    } catch (err) {
-      setToast({ show: true, message: err.response?.data?.message || 'Erro ao excluir feedback.' })
-    }
-  }
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -290,7 +214,7 @@ const StudentCourse = () => {
 
           <div className="border-b border-border bg-white rounded-t-card px-4">
             <Tabs
-              tabs={course?.status === 'closed' ? [...tabs, CERTIFICATE_TAB] : tabs}
+              tabs={course?.status === 'closed' ? [...tabs, CERTIFICATE_TAB, FEEDBACK_TAB] : tabs}
               active={activeTab}
               onChange={setActiveTab}
             />
@@ -723,159 +647,10 @@ const StudentCourse = () => {
               />
             )}
 
-            {activeTab === 'feedbacks' && (() => {
-              const averageStars = feedbacks.length > 0
-                ? (feedbacks.reduce((sum, f) => sum + f.stars, 0) / feedbacks.length).toFixed(1)
-                : null
+            {activeTab === 'feedback' && course?.status === 'closed' && (
+              <StudentFeedbackTab courseId={courseId} />
+            )}
 
-              return (
-                <div className="space-y-5">
-
-                  {/* Botão / aviso de adicionar feedback */}
-                  <div className="card p-4">
-                    {myFeedback ? (
-                      <p className="text-sm text-text-muted text-center py-1">
-                        Você já avaliou este curso. Máximo de feedbacks adicionados.
-                      </p>
-                    ) : !hasCompletedCourse ? (
-                      <div className="text-center py-1">
-                        <button disabled className="btn-primary w-full opacity-50 cursor-not-allowed">
-                          <Plus size={16} /> Adicionar feedback
-                        </button>
-                        <p className="text-xs text-text-muted mt-2">Conclua o curso para adicionar feedback.</p>
-                      </div>
-                    ) : !showFeedbackForm ? (
-                      <button onClick={() => setShowFeedbackForm(true)} className="btn-primary w-full">
-                        <Plus size={16} /> Adicionar feedback
-                      </button>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-1 justify-center">
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <button key={n} type="button" onClick={() => setFeedbackStars(n)}>
-                              <Star
-                                size={24}
-                                className={n <= feedbackStars ? 'fill-warning text-warning' : 'text-border'}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                        <textarea
-                          value={feedbackContent}
-                          onChange={(e) => setFeedbackContent(e.target.value)}
-                          placeholder="Conte como foi sua experiência no curso..."
-                          className="w-full p-3 border border-border rounded-card text-sm resize-none"
-                          rows={3}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { setShowFeedbackForm(false); setFeedbackContent(''); setFeedbackStars(0) }}
-                            className="btn-secondary flex-1"
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            onClick={handleCreateFeedback}
-                            disabled={submittingFeedback}
-                            className="btn-primary flex-1"
-                          >
-                            {submittingFeedback ? 'Enviando...' : 'Enviar'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cabeçalho + média (mesmo padrão do FeedbacksTab do admin) */}
-                  <div className="pb-5 border-b border-border">
-                    <h3 className="font-semibold text-text-primary mb-1">Feedbacks dos alunos</h3>
-                    <p className="text-xs text-text-muted mb-4">
-                      Avaliações enviadas por alunos que concluíram este curso.
-                    </p>
-
-                    {averageStars && (
-                      <div className="flex items-center gap-2 p-3 bg-surface-page rounded-card w-fit">
-                        <span className="text-2xl font-bold text-text-primary">{averageStars}</span>
-                        <div className="flex items-center gap-0.5">
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <Star
-                              key={n}
-                              size={14}
-                              className={n <= Math.round(averageStars) ? 'fill-warning text-warning' : 'text-border'}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs text-text-muted ml-1">({feedbacks.length} avaliações)</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Feedback próprio em destaque */}
-                  {myFeedback && (
-                    <div className="card p-4 ring-2 ring-primary bg-surface-blue">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map(n => (
-                              <Star key={n} size={14} className={n <= myFeedback.stars ? 'fill-warning text-warning' : 'text-border'} />
-                            ))}
-                          </div>
-                          <p className="text-xs font-semibold text-primary mt-1">Seu feedback</p>
-                        </div>
-                        <button onClick={() => handleDeleteFeedback(myFeedback._id)} className="text-text-muted hover:text-error transition-colors">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <p className="text-sm text-text-secondary mt-2 leading-relaxed">{myFeedback.content}</p>
-                    </div>
-                  )}
-
-                  {/* Filtro por estrelas */}
-                  {feedbacks.length > 0 && (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <button
-                        onClick={() => setStarsFilter(null)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border ${starsFilter === null ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
-                      >
-                        Todas
-                      </button>
-                      {[5, 4, 3, 2, 1].map(n => (
-                        <button
-                          key={n}
-                          onClick={() => setStarsFilter(n)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${starsFilter === n ? 'bg-primary text-white border-primary' : 'border-border text-text-muted'}`}
-                        >
-                          {n} <Star size={11} className={starsFilter === n ? 'fill-white' : 'fill-warning text-warning'} />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Lista dos demais feedbacks */}
-                  {othersFeedbacks.length === 0 ? (
-                    <p className="text-sm text-text-muted text-center py-8">
-                      {feedbacks.length === 0 ? 'Nenhum feedback ainda.' : 'Nenhum feedback com essa quantidade de estrelas.'}
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {othersFeedbacks.map(f => (
-                        <div key={f._id} className="card p-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-text-primary">{f.user?.name || 'Aluno'}</p>
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map(n => (
-                                <Star key={n} size={13} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-sm text-text-secondary mt-1.5 leading-relaxed">{f.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
 
           </div>
         </div>

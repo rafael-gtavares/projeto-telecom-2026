@@ -26,8 +26,7 @@ import ConfigTab from '../components/courses/admin/ConfigTab'
 import AnnouncementsTab from '../components/courses/admin/AnnouncementsTab'
 import AnnouncementModal from '../components/courses/admin/AnnouncementModal'
 import CertificateCard from '../components/courses/CertificateCard'
-
-import FeedbacksTab from '../components/courses/admin/FeedbacksTab'
+import FeedbackTab from '../components/courses/admin/feedback/FeedbackTab'
 
 import { useConfirmModal } from '../hooks/useConfirmModal'
 import { useToast } from '../hooks/useToast'
@@ -46,7 +45,6 @@ import { getAnnouncementsAPI, createAnnouncementAPI, deleteAnnouncementAPI } fro
 import { readBlobError } from '../utils/blobError'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
-import { getCourseFeedbacksAPI } from '../api/feedbacks'
 import { formatModality } from '../utils/formatModality'
 import { SITUATION_LABELS } from '../constants/enrollmentSitutation'
 
@@ -56,8 +54,8 @@ const TABS = [
   { value: 'material', label: 'Material' },
   { value: 'avisos', label: 'Avisos' },
   { value: 'dashboard', label: 'Dashboard' },
+  { value: 'feedbacks', label: 'Feedbacks' },
   { value: 'config', label: 'Config.' },
-  { value: 'feedbacks', label: 'Feedbacks' }
 ]
 
 const AdminCourse = () => {
@@ -113,9 +111,6 @@ const AdminCourse = () => {
   const [configUsers, setConfigUsers] = useState([])
   const [configUsersLoading, setConfigUsersLoading] = useState(false)
 
-  // Feedbacks
-  const [feedbacks, setFeedbacks] = useState([])
-  const [feedbacksLoading, setFeedbacksLoading] = useState(true)
 
   const { toast, showToast, closeToast } = useToast()
   const { confirmModal, confirm, close: closeConfirm, handleConfirm } = useConfirmModal()
@@ -154,15 +149,6 @@ const AdminCourse = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
 
-  useEffect(() => {
-    if (activeTab !== 'feedbacks') return
-
-    setFeedbacksLoading(true)
-    getCourseFeedbacksAPI(courseId) // ajuste courseId/course._id conforme a variável real que vocês usam
-      .then(({ data }) => setFeedbacks(data.data))
-      .catch(() => setFeedbacks([]))
-      .finally(() => setFeedbacksLoading(false))
-  }, [activeTab, courseId])
 
   // --- Handlers do Curso ---
   const handleSaveCourse = async (payload) => {
@@ -591,6 +577,10 @@ const AdminCourse = () => {
               <DashboardTab course={course} students={students} lessons={lessons} materials={materials} />
             )}
 
+            {activeTab === 'feedbacks' && (
+              <FeedbackTab courseId={courseId} course={course} />
+            )}
+
             {activeTab === 'config' && (
               <ConfigTab
                 course={course}
@@ -598,13 +588,6 @@ const AdminCourse = () => {
                 configUsersLoading={configUsersLoading}
                 onGrantAccess={handleGrantAccess}
                 onRevokeAccess={handleRevokeAccess}
-              />
-            )}
-
-            {activeTab === 'feedbacks' && (
-              <FeedbacksTab
-                feedbacks={feedbacks}
-                loading={feedbacksLoading}
               />
             )}
 

@@ -1,5 +1,7 @@
 const Notification = require('../models/Notification');
 const Enrollment = require('../models/Enrollment');
+const FeedbackForm = require('../models/FeedbackForm');
+const FeedbackResponse = require('../models/FeedbackResponse');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 
 // IDs dos alunos com vaga confirmada no curso (mesma regra de getCourseStudents:
@@ -114,6 +116,42 @@ const notifyAnnouncement = async ({ course, announcement, createdBy }) => {
   }
 };
 
+// Curso concluído + formulário de feedback publicado → convida os alunos a
+// avaliar o curso. Só notifica quem ainda NÃO respondeu e ainda NÃO foi
+// notificado (dedupe), então é seguro chamar tanto no fechamento do curso
+// quanto na publicação do formulário. Nunca lança.
+const notifyFeedbackAvailable = async ({ course, createdBy = null }) => {
+  try {
+    const form = await FeedbackForm.findOne({ course, published: true }, 'questions').lean();
+    if (!form || !(form.questions || []).length) return;
+
+    const recipients = await getEnrolledStudentIds(course);
+    if (recipients.length === 0) return;
+
+    const [responded, already] = await Promise.all([
+      FeedbackResponse.find({ course, user: { $in: recipients } }, 'user').lean(),
+      Notification.find({ course, type: 'feedback', recipient: { $in: recipients } }, 'recipient').lean(),
+    ]);
+    const skip = new Set([
+      ...responded.map((r) => String(r.user)),
+      ...already.map((n) => String(n.recipient)),
+    ]);
+    const targets = recipients.filter((u) => !skip.has(String(u)));
+
+    await createNotifications(targets, {
+      type: 'feedback',
+      course,
+      title: 'Avalie o curso',
+      message: 'Conte como foi sua experiência no curso — leva menos de 1 minuto.',
+      tab: 'feedback',
+      refId: null,
+      createdBy,
+    });
+  } catch (err) {
+    console.error('[notify] notifyFeedbackAvailable falhou:', err.message);
+  }
+};
+
 // Remove as notificações geradas por um material/nota/aviso que foi excluído,
 // para não deixar notificação órfã apontando para algo que não existe mais.
 // Best-effort: nunca lança.
@@ -133,5 +171,6 @@ module.exports = {
   notifyNewGrade,
   notifyAnnouncement,
   notifyCertificate,
+  notifyFeedbackAvailable,
   removeNotificationsByRef,
 };

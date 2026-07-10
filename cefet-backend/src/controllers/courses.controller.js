@@ -17,7 +17,7 @@ const {
   getCourseStatus
 } = require('../helpers/courseStatusHelper');
 
-const { notifyCourseStudents, removeNotificationsByRef } = require('../services/notify');
+const { notifyCourseStudents, removeNotificationsByRef, notifyFeedbackAvailable } = require('../services/notify');
 
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
@@ -827,6 +827,12 @@ const changeCoursePhase = async (req, res, next) => {
     }
 
     await course.save();
+
+    // Curso encerrado → convida os alunos a avaliar (se houver formulário publicado)
+    if (phase === 'encerrado') {
+      await notifyFeedbackAvailable({ course: course._id, createdBy: req.user.id });
+    }
+
     const populated = await Course.findById(course._id).populate('professor', 'name email').populate('allowedProfessors', 'name email');
     res.json({ success: true, data: populated });
   } catch (err) { next(err); }

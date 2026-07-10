@@ -19,6 +19,7 @@ const lessonsRouter = require('./lessons.routes');
 const materialsRouter = require('./materials.routes');
 const gradesRouter = require('./grades.routes');
 const announcementsRouter = require('./announcements.routes');
+const feedbackRouter = require('./feedback.routes');
 
 router.get('/', optionalAuth, getCourses);
 // Agenda pública (aulas de todos os cursos) — antes de /:id para não ser capturada
@@ -48,5 +49,6 @@ router.use('/:courseId/lessons', lessonsRouter);
 router.use('/:courseId/materials', materialsRouter);
 router.use('/:courseId/grades', gradesRouter);
 router.use('/:courseId/announcements', announcementsRouter);
+router.use('/:courseId/feedback', feedbackRouter);
 
 module.exports = router;
