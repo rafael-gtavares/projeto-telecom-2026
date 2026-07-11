@@ -11,6 +11,7 @@ import BottomNav from '../components/layout/BottomNav'
 
 // Dashboard
 import DashboardMetrics from '../components/admin/dashboard/DashboardMetrics'
+import SiteAccessSection from '../components/admin/dashboard/SiteAccessSection'
 import RecentCoursesCard from '../components/admin/dashboard/RecentCoursesCard'
 import CourseStatsSection from '../components/admin/dashboard/CourseStatsSection'
 
@@ -477,6 +478,9 @@ const Admin = () => {
 
                 <>
                   <DashboardMetrics stats={stats} />
+
+                  {/* Estatísticas de acesso ao site — somente administradores */}
+                  {canManageUsers(role) && <SiteAccessSection />}
 
                   {/* ======================================================
                     ESTATÍSTICAS GERAIS
