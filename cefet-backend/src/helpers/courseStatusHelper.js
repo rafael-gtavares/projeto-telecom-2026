@@ -1,6 +1,7 @@
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { COURSE_STATUS } = require('../constants/courseStatus');
 const { notifyFeedbackAvailable } = require('../services/notify');
 
 const getCourseStatus = ({
@@ -8,21 +9,21 @@ const getCourseStatus = ({
   startDate,
   endDate,
 }) => {
-  if (status === 'draft') {
-    return 'draft';
+  if (status === COURSE_STATUS.DRAFT) {
+    return COURSE_STATUS.DRAFT;
   }
 
   const now = new Date();
 
   if (now < startDate) {
-    return 'published';
+    return COURSE_STATUS.PUBLISHED;
   }
 
   if (now > endDate) {
-    return 'closed';
+    return COURSE_STATUS.CLOSED;
   }
 
-  return 'em_andamento';
+  return COURSE_STATUS.IN_PROGRESS;
 };
 
 const updateCourseStatus = async () => {
@@ -30,19 +31,19 @@ const updateCourseStatus = async () => {
 
   await Course.updateMany(
     {
-      status: 'published',
+      status: COURSE_STATUS.PUBLISHED,
       startDate: { $lte: now },
       endDate: { $gte: now },
     },
     {
-      status: 'em_andamento',
+      status: COURSE_STATUS.IN_PROGRESS,
     }
   );
 
   // Precisa dos IDs ANTES do update, pois updateMany não retorna os documentos alterados
   const coursesClosing = await Course.find(
     {
-      status: { $in: ['published', 'em_andamento'] },
+      status: { $in: [COURSE_STATUS.PUBLISHED, COURSE_STATUS.IN_PROGRESS] },
       endDate: { $lt: now },
     },
     '_id'
@@ -54,7 +55,7 @@ const updateCourseStatus = async () => {
 
   await Course.updateMany(
     { _id: { $in: closingIds } },
-    { status: 'closed' }
+    { status: COURSE_STATUS.CLOSED }
   );
 
   // Sincroniza os enrollments dos cursos que acabaram de fechar

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { FEEDBACK_QUESTION_TYPES } = require('../constants/feedbackQuestionTypes');
 
 // Uma questão do formulário de feedback do curso. Três tipos:
 //  - multiple_choice: enunciado + alternativas (aluno escolhe uma)
@@ -7,7 +8,7 @@ const mongoose = require('mongoose');
 const questionSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['multiple_choice', 'stars', 'text'],
+    enum: Object.values(FEEDBACK_QUESTION_TYPES),
     required: true,
   },
   title: { type: String, required: true, trim: true }, // o enunciado da pergunta

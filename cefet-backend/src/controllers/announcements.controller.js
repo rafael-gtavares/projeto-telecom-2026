@@ -2,6 +2,7 @@ const Announcement = require('../models/Announcement');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { ANNOUNCEMENT_AUDIENCE } = require('../constants/announcementAudience');
 const { notifyAnnouncement, removeNotificationsByRef } = require('../services/notify');
 
 // GET /courses/:courseId/announcements
@@ -21,7 +22,7 @@ const getAnnouncements = async (req, res, next) => {
       ? { course: courseId }
       : {
           course: courseId,
-          $or: [{ audience: 'all' }, { recipients: req.user.id }],
+          $or: [{ audience: ANNOUNCEMENT_AUDIENCE.ALL }, { recipients: req.user.id }],
         };
 
     const announcements = await Announcement.find(filter)
@@ -38,7 +39,7 @@ const getAnnouncements = async (req, res, next) => {
 const createAnnouncement = async (req, res, next) => {
   try {
     const { courseId } = req.params;
-    const { title, message, audience = 'all' } = req.body;
+    const { title, message, audience = ANNOUNCEMENT_AUDIENCE.ALL } = req.body;
     // Aceita `recipients` (array) — mantém compat com `recipient` (single)
     let recipients = req.body.recipients;
     if (!Array.isArray(recipients)) {
@@ -48,11 +49,11 @@ const createAnnouncement = async (req, res, next) => {
     if (!title || !message)
       return res.status(400).json({ success: false, message: 'Título e mensagem são obrigatórios' });
 
-    if (!['all', 'individual'].includes(audience))
+    if (!Object.values(ANNOUNCEMENT_AUDIENCE).includes(audience))
       return res.status(400).json({ success: false, message: 'Público inválido' });
 
     let recipientIds = [];
-    if (audience === 'individual') {
+    if (audience === ANNOUNCEMENT_AUDIENCE.INDIVIDUAL) {
       // Remove duplicatas e vazios
       const unique = [...new Set(recipients.filter(Boolean).map(String))];
       if (unique.length === 0)

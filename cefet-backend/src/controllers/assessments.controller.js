@@ -5,10 +5,11 @@ const GradingConfig = require('../models/GradingConfig');
 const Enrollment = require('../models/Enrollment');
 const { GRADING_METHODS } = require('../constants/gradingMethods');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { ASSESSMENT_TYPES } = require('../constants/assessmentTypes');
 const { getConfig, recomputeCourse } = require('../helpers/gradeCompute');
 const { notifyGradesPublished } = require('../services/notify');
 
-const TYPES = ['prova', 'trabalho', 'participacao', 'outro'];
+const TYPES = Object.values(ASSESSMENT_TYPES);
 const TITLE_MAX = 120;
 const MAX_ASSESSMENTS = 40;
 
@@ -27,7 +28,7 @@ const sanitizeAssessment = (body) => {
   if (!title) return { error: 'O título da avaliação é obrigatório' };
   if (title.length > TITLE_MAX) return { error: `O título deve ter até ${TITLE_MAX} caracteres` };
 
-  const type = TYPES.includes(body.type) ? body.type : 'prova';
+  const type = TYPES.includes(body.type) ? body.type : ASSESSMENT_TYPES.EXAM;
 
   let maxScore = Number(body.maxScore);
   if (!Number.isFinite(maxScore) || maxScore < 0.5 || maxScore > 1000) maxScore = 10;

@@ -2,6 +2,7 @@ const Course = require('../models/Course');
 const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { COURSE_STATUS } = require('../constants/courseStatus');
 const { findConflicts } = require('../helpers/scheduleConflicts');
 
 // Inscrições que ocupam a agenda do aluno (não conta fila de espera nem cancelada)
@@ -16,7 +17,7 @@ const LESSON_FIELDS = 'course title date startTime endTime modality location';
 // para que ele veja o próprio curso em andamento no calendário.
 const getCalendar = async (req, res, next) => {
   try {
-    const publicCourses = await Course.find({ status: 'published' }).select(COURSE_FIELDS).lean();
+    const publicCourses = await Course.find({ status: COURSE_STATUS.PUBLISHED }).select(COURSE_FIELDS).lean();
     const courseMap = new Map(publicCourses.map(c => [String(c._id), c]));
 
     let myCourseIds = [];

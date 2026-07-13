@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ASSESSMENT_TYPES } = require('../constants/assessmentTypes');
 
 // Definição de uma avaliação do curso (prova, trabalho, etc.).
 // É apenas um "registro de nota" — não há prova/entrega no sistema; o professor
@@ -8,8 +9,8 @@ const assessmentSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 120 },
   type: {
     type: String,
-    enum: ['prova', 'trabalho', 'participacao', 'outro'],
-    default: 'prova',
+    enum: Object.values(ASSESSMENT_TYPES),
+    default: ASSESSMENT_TYPES.EXAM,
   },
   // Nota máxima da avaliação. No modo "soma" é quanto ela vale em pontos;
   // nos modos de média fica em 10 (nota de 0 a 10).

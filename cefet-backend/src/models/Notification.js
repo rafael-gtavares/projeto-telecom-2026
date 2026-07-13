@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { NOTIFICATION_TYPES, NOTIFICATION_TABS } = require('../constants/notifications');
 
 // Notificação individual entregue a um usuário (recipient).
 // Gerada quando o professor/admin publica material novo, lança nota
@@ -8,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   type: {
     type: String,
-    enum: ['material', 'grade', 'announcement', 'lesson', 'schedule', 'certificate', 'feedback'],
+    enum: Object.values(NOTIFICATION_TYPES),
     required: true,
   },
   course: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
@@ -17,7 +18,7 @@ const notificationSchema = new mongoose.Schema({
   message: { type: String, default: '' },                  // resumo curto
 
   // Aba do curso que o clique deve abrir (deep-link no front)
-  tab: { type: String, enum: ['material', 'notas', 'avisos', 'cronograma', 'certificado', 'feedback'], required: true },
+  tab: { type: String, enum: Object.values(NOTIFICATION_TABS), required: true },
   refId: { type: mongoose.Schema.Types.ObjectId, default: null }, // id do material/nota/aviso/aula
 
   read: { type: Boolean, default: false },

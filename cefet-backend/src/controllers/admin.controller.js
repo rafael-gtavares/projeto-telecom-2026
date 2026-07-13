@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const School = require('../models/School');
+const { COURSE_STATUS } = require('../constants/courseStatus');
 
 const getStats = async (req, res, next) => {
   try {
@@ -11,7 +12,7 @@ const getStats = async (req, res, next) => {
 
     const [totalUsers, totalCourses, totalEnrollments] = await Promise.all([
       User.countDocuments({ role: 'aluno' }),
-      Course.countDocuments({ status: 'published' }),
+      Course.countDocuments({ status: COURSE_STATUS.PUBLISHED }),
       Enrollment.countDocuments(),
     ]);
 
@@ -36,7 +37,7 @@ const getStats = async (req, res, next) => {
     startDate.setDate(1);
 
     const courses = await Course.find(
-      { status: 'published' },
+      { status: COURSE_STATUS.PUBLISHED },
       'maxSlots enrolledCount'
     );
 

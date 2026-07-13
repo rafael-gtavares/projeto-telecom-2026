@@ -3,6 +3,8 @@ const Course = require('../models/Course');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { ENROLLMENT_SITUATION } = require('../constants/enrollmentSituation');
+const { COURSE_STATUS } = require('../constants/courseStatus');
+const { CERTIFICATE_STATUS } = require('../constants/certificateStatus');
 const { notifyCertificate } = require('../services/notify');
 const { recomputeEnrollment } = require('../helpers/gradeCompute');
 
@@ -12,7 +14,7 @@ const enroll = async (req, res, next) => {
     const { courseId } = req.body;
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
-    if (course.status !== 'published')
+    if (course.status !== COURSE_STATUS.PUBLISHED)
       return res.status(400).json({ success: false, message: 'Inscrições encerradas para este curso' });
 
     // 1) Cria a inscrição primeiro — o índice único (user, course) impede duplicidade
@@ -145,7 +147,7 @@ const cancelEnrollment = async (req, res, next) => {
 
     // Curso encerrado (concluído) não pode ter a inscrição cancelada
     const enrolledCourse = await Course.findById(courseId).select('status');
-    if (enrolledCourse?.status === 'closed') {
+    if (enrolledCourse?.status === COURSE_STATUS.CLOSED) {
       return res.status(400).json({ success: false, message: 'Não é possível cancelar um curso concluído' });
     }
 
@@ -252,8 +254,8 @@ const updateSituation = async (req, res, next) => {
 // de um aluno. Só com o curso encerrado. Ao emitir, notifica o aluno.
 const releaseCertificate = async (req, res, next) => {
   try {
-    const { status } = req.body; // 'emitido' | 'em_analise'
-    if (!['emitido', 'em_analise'].includes(status))
+    const { status } = req.body; // CERTIFICATE_STATUS.ISSUED | CERTIFICATE_STATUS.UNDER_REVIEW
+    if (!Object.values(CERTIFICATE_STATUS).includes(status))
       return res.status(400).json({ success: false, message: 'Status de certificado inválido' });
 
     const enrollment = await Enrollment.findById(req.params.id);
@@ -265,11 +267,11 @@ const releaseCertificate = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Curso não encontrado' });
     if (!course.hasManageAccess(req.user.id, req.user.role))
       return res.status(403).json({ success: false, message: 'Sem permissão para este curso' });
-    if (course.status !== 'closed')
+    if (course.status !== COURSE_STATUS.CLOSED)
       return res.status(400).json({ success: false, message: 'O certificado só pode ser liberado com o curso encerrado' });
 
     enrollment.certificateStatus = status;
-    if (status === 'emitido') {
+    if (status === CERTIFICATE_STATUS.ISSUED) {
       enrollment.certificateIssuedAt = new Date();
       enrollment.certificateIssuedBy = req.user.id;
       await enrollment.save();

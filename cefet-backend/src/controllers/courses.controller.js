@@ -4,6 +4,9 @@ const School = require('../models/School');
 const Lesson = require('../models/Lesson');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { COURSE_STATUS } = require('../constants/courseStatus');
+const { COURSE_PHASE } = require('../constants/coursePhase');
+const { NOTIFICATION_TYPES, NOTIFICATION_TABS } = require('../constants/notifications');
 
 const {
   validateSchedule,
@@ -28,7 +31,7 @@ const getCourses = async (req, res, next) => {
     const filter = {};
 
     if (req.user?.role === 'aluno' || !req.user) {
-      filter.status = 'published';
+      filter.status = COURSE_STATUS.PUBLISHED;
     } else if (status && status !== 'all') {
       filter.status = status;
     }
@@ -114,7 +117,7 @@ const getCourse = async (req, res, next) => {
 
     // Rascunhos (draft) são privados: só quem gerencia o curso pode vê-los.
     // Cursos published/em_andamento/closed seguem acessíveis (aluno inscrito precisa deles).
-    if (course.status === 'draft' && !course.hasManageAccess(req.user.id, req.user.role)) {
+    if (course.status === COURSE_STATUS.DRAFT && !course.hasManageAccess(req.user.id, req.user.role)) {
       return res.status(403).json({ success: false, message: 'Sem permissão para acessar este curso' });
     }
 
@@ -475,7 +478,7 @@ const createCourse = async (req, res, next) => {
 
       maxSlots,
 
-      status: status || 'draft',
+      status: status || COURSE_STATUS.DRAFT,
 
       imageUrl: imageUrl || null,
     });
@@ -671,10 +674,10 @@ const updateCourse = async (req, res, next) => {
         if (toDelete.length) parts.push(`${toDelete.length} aula(s) removida(s)`);
         await notifyCourseStudents({
           course: course._id,
-          type: 'schedule',
+          type: NOTIFICATION_TYPES.SCHEDULE,
           title: 'Cronograma atualizado',
           message: parts.join(' e '),
-          tab: 'cronograma',
+          tab: NOTIFICATION_TABS.CRONOGRAMA,
           createdBy: req.user.id,
         });
       }
@@ -688,7 +691,7 @@ const updateCourse = async (req, res, next) => {
       newStatus &&
       newStatus !== prevStatus
     ) {
-      if (newStatus === 'em_andamento') {
+      if (newStatus === COURSE_STATUS.IN_PROGRESS) {
         await Enrollment.updateMany(
           {
             course: course._id,
@@ -706,8 +709,8 @@ const updateCourse = async (req, res, next) => {
       }
 
       if (
-        newStatus === 'published' &&
-        prevStatus === 'closed'
+        newStatus === COURSE_STATUS.PUBLISHED &&
+        prevStatus === COURSE_STATUS.CLOSED
       ) {
         await Enrollment.updateMany(
           {
@@ -720,7 +723,7 @@ const updateCourse = async (req, res, next) => {
         );
       }
 
-      if (newStatus === 'closed') {
+      if (newStatus === COURSE_STATUS.CLOSED) {
         await Enrollment.updateMany(
           {
             course: course._id,
@@ -807,29 +810,28 @@ const removeAllowedProfessor = async (req, res, next) => {
 const changeCoursePhase = async (req, res, next) => {
   try {
     const { phase } = req.body;
-    const valid = ['aguardando_inicio', 'em_andamento', 'encerrado'];
-    if (!valid.includes(phase)) return res.status(400).json({ success: false, message: 'Fase inválida' });
+    if (!Object.values(COURSE_PHASE).includes(phase)) return res.status(400).json({ success: false, message: 'Fase inválida' });
 
     const course = req.course;
     course.phase = phase;
 
-    if (phase === 'em_andamento') {
+    if (phase === COURSE_PHASE.IN_PROGRESS) {
       await Enrollment.updateMany(
         { course: course._id, status: ENROLLMENT_STATUS.ENROLLED },
         { status: ENROLLMENT_STATUS.ACTIVE }
       );
-    } else if (phase === 'encerrado') {
+    } else if (phase === COURSE_PHASE.ENDED) {
       await Enrollment.updateMany(
         { course: course._id, status: { $in: [ENROLLMENT_STATUS.ENROLLED, ENROLLMENT_STATUS.ACTIVE] } },
         { status: ENROLLMENT_STATUS.COMPLETED }
       );
-      course.status = 'closed';
+      course.status = COURSE_STATUS.CLOSED;
     }
 
     await course.save();
 
     // Curso encerrado → convida os alunos a avaliar (se houver formulário publicado)
-    if (phase === 'encerrado') {
+    if (phase === COURSE_PHASE.ENDED) {
       await notifyFeedbackAvailable({ course: course._id, createdBy: req.user.id });
     }
 

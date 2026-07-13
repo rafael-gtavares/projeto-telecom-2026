@@ -3,6 +3,8 @@ const Enrollment = require('../models/Enrollment');
 const FeedbackForm = require('../models/FeedbackForm');
 const FeedbackResponse = require('../models/FeedbackResponse');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { NOTIFICATION_TYPES, NOTIFICATION_TABS } = require('../constants/notifications');
+const { ANNOUNCEMENT_AUDIENCE } = require('../constants/announcementAudience');
 
 // IDs dos alunos com vaga confirmada no curso (mesma regra de getCourseStudents:
 // exclui cancelados e quem está só na fila de espera).
@@ -48,11 +50,11 @@ const notifyNewMaterial = async ({ course, material, createdBy }) => {
   try {
     const recipients = await getEnrolledStudentIds(course);
     await createNotifications(recipients, {
-      type: 'material',
+      type: NOTIFICATION_TYPES.MATERIAL,
       course,
       title: 'Novo material disponível',
       message: material.title,
-      tab: 'material',
+      tab: NOTIFICATION_TABS.MATERIAL,
       refId: material._id,
       createdBy,
     });
@@ -65,11 +67,11 @@ const notifyNewMaterial = async ({ course, material, createdBy }) => {
 const notifyGradesPublished = async ({ course, studentIds, assessmentTitle, createdBy }) => {
   try {
     await createNotifications((studentIds || []).filter(Boolean), {
-      type: 'grade',
+      type: NOTIFICATION_TYPES.GRADE,
       course,
       title: 'Notas publicadas',
       message: assessmentTitle,
-      tab: 'notas',
+      tab: NOTIFICATION_TABS.NOTAS,
       refId: null,
       createdBy,
     });
@@ -82,11 +84,11 @@ const notifyGradesPublished = async ({ course, studentIds, assessmentTitle, crea
 const notifyCertificate = async ({ course, studentId, createdBy }) => {
   try {
     await createNotifications([studentId], {
-      type: 'certificate',
+      type: NOTIFICATION_TYPES.CERTIFICATE,
       course,
       title: 'Certificado disponível',
       message: 'Seu certificado de conclusão já pode ser acessado.',
-      tab: 'certificado',
+      tab: NOTIFICATION_TABS.CERTIFICADO,
       refId: null,
       createdBy,
     });
@@ -99,15 +101,15 @@ const notifyCertificate = async ({ course, studentId, createdBy }) => {
 const notifyAnnouncement = async ({ course, announcement, createdBy }) => {
   try {
     const recipients =
-      announcement.audience === 'individual'
+      announcement.audience === ANNOUNCEMENT_AUDIENCE.INDIVIDUAL
         ? (announcement.recipients || [])
         : await getEnrolledStudentIds(course);
     await createNotifications(recipients, {
-      type: 'announcement',
+      type: NOTIFICATION_TYPES.ANNOUNCEMENT,
       course,
       title: 'Novo aviso do professor',
       message: announcement.title,
-      tab: 'avisos',
+      tab: NOTIFICATION_TABS.AVISOS,
       refId: announcement._id,
       createdBy,
     });
@@ -130,7 +132,7 @@ const notifyFeedbackAvailable = async ({ course, createdBy = null }) => {
 
     const [responded, already] = await Promise.all([
       FeedbackResponse.find({ course, user: { $in: recipients } }, 'user').lean(),
-      Notification.find({ course, type: 'feedback', recipient: { $in: recipients } }, 'recipient').lean(),
+      Notification.find({ course, type: NOTIFICATION_TYPES.FEEDBACK, recipient: { $in: recipients } }, 'recipient').lean(),
     ]);
     const skip = new Set([
       ...responded.map((r) => String(r.user)),
@@ -139,11 +141,11 @@ const notifyFeedbackAvailable = async ({ course, createdBy = null }) => {
     const targets = recipients.filter((u) => !skip.has(String(u)));
 
     await createNotifications(targets, {
-      type: 'feedback',
+      type: NOTIFICATION_TYPES.FEEDBACK,
       course,
       title: 'Avalie o curso',
       message: 'Conte como foi sua experiência no curso — leva menos de 1 minuto.',
-      tab: 'feedback',
+      tab: NOTIFICATION_TABS.FEEDBACK,
       refId: null,
       createdBy,
     });

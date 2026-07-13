@@ -3,9 +3,11 @@ const FeedbackForm = require('../models/FeedbackForm');
 const FeedbackResponse = require('../models/FeedbackResponse');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { COURSE_STATUS } = require('../constants/courseStatus');
+const { FEEDBACK_QUESTION_TYPES } = require('../constants/feedbackQuestionTypes');
 const { getEnrolledStudentIds, notifyFeedbackAvailable } = require('../services/notify');
 
-const QUESTION_TYPES = ['multiple_choice', 'stars', 'text'];
+const QUESTION_TYPES = Object.values(FEEDBACK_QUESTION_TYPES);
 
 // Limites (segurança: evita payloads gigantes / abuso de armazenamento)
 const TEXT_MAX = 1000;       // resposta de texto do aluno
@@ -33,7 +35,7 @@ const sanitizeQuestions = (raw) => {
     // Ignora _id inválido para não permitir injeção de valores estranhos.
     if (q._id && mongoose.Types.ObjectId.isValid(q._id)) clean._id = q._id;
 
-    if (q.type === 'multiple_choice') {
+    if (q.type === FEEDBACK_QUESTION_TYPES.MULTIPLE_CHOICE) {
       const options = Array.isArray(q.options)
         ? q.options.map((o) => String(o || '').trim()).filter(Boolean)
         : [];
@@ -44,7 +46,7 @@ const sanitizeQuestions = (raw) => {
       if (options.some((o) => o.length > OPTION_MAX))
         return { error: `Alternativa muito longa (máx. ${OPTION_MAX} caracteres)` };
       clean.options = options;
-    } else if (q.type === 'stars') {
+    } else if (q.type === FEEDBACK_QUESTION_TYPES.STARS) {
       const max = Number(q.maxStars);
       if (!Number.isInteger(max) || max < 1 || max > 10)
         return { error: 'A nota máxima das estrelas deve ser um inteiro entre 1 e 10' };
@@ -68,18 +70,18 @@ const buildAnswers = (form, incoming) => {
     const a = byId.get(String(q._id));
     if (!a) continue; // questão não respondida (opcional por questão)
 
-    if (q.type === 'multiple_choice') {
+    if (q.type === FEEDBACK_QUESTION_TYPES.MULTIPLE_CHOICE) {
       const idx = Number(a.optionIndex);
       if (!Number.isInteger(idx) || idx < 0 || idx >= q.options.length) continue;
       answers.push({
         question: q._id, type: q.type, questionTitle: q.title,
         optionIndex: idx, optionText: q.options[idx],
       });
-    } else if (q.type === 'stars') {
+    } else if (q.type === FEEDBACK_QUESTION_TYPES.STARS) {
       const s = Number(a.stars);
       if (!Number.isInteger(s) || s < 0 || s > q.maxStars) continue;
       answers.push({ question: q._id, type: q.type, questionTitle: q.title, stars: s });
-    } else if (q.type === 'text') {
+    } else if (q.type === FEEDBACK_QUESTION_TYPES.TEXT) {
       const text = String(a.text || '').trim().slice(0, TEXT_MAX);
       if (!text) continue;
       answers.push({ question: q._id, type: q.type, questionTitle: q.title, text });
@@ -91,7 +93,7 @@ const buildAnswers = (form, incoming) => {
 // Garante que o usuário é um aluno inscrito e o curso está concluído com
 // formulário publicado. Retorna { form } ou { status, message } de erro.
 const requireAnswerableForm = async (courseId, course, userId) => {
-  if (course?.status !== 'closed')
+  if (course?.status !== COURSE_STATUS.CLOSED)
     return { status: 400, message: 'O feedback só fica disponível após a conclusão do curso' };
 
   const enrollment = await Enrollment.findOne({ user: userId, course: courseId });
@@ -131,7 +133,7 @@ const saveForm = async (req, res, next) => {
 
     // Se o curso já está concluído e o formulário foi publicado, convida os
     // alunos a avaliar (best-effort; dedupe interno evita repetição).
-    if (published && questions.length > 0 && req.course?.status === 'closed') {
+    if (published && questions.length > 0 && req.course?.status === COURSE_STATUS.CLOSED) {
       await notifyFeedbackAvailable({ course: courseId, createdBy: req.user.id });
     }
 
@@ -150,7 +152,7 @@ const getStudentFeedback = async (req, res, next) => {
     const myResponse = await FeedbackResponse.findOne({ course: courseId, user: req.user.id }).lean();
 
     const available =
-      course?.status === 'closed' && !!form && (form.questions || []).length > 0;
+      course?.status === COURSE_STATUS.CLOSED && !!form && (form.questions || []).length > 0;
 
     res.json({ success: true, data: { available, form: available ? form : null, myResponse } });
   } catch (err) { next(err); }

@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const { ROLES, ROLE_HIERARCHY } = require('../constants/roles')
+const { COURSE_STATUS } = require('../constants/courseStatus')
+const { COURSE_PHASE } = require('../constants/coursePhase')
 
 const courseSchema = new mongoose.Schema({
   title: {
@@ -130,23 +132,14 @@ const courseSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: [
-      'draft',
-      'published',
-      'em_andamento',
-      'closed',
-    ],
-    default: 'draft',
+    enum: Object.values(COURSE_STATUS),
+    default: COURSE_STATUS.DRAFT,
   },
 
   phase: {
     type: String,
-    enum: [
-      'aguardando_inicio',
-      'em_andamento',
-      'encerrado',
-    ],
-    default: 'aguardando_inicio',
+    enum: Object.values(COURSE_PHASE),
+    default: COURSE_PHASE.WAITING,
   },
 }, {
   timestamps: true,

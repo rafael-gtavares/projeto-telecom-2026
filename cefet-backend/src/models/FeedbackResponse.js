@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const { FEEDBACK_QUESTION_TYPES } = require('../constants/feedbackQuestionTypes');
 
 // Resposta de UMA questão. Guarda um "snapshot" do enunciado/tipo para que a
 // visualização individual continue fazendo sentido mesmo se o formulário for
 // editado depois. A agregação (visão geral) casa pelo `question` (id da questão).
 const answerSchema = new mongoose.Schema({
   question: { type: mongoose.Schema.Types.ObjectId, required: true }, // _id da questão no FeedbackForm
-  type: { type: String, enum: ['multiple_choice', 'stars', 'text'], required: true },
+  type: { type: String, enum: Object.values(FEEDBACK_QUESTION_TYPES), required: true },
   questionTitle: { type: String, default: '' }, // snapshot do enunciado
 
   optionIndex: { type: Number, default: null }, // multiple_choice
