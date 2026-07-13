@@ -2,7 +2,9 @@ const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { ENROLLMENT_SITUATION } = require('../constants/enrollmentSituation');
 const { notifyCertificate } = require('../services/notify');
+const { recomputeEnrollment } = require('../helpers/gradeCompute');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
@@ -198,19 +200,25 @@ const getCourseStudents = async (req, res, next) => {
       course: req.params.courseId,
       status: { $nin: [ENROLLMENT_STATUS.CANCELED, ENROLLMENT_STATUS.WAITING_LIST] },
     })
-      .populate('user', 'name email avatar school schoolLevel birthDate')
+      .populate({
+        path: 'user',
+        select: 'name email avatar school schoolLevel birthDate',
+        populate: { path: 'school', select: 'name city' },
+      })
       .sort({ createdAt: 1 });
 
     res.json({ success: true, data: enrollments });
   } catch (err) { next(err); }
 };
 
+// PUT /enrollments/:id/situation
+// body: { situation } → define manualmente (trava o cálculo automático)
+//       { auto: true } → volta ao automático e recalcula a partir das notas
 const updateSituation = async (req, res, next) => {
   try {
-    const { situation } = req.body;
+    const { situation, auto } = req.body;
 
     const enrollment = await Enrollment.findById(req.params.id);
-
     if (!enrollment) {
       return res.status(404).json({
         success: false,
@@ -218,14 +226,23 @@ const updateSituation = async (req, res, next) => {
       });
     }
 
-    enrollment.situation = situation;
+    if (auto) {
+      // Volta ao automático: limpa a trava e recalcula pela regra do curso.
+      enrollment.situationManual = false;
+      await enrollment.save();
+      const updated = await recomputeEnrollment(enrollment.course, enrollment.user);
+      return res.json({ success: true, data: updated || enrollment });
+    }
 
+    if (!Object.values(ENROLLMENT_SITUATION).includes(situation)) {
+      return res.status(400).json({ success: false, message: 'Situação inválida' });
+    }
+
+    enrollment.situation = situation;
+    enrollment.situationManual = true; // definido à mão → não sobrescrever mais
     await enrollment.save();
 
-    res.json({
-      success: true,
-      data: enrollment,
-    });
+    res.json({ success: true, data: enrollment });
   } catch (err) {
     next(err);
   }

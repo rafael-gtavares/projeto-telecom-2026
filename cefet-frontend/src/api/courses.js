@@ -41,13 +41,6 @@ export const deleteMaterialAPI = (courseId, materialId) => api.delete(`/courses/
 // Alunos do curso
 export const getCourseStudentsAPI = (courseId) => api.get(`/courses/${courseId}/students`)
 
-// Notas
-export const getCourseGradesAPI = (courseId) => api.get(`/courses/${courseId}/grades`)
-export const getMyGradesAPI = (courseId) => api.get(`/courses/${courseId}/grades/my`)
-export const createGradeAPI = (courseId, data) => api.post(`/courses/${courseId}/grades`, data)
-export const updateGradeAPI = (courseId, gradeId, data) => api.put(`/courses/${courseId}/grades/${gradeId}`, data)
-export const deleteGradeAPI = (courseId, gradeId) => api.delete(`/courses/${courseId}/grades/${gradeId}`)
-
 // Fase do curso
 export const changeCoursePhaseAPI = (courseId, phase) =>
   api.patch(`/courses/${courseId}/phase`, { phase })

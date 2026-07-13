@@ -61,20 +61,20 @@ const notifyNewMaterial = async ({ course, material, createdBy }) => {
   }
 };
 
-// Nota nova → notifica APENAS o aluno avaliado (é algo individual)
-const notifyNewGrade = async ({ course, studentId, grade, createdBy }) => {
+// Notas publicadas → notifica os alunos que receberam nota naquela avaliação.
+const notifyGradesPublished = async ({ course, studentIds, assessmentTitle, createdBy }) => {
   try {
-    await createNotifications([studentId], {
+    await createNotifications((studentIds || []).filter(Boolean), {
       type: 'grade',
       course,
-      title: 'Nova nota lançada',
-      message: grade.title,
+      title: 'Notas publicadas',
+      message: assessmentTitle,
       tab: 'notas',
-      refId: grade._id,
+      refId: null,
       createdBy,
     });
   } catch (err) {
-    console.error('[notify] notifyNewGrade falhou:', err.message);
+    console.error('[notify] notifyGradesPublished falhou:', err.message);
   }
 };
 
@@ -168,7 +168,7 @@ module.exports = {
   getEnrolledStudentIds,
   notifyCourseStudents,
   notifyNewMaterial,
-  notifyNewGrade,
+  notifyGradesPublished,
   notifyAnnouncement,
   notifyCertificate,
   notifyFeedbackAvailable,

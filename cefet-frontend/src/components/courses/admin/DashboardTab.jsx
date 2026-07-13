@@ -1,6 +1,7 @@
 import { Users, BookOpen, FileText, BarChart2 } from 'lucide-react'
 import { formatDate } from '../../../utils/formatDate'
 import { formatModality } from '../../../utils/formatModality'
+import CoursePerformanceStats from './CoursePerformanceStats'
 
 // Card de métrica local (compacto), específico da visão de curso.
 // Não usa components/admin/MetricCard.jsx pois esse último tem um layout
@@ -15,8 +16,8 @@ const MetricCard = ({ label, value, icon: Icon }) => (
   </div>
 )
 
-const DashboardTab = ({ course, students, lessons, materials }) => (
-  <div className="p-4 md:p-6 space-y-4">
+const DashboardTab = ({ course, students, lessons, materials, assessments, scores, gradingConfig }) => (
+  <div className="p-4 md:p-6 space-y-6">
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <MetricCard label="Alunos inscritos" value={students.length} icon={Users} />
       <MetricCard label="Aulas cadastradas" value={lessons.length} icon={BookOpen} />
@@ -35,6 +36,16 @@ const DashboardTab = ({ course, students, lessons, materials }) => (
         <div><p className="text-text-muted text-xs">Modalidade</p><p className="font-medium">{formatModality(course.modality)}</p></div>
         <div><p className="text-text-muted text-xs">Local</p><p className="font-medium">{course.location || '—'}</p></div>
       </div>
+    </div>
+
+    {/* Estatísticas de desempenho / avaliações (filtráveis por escola) */}
+    <div className="border-t border-border pt-5">
+      <CoursePerformanceStats
+        students={students}
+        assessments={assessments}
+        scores={scores}
+        config={gradingConfig}
+      />
     </div>
   </div>
 )

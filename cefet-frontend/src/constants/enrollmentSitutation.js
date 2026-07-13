@@ -1,9 +1,10 @@
 // Fonte única de verdade para situação de matrícula no frontend.
-// Espelha cefet-backend/src/constants/situation.js — qualquer mudança
-// deve ser feita nos dois lados.
+// Espelha cefet-backend/src/constants/enrollmentSituation.js — os VALORES
+// precisam bater com o enum do backend (senão o save falha na validação).
+// PENDENTE = 'nao_lancado' é o estado "Em andamento" (curso ainda rolando).
 
 export const SITUATIONS = {
-  PENDENTE: 'pendente',
+  PENDENTE: 'nao_lancado',
   APROVADO: 'aprovado',
   REPROVADO: 'reprovado',
   DESISTENTE: 'desistente',
@@ -11,7 +12,7 @@ export const SITUATIONS = {
 
 // Labels exibidos na UI (selects, badges, etc.)
 export const SITUATION_LABELS = {
-  [SITUATIONS.PENDENTE]: 'Ainda não lançada',
+  [SITUATIONS.PENDENTE]: 'Em andamento',
   [SITUATIONS.APROVADO]: 'Aprovado',
   [SITUATIONS.REPROVADO]: 'Reprovado',
   [SITUATIONS.DESISTENTE]: 'Desistente',

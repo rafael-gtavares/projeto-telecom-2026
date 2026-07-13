@@ -9,12 +9,12 @@ import MarkdownPreview from '../components/markdown/MarkdownPreview'
 import ExerciseRunner from '../components/exercises/ExerciseRunner'
 import CertificateTab from '../components/courses/CertificateTab'
 import StudentFeedbackTab from '../components/courses/StudentFeedbackTab'
-import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyGradesAPI, getMyEnrollmentsAPI } from '../api/courses'
+import StudentAssessmentsTab from '../components/courses/StudentAssessmentsTab'
+import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyEnrollmentsAPI } from '../api/courses'
 import { getAnnouncementsAPI } from '../api/announcements'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
-import { SITUATIONS, SITUATION_LABELS } from '../constants/enrollmentSitutation'
 import { useAuth } from '../context/AuthContext'
 
 const tabs = [
@@ -22,7 +22,7 @@ const tabs = [
   { value: 'cronograma', label: 'Cronograma' },
   { value: 'material', label: 'Material' },
   { value: 'avisos', label: 'Avisos' },
-  { value: 'notas', label: 'Minhas notas' },
+  { value: 'notas', label: 'Avaliações' },
 ]
 
 // A aba "Certificado" só é exibida quando o curso está concluído (closed),
@@ -75,7 +75,6 @@ const StudentCourse = () => {
   const [course, setCourse] = useState(null)
   const [lessons, setLessons] = useState([])
   const [materials, setMaterials] = useState([])
-  const [myGrades, setMyGrades] = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
   // Aba inicial pode vir do deep-link da notificação (?tab=avisos|notas|material)
@@ -109,11 +108,10 @@ const StudentCourse = () => {
     const loadData = async () => {
       setLoading(true)
       try {
-        const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: eData }, { data: aData }] = await Promise.all([
+        const [{ data: cData }, { data: lData }, { data: mData }, { data: eData }, { data: aData }] = await Promise.all([
           getCourseAPI(courseId),
           getLessonsAPI(courseId),
           getMaterialsAPI(courseId),
-          getMyGradesAPI(courseId),
           getMyEnrollmentsAPI(),
           getAnnouncementsAPI(courseId)
         ])
@@ -121,7 +119,6 @@ const StudentCourse = () => {
         setCourse(cData.data)
         setLessons(lData.data)
         setMaterials(mData.data)
-        setMyGrades(gData.data)
         setAnnouncements(aData.data)
 
         const enrollment = eData.data.find(e => (e.course?._id || e.course) === courseId)
@@ -157,11 +154,10 @@ const StudentCourse = () => {
     let active = true
       ; (async () => {
         try {
-          const [{ data: cData }, { data: lData }, { data: mData }, { data: gData }, { data: aData }, { data: eData }] = await Promise.all([
+          const [{ data: cData }, { data: lData }, { data: mData }, { data: aData }, { data: eData }] = await Promise.all([
             getCourseAPI(courseId),
             getLessonsAPI(courseId),
             getMaterialsAPI(courseId),
-            getMyGradesAPI(courseId),
             getAnnouncementsAPI(courseId),
             getMyEnrollmentsAPI(),
           ])
@@ -169,7 +165,6 @@ const StudentCourse = () => {
           setCourse(cData.data)
           setLessons(lData.data)
           setMaterials(mData.data)
-          setMyGrades(gData.data)
           setAnnouncements(aData.data)
           setMyEnrollment(eData.data.find(e => (e.course?._id || e.course) === courseId) || null)
         } catch {
@@ -593,48 +588,7 @@ const StudentCourse = () => {
             )}
 
             {activeTab === 'notas' && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="p-4 bg-surface-blue rounded-card text-center">
-                    <p className="text-xs text-text-muted mb-1">Média geral</p>
-                    <p className="text-3xl font-bold text-primary">
-                      {myEnrollment?.averageGrade != null ? myEnrollment.averageGrade.toFixed(1) : '—'}
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-surface-blue rounded-card text-center flex flex-col items-center justify-center gap-1">
-                    <p className="text-xs text-text-muted mb-1">Situação</p>
-                    <Badge variant={
-                      myEnrollment?.situation === SITUATIONS.APROVADO ? 'success' :
-                        myEnrollment?.situation === SITUATIONS.REPROVADO ? 'error' :
-                          myEnrollment?.situation === SITUATIONS.DESISTENTE ? 'warning' :
-                            'gray'
-                    } className="text-sm">
-                      {SITUATION_LABELS[myEnrollment?.situation] || SITUATION_LABELS[SITUATIONS.PENDENTE]}
-                    </Badge>
-                  </div>
-                </div>
-
-                {myGrades.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-sm text-text-muted">Nenhuma nota lançada ainda.</p>
-                  </div>
-                ) : (
-                  myGrades.map(g => (
-                    <div key={g._id} className="flex items-center gap-4 p-3 card">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-text-primary text-sm">{g.title}</p>
-                        <p className="text-xs text-text-muted capitalize">{g.type}</p>
-                        {g.feedback && <p className="text-xs text-text-secondary mt-1 italic">"{g.feedback}"</p>}
-                      </div>
-                      <div className="flex-shrink-0 text-right">
-                        <span className="text-xl font-bold text-primary">{g.grade}</span>
-                        <span className="text-text-muted text-xs">/{g.maxGrade}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <StudentAssessmentsTab courseId={courseId} reloadSignal={refreshKey} />
             )}
 
             {activeTab === 'certificado' && course?.status === 'closed' && (

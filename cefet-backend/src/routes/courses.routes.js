@@ -17,7 +17,7 @@ const { getCalendar } = require('../controllers/calendar.controller');
 // Sub-rotas aninhadas
 const lessonsRouter = require('./lessons.routes');
 const materialsRouter = require('./materials.routes');
-const gradesRouter = require('./grades.routes');
+const assessmentsRouter = require('./assessments.routes');
 const announcementsRouter = require('./announcements.routes');
 const feedbackRouter = require('./feedback.routes');
 
@@ -44,10 +44,10 @@ router.get('/:courseId/certificate/pdf', verifyJWT, getCertificatePdf);
 // Fase do curso
 router.patch('/:courseId/phase', verifyJWT, requireCourseAccess, changeCoursePhase);
 
-// Sub-rotas aninhadas (/:courseId/lessons, /:courseId/materials, /:courseId/grades)
+// Sub-rotas aninhadas (/:courseId/lessons, /:courseId/materials, /:courseId/assessments)
 router.use('/:courseId/lessons', lessonsRouter);
 router.use('/:courseId/materials', materialsRouter);
-router.use('/:courseId/grades', gradesRouter);
+router.use('/:courseId/assessments', assessmentsRouter);
 router.use('/:courseId/announcements', announcementsRouter);
 router.use('/:courseId/feedback', feedbackRouter);
 

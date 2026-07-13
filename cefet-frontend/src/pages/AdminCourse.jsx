@@ -15,7 +15,7 @@ import LessonExerciseModal from '../components/courses/admin/LessonExerciseModal
 
 import StudentsTab from '../components/courses/admin/StudentsTab'
 import StudentDetailModal from '../components/courses/admin/StudentDetailModal'
-import GradeModal from '../components/courses/admin/GradeModal'
+import AssessmentsTab from '../components/courses/admin/assessments/AssessmentsTab'
 
 import MaterialsTab from '../components/courses/admin/MaterialsTab'
 import MaterialModal from '../components/courses/admin/MaterialModal'
@@ -37,20 +37,23 @@ import {
   getLessonsAPI, updateLessonAPI, deleteLessonAPI,
   getMaterialsAPI, createMaterialAPI, updateMaterialAPI, deleteMaterialAPI,
   getCourseStudentsAPI,
-  getCourseGradesAPI, createGradeAPI, deleteGradeAPI,
   addAllowedProfessorAPI, removeAllowedProfessorAPI, updateSituationAPI,
   releaseCertificateAPI, getCertificatePdfAPI,
 } from '../api/courses'
+import {
+  getAssessmentsAPI, updateGradingConfigAPI,
+  createAssessmentAPI, updateAssessmentAPI, deleteAssessmentAPI, saveScoresAPI,
+} from '../api/assessments'
 import { getAnnouncementsAPI, createAnnouncementAPI, deleteAnnouncementAPI } from '../api/announcements'
 import { readBlobError } from '../utils/blobError'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
 import { formatModality } from '../utils/formatModality'
-import { SITUATION_LABELS } from '../constants/enrollmentSitutation'
 
 const TABS = [
   { value: 'aulas', label: 'Aulas' },
   { value: 'alunos', label: 'Alunos' },
+  { value: 'avaliacoes', label: 'Avaliações' },
   { value: 'material', label: 'Material' },
   { value: 'avisos', label: 'Avisos' },
   { value: 'dashboard', label: 'Dashboard' },
@@ -87,13 +90,13 @@ const AdminCourse = () => {
   const [exerciseModal, setExerciseModal] = useState({ open: false, lesson: null })
   const [exerciseSaving, setExerciseSaving] = useState(false)
 
-  // Alunos e Notas
+  // Alunos e Avaliações
   const [students, setStudents] = useState([])
-  const [grades, setGrades] = useState([])
-  const [studentModal, setStudentModal] = useState({ open: false, student: null })
-  const [gradeModal, setGradeModal] = useState({ open: false, student: null })
-  const [gradeSaveLoading, setGradeSaveLoading] = useState(false)
-  const [situationLoading, setSituationLoading] = useState(null) // _id do enrollment em atualização
+  const [studentsView, setStudentsView] = useState(() => localStorage.getItem('adminCourseStudentsView') || 'list')
+  const [assessments, setAssessments] = useState([])
+  const [assessmentScores, setAssessmentScores] = useState([])
+  const [gradingConfig, setGradingConfig] = useState({ method: 'media_ponderada', passingGrade: 6 })
+  const [studentModal, setStudentModal] = useState({ open: false, enrollment: null })
   const [certificateSavingId, setCertificateSavingId] = useState(null) // _id do enrollment liberando certificado
   const [certPreview, setCertPreview] = useState({ open: false, url: null, name: '', enrollment: null })
 
@@ -119,19 +122,21 @@ const AdminCourse = () => {
     setLoading(true)
     setLoadError(null)
     try {
-      const [{ data: cData }, { data: lData }, { data: mData }, { data: sData }, { data: gData }, { data: aData }] = await Promise.all([
+      const [{ data: cData }, { data: lData }, { data: mData }, { data: sData }, { data: asmtData }, { data: aData }] = await Promise.all([
         getCourseAPI(courseId),
         getLessonsAPI(courseId),
         getMaterialsAPI(courseId),
         getCourseStudentsAPI(courseId),
-        getCourseGradesAPI(courseId),
+        getAssessmentsAPI(courseId),
         getAnnouncementsAPI(courseId),
       ])
       setCourse(cData.data)
       setLessons(lData.data)
       setMaterials(mData.data)
       setStudents(sData.data)
-      setGrades(gData.data)
+      setGradingConfig(asmtData.data.config)
+      setAssessments(asmtData.data.assessments)
+      setAssessmentScores(asmtData.data.scores)
       setAnnouncements(aData.data)
     } catch (err) {
       if (err.response?.status === 403) {
@@ -331,50 +336,98 @@ const AdminCourse = () => {
     })
   }
 
-  // --- Handlers de Notas ---
-  const handleSaveGrade = async (form) => {
-    setGradeSaveLoading(true)
+  const toggleStudentsView = (mode) => {
+    setStudentsView(mode)
+    localStorage.setItem('adminCourseStudentsView', mode)
+  }
+
+  // --- Handlers de Avaliações ---
+  // Recarrega a lista de alunos (nota final/situação mudam no backend após
+  // lançar notas, editar avaliação ou alterar a configuração).
+  const reloadStudents = async () => {
+    const { data } = await getCourseStudentsAPI(courseId)
+    setStudents(data.data)
+  }
+
+  const handleSaveConfig = async (payload) => {
     try {
-      const payload = { ...form, studentId: gradeModal.student._id }
-      const { data } = await createGradeAPI(courseId, payload)
-      setGrades(prev => [data.data, ...prev])
-      setGradeModal({ open: false, student: null })
-      showToast('Nota salva com sucesso.')
-    } catch {
-      showToast('Erro ao lançar nota')
-    } finally {
-      setGradeSaveLoading(false)
+      const { data } = await updateGradingConfigAPI(courseId, payload)
+      setGradingConfig(data.data)
+      await reloadStudents()
+      showToast('Configuração salva com sucesso.')
+      return true
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao salvar configuração')
+      return false
     }
   }
 
-  const handleDeleteGrade = (id) => {
-    confirm('Deseja excluir esta nota?', async () => {
+  const handleCreateAssessment = async (payload) => {
+    try {
+      const { data } = await createAssessmentAPI(courseId, payload)
+      setAssessments(prev => [...prev, data.data])
+      showToast('Avaliação criada com sucesso.')
+      return true
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao criar avaliação')
+      return false
+    }
+  }
+
+  const handleUpdateAssessment = async (id, payload) => {
+    try {
+      const { data } = await updateAssessmentAPI(courseId, id, payload)
+      setAssessments(prev => prev.map(a => a._id === id ? data.data : a))
+      await reloadStudents()
+      showToast('Avaliação atualizada com sucesso.')
+      return true
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao atualizar avaliação')
+      return false
+    }
+  }
+
+  const handleDeleteAssessment = (assessment) => {
+    confirm(`Excluir a avaliação "${assessment.title}"? As notas lançadas nela serão removidas.`, async () => {
       try {
-        await deleteGradeAPI(courseId, id)
-        setGrades(prev => prev.filter(g => g._id !== id))
-        showToast('Nota excluída com sucesso.')
-      } catch {
-        showToast('Erro ao excluir nota')
+        await deleteAssessmentAPI(courseId, assessment._id)
+        setAssessments(prev => prev.filter(a => a._id !== assessment._id))
+        setAssessmentScores(prev => prev.filter(s => String(s.assessment) !== String(assessment._id)))
+        await reloadStudents()
+        showToast('Avaliação removida com sucesso.')
+      } catch (err) {
+        showToast(err.response?.data?.message || 'Erro ao excluir avaliação')
       }
     })
   }
 
-  // --- Handlers de Situação ---
-  const handleChangeSituation = (enrollmentId, newSituation) => {
-    confirm(`Deseja alterar a situação deste aluno para "${SITUATION_LABELS[newSituation]}"?`, async () => {
-      setSituationLoading(enrollmentId)
-      try {
-        const { data } = await updateSituationAPI(enrollmentId, { situation: newSituation })
-        setStudents(prev =>
-          prev.map(s => s._id === enrollmentId ? { ...s, situation: data.data.situation } : s)
-        )
-        showToast('Situação atualizada com sucesso')
-      } catch (err) {
-        showToast(err.response?.data?.message || 'Erro ao atualizar situação')
-      } finally {
-        setSituationLoading(null)
-      }
-    })
+  const handleSaveScores = async (assessmentId, payload) => {
+    try {
+      const { data } = await saveScoresAPI(courseId, assessmentId, payload)
+      setAssessments(prev => prev.map(a => a._id === assessmentId ? data.data.assessment : a))
+      setAssessmentScores(prev => [
+        ...prev.filter(s => String(s.assessment) !== String(assessmentId)),
+        ...data.data.scores,
+      ])
+      await reloadStudents()
+      showToast('Notas salvas com sucesso.')
+      return true
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao salvar notas')
+      return false
+    }
+  }
+
+  const handleSetStatus = async (enrollmentId, payload) => {
+    try {
+      await updateSituationAPI(enrollmentId, payload)
+      await reloadStudents()
+      showToast('Situação atualizada com sucesso.')
+      return true
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao atualizar situação')
+      return false
+    }
   }
 
   const handleReleaseCertificate = (enrollmentId, status) => {
@@ -546,13 +599,27 @@ const AdminCourse = () => {
               <StudentsTab
                 students={students}
                 course={course}
-                situationLoading={situationLoading}
+                studentsView={studentsView}
+                onToggleView={toggleStudentsView}
                 certificateSavingId={certificateSavingId}
-                onOpenStudent={(student) => setStudentModal({ open: true, student })}
-                onOpenGrade={(student) => setGradeModal({ open: true, student })}
-                onChangeSituation={handleChangeSituation}
+                onOpenStudent={(enrollment) => setStudentModal({ open: true, enrollment })}
                 onReleaseCertificate={handleReleaseCertificate}
                 onPreviewCertificate={handlePreviewCertificate}
+              />
+            )}
+
+            {activeTab === 'avaliacoes' && (
+              <AssessmentsTab
+                config={gradingConfig}
+                assessments={assessments}
+                scores={assessmentScores}
+                students={students}
+                onSaveConfig={handleSaveConfig}
+                onCreateAssessment={handleCreateAssessment}
+                onUpdateAssessment={handleUpdateAssessment}
+                onSaveScores={handleSaveScores}
+                onSetStatus={handleSetStatus}
+                onDeleteConfirm={handleDeleteAssessment}
               />
             )}
 
@@ -574,7 +641,15 @@ const AdminCourse = () => {
             )}
 
             {activeTab === 'dashboard' && (
-              <DashboardTab course={course} students={students} lessons={lessons} materials={materials} />
+              <DashboardTab
+                course={course}
+                students={students}
+                lessons={lessons}
+                materials={materials}
+                assessments={assessments}
+                scores={assessmentScores}
+                gradingConfig={gradingConfig}
+              />
             )}
 
             {activeTab === 'feedbacks' && (
@@ -639,20 +714,14 @@ const AdminCourse = () => {
         saving={exerciseSaving}
       />
 
-      {/* --- Modais de Alunos e Notas --- */}
+      {/* --- Modal de detalhe do aluno (notas por avaliação, somente leitura) --- */}
       <StudentDetailModal
         open={studentModal.open}
-        student={studentModal.student}
-        grades={grades}
-        onClose={() => setStudentModal({ open: false, student: null })}
-        onOpenGrade={(student) => setGradeModal({ open: true, student })}
-        onDeleteGrade={handleDeleteGrade}
-      />
-      <GradeModal
-        open={gradeModal.open}
-        onClose={() => setGradeModal({ open: false, student: null })}
-        onSave={handleSaveGrade}
-        saving={gradeSaveLoading}
+        enrollment={studentModal.enrollment}
+        assessments={assessments}
+        scores={assessmentScores}
+        config={gradingConfig}
+        onClose={() => setStudentModal({ open: false, enrollment: null })}
       />
 
       {/* --- Modal de Material --- */}

@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 const Modal = ({ open, onClose, title, children, size = 'md' }) => {
   useEffect(() => {
@@ -11,7 +12,10 @@ const Modal = ({ open, onClose, title, children, size = 'md' }) => {
   if (!open) return null
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl', full: 'max-w-full' }
 
-  return (
+  // Renderiza via portal no <body> para o modal escapar de qualquer contexto de
+  // empilhamento de um ancestral (ex.: a barra de abas com `sticky top-0 z-10`),
+  // que deixava parte do fundo sem o overlay/blur.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className={`relative w-full ${sizes[size]} bg-white rounded-t-modal sm:rounded-modal shadow-modal animate-fadeIn max-h-[90vh] flex flex-col`}>
@@ -23,7 +27,8 @@ const Modal = ({ open, onClose, title, children, size = 'md' }) => {
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
