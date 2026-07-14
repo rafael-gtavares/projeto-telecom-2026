@@ -14,6 +14,8 @@ import { useAuth } from '../context/AuthContext'
 import { getCoursesAPI } from '../api/courses'
 import { mockCourses, mockPartners } from '../mockData/courses'
 import { MODALITY_LABELS } from '../utils/formatModality'
+import TelecomModeSection from '../components/home/TelecomModeSection'
+import DinoGameModal from '../components/home/DinoGameModal'
 
 const partners = [...mockPartners, ...mockPartners]
 
@@ -49,6 +51,11 @@ const Home = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [visibleCourses, setVisibleCourses] = useState(3)
   const [modalityFilter, setModalityFilter] = useState('all')
+  const [showEasterEggModal, setShowEasterEggModal] = useState(false);
+  const [telecomMode, setTelecomMode] = useState(
+    () => localStorage.getItem('telecomMode') === 'true'
+  );
+  const [showDinoGame, setShowDinoGame] = useState(false);
 
   // Refaz a busca quando o login/logout muda — assim os flags isEnrolled/isWaitlisted
   // acompanham o usuário atual (ao deslogar, os botões voltam para "Inscrever-se").
@@ -105,6 +112,12 @@ const Home = () => {
       c._id === courseId ? { ...c, isWaitlisted: waitlisted, isEnrolled: false } : c
     ))
   }
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-telecom', telecomMode);
+    localStorage.setItem('telecomMode', telecomMode);
+    console.log('Tema trocado')
+  }, [telecomMode]);
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -316,8 +329,45 @@ const Home = () => {
         </div>
       </section>
 
+      {showEasterEggModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="relative w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-xl">
+            <button
+              onClick={() => setShowEasterEggModal(false)}
+              className="absolute right-4 top-4 text-text-muted hover:text-text-primary transition-colors"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-primary">
+              Parabéns!
+            </h2>
+            <p className="mt-4 text-text-secondary">
+              Você encontrou o Easter Egg do Projeto Telecom nas Escolas.
+            </p>
+            <p className="mt-2 text-text-secondary">
+              Criado pela equipe de desenvolvimento ❤️
+            </p>
+          </div>
+        </div>
+      )}
 
-      <Footer />
+      {telecomMode && (
+        <TelecomModeSection
+          onPlay={() => setShowDinoGame(true)}
+          onExit={() => setTelecomMode(false)}
+        />
+      )}
+
+      {showDinoGame && (
+        <DinoGameModal onClose={() => setShowDinoGame(false)} />
+      )}
+
+      <Footer
+        onUnlockTelecomMode={() => {
+          setTelecomMode(true);
+          setShowEasterEggModal(true);
+        }}
+      />
 
       <CourseDetailModal
         open={modalOpen}
