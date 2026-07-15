@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Lock, Eye, EyeOff } from 'lucide-react'
+import { ChevronDown, ChevronUp, Lock, Eye, EyeOff, PenLine, Trash2 } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import { Avatar, Badge } from '../components/ui/index'
 import { useAuth } from '../context/AuthContext'
-import { updateMeAPI } from '../api/users'
+import { updateMeAPI, updateSignatureAPI } from '../api/users'
 import { useSchools } from '../hooks/useSchools'
 import { getRoleLabel } from '../utils/formatDate'
 import { passwordStrength } from '../utils/passwordStrength'
+import { SIGNATURE_FONTS } from '../constants/signatureFonts'
 
 const incomeOptions = [
   { value: 'ate_1sm', label: 'Até 1 salário mínimo' },
@@ -44,6 +45,48 @@ const MyProfile = () => {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+
+  // Professores/admin podem configurar uma assinatura usada nos certificados
+  const canSign = role !== 'aluno'
+  const [sig, setSig] = useState({
+    text: user?.signature?.text || user?.name || '',
+    font: user?.signature?.font || SIGNATURE_FONTS[0].value,
+  })
+  const [sigLoading, setSigLoading] = useState(false)
+  const [sigMsg, setSigMsg] = useState({ error: '', success: '' })
+  const hasSavedSignature = !!user?.signature?.text
+  const sigFamily = SIGNATURE_FONTS.find(f => f.value === sig.font)?.cssFamily || 'inherit'
+
+  const handleSaveSignature = async () => {
+    setSigMsg({ error: '', success: '' })
+    const text = sig.text.trim()
+    if (!text) { setSigMsg({ error: 'Informe o texto da assinatura', success: '' }); return }
+    setSigLoading(true)
+    try {
+      const { data } = await updateSignatureAPI({ text, font: sig.font })
+      updateUser(data.data)
+      setSigMsg({ error: '', success: 'Assinatura salva com sucesso!' })
+    } catch (err) {
+      setSigMsg({ error: err.response?.data?.message || 'Erro ao salvar a assinatura', success: '' })
+    } finally {
+      setSigLoading(false)
+    }
+  }
+
+  const handleRemoveSignature = async () => {
+    setSigMsg({ error: '', success: '' })
+    setSigLoading(true)
+    try {
+      const { data } = await updateSignatureAPI({ text: '' })
+      updateUser(data.data)
+      setSig({ text: user?.name || '', font: SIGNATURE_FONTS[0].value })
+      setSigMsg({ error: '', success: 'Assinatura removida.' })
+    } catch (err) {
+      setSigMsg({ error: err.response?.data?.message || 'Erro ao remover a assinatura', success: '' })
+    } finally {
+      setSigLoading(false)
+    }
+  }
 
   const set = (k) => (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
@@ -243,6 +286,88 @@ const MyProfile = () => {
               </Button>
             </div>
           </div>
+
+          {canSign && (
+            <div className="card p-6 md:p-8 animate-fadeIn mt-6">
+              <div className="flex items-center gap-2 mb-1">
+                <PenLine size={18} className="text-primary" />
+                <h2 className="font-semibold text-text-primary text-lg">Assinatura do certificado</h2>
+              </div>
+              <p className="text-text-muted text-sm mb-5">
+                Defina como sua assinatura aparecerá nos certificados que você emitir.
+                Escolha o texto e um estilo de fonte.
+              </p>
+
+              {sigMsg.success && <div className="bg-success-light border border-success/20 text-success-text text-sm rounded-lg px-4 py-3 mb-5">{sigMsg.success}</div>}
+              {sigMsg.error && <div className="bg-error-light border border-error/20 text-error text-sm rounded-lg px-4 py-3 mb-5">{sigMsg.error}</div>}
+
+              <div className="space-y-5">
+                <Input
+                  label="Texto da assinatura"
+                  value={sig.text}
+                  onChange={e => setSig(s => ({ ...s, text: e.target.value }))}
+                  maxLength={60}
+                  placeholder="Ex.: Seu nome"
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Estilo da fonte</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {SIGNATURE_FONTS.map(f => {
+                      const selected = sig.font === f.value
+                      return (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onClick={() => setSig(s => ({ ...s, font: f.value }))}
+                          className={`rounded-card border px-3 py-3 text-center transition-all ${
+                            selected
+                              ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
+                              : 'border-border hover:border-primary/40'
+                          }`}
+                        >
+                          <span
+                            className="block text-2xl text-text-primary leading-tight truncate"
+                            style={{ fontFamily: f.cssFamily }}
+                          >
+                            {sig.text.trim() || 'Assinatura'}
+                          </span>
+                          <span className="block text-[11px] text-text-muted mt-1">{f.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Prévia como ficará no rodapé do certificado */}
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Prévia no certificado</label>
+                  <div className="border border-border rounded-card bg-white py-6 px-4 flex flex-col items-center">
+                    <span
+                      className="text-4xl text-[#1f2933] leading-none pb-2"
+                      style={{ fontFamily: sigFamily }}
+                    >
+                      {sig.text.trim() || 'Assinatura'}
+                    </span>
+                    <span className="w-52 border-t border-[#1f2933]" />
+                    <span className="text-sm font-semibold text-[#1f2933] mt-1.5">{sig.text.trim() || user?.name}</span>
+                    <span className="text-xs text-[#5b6b7b]">CEFET/RJ</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <Button variant="primary" className="flex-1" onClick={handleSaveSignature} loading={sigLoading}>
+                  Salvar assinatura
+                </Button>
+                {hasSavedSignature && (
+                  <Button variant="secondary" onClick={handleRemoveSignature} disabled={sigLoading}>
+                    <Trash2 size={16} /> Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

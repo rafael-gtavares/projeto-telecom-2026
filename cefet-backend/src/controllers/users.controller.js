@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const escapeRegex = require('../helpers/escapeRegex');
 const { ROLES } = require('../constants/roles');
+const { SIGNATURE_FONTS } = require('../constants/signatureFonts');
 
 const getMe = async (req, res, next) => {
   try {
@@ -38,6 +39,36 @@ const updateMe = async (req, res, next) => {
 
     // Popula escola para retornar dados completos
     await user.populate('school', 'name city');
+    res.json({ success: true, data: user.toPublic() });
+  } catch (err) { next(err); }
+};
+
+// PUT /users/me/signature — professor/admin define (ou limpa) sua assinatura.
+// body: { text, font } → salva; { text: '' } ou { text: null } → remove.
+const updateMySignature = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+
+    const { text, font } = req.body;
+
+    // Texto vazio/nulo → remove a assinatura configurada
+    if (text === '' || text === null || text === undefined) {
+      user.signature = { text: null, font: null };
+      await user.save();
+      return res.json({ success: true, data: user.toPublic() });
+    }
+
+    const trimmed = String(text).trim();
+    if (!trimmed)
+      return res.status(400).json({ success: false, message: 'Informe o texto da assinatura' });
+    if (trimmed.length > 60)
+      return res.status(400).json({ success: false, message: 'A assinatura deve ter no máximo 60 caracteres' });
+    if (!Object.values(SIGNATURE_FONTS).includes(font))
+      return res.status(400).json({ success: false, message: 'Fonte de assinatura inválida' });
+
+    user.signature = { text: trimmed, font };
+    await user.save();
     res.json({ success: true, data: user.toPublic() });
   } catch (err) { next(err); }
 };
@@ -175,4 +206,4 @@ const updateEditPermission = async (req, res, next) => {
   }
 };
 
-module.exports = { getMe, updateMe, getUsers, getUsersBase, updateUserRole, updateEditPermission };
+module.exports = { getMe, updateMe, updateMySignature, getUsers, getUsersBase, updateUserRole, updateEditPermission };

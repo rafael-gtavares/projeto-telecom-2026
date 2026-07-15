@@ -1,5 +1,6 @@
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
+const User = require('../models/User');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { ENROLLMENT_SITUATION } = require('../constants/enrollmentSituation');
@@ -270,15 +271,31 @@ const releaseCertificate = async (req, res, next) => {
     if (course.status !== COURSE_STATUS.CLOSED)
       return res.status(400).json({ success: false, message: 'O certificado só pode ser liberado com o curso encerrado' });
 
+    // Emitir exige que o emissor tenha uma assinatura configurada — ela vai no PDF
+    let issuer;
+    if (status === CERTIFICATE_STATUS.ISSUED) {
+      issuer = await User.findById(req.user.id).select('name signature');
+      if (!issuer?.signature?.text)
+        return res.status(400).json({ success: false, message: 'Configure sua assinatura no perfil antes de emitir certificados' });
+    }
+
     enrollment.certificateStatus = status;
     if (status === CERTIFICATE_STATUS.ISSUED) {
       enrollment.certificateIssuedAt = new Date();
       enrollment.certificateIssuedBy = req.user.id;
+      // Congela a assinatura do emissor neste certificado (torna-o imutável)
+      enrollment.certificateSignature = {
+        name: issuer.name,
+        text: issuer.signature.text,
+        font: issuer.signature.font,
+      };
       await enrollment.save();
       await notifyCertificate({ course: course._id, studentId: enrollment.user, createdBy: req.user.id });
     } else {
       enrollment.certificateIssuedAt = null;
       enrollment.certificateIssuedBy = null;
+      // Revogado → descarta o snapshot; uma nova emissão gravará a assinatura atual
+      enrollment.certificateSignature = { name: null, text: null, font: null };
       await enrollment.save();
     }
 

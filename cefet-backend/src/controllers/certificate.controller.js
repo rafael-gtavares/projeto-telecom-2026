@@ -1,6 +1,7 @@
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 const Lesson = require('../models/Lesson');
+const User = require('../models/User');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { COURSE_STATUS } = require('../constants/courseStatus');
 const { CERTIFICATE_STATUS } = require('../constants/certificateStatus');
@@ -62,6 +63,15 @@ const getCertificatePdf = async (req, res, next) => {
       0
     );
 
+    // A assinatura é a "congelada" na emissão (certificado imutável). Antes da
+    // emissão só o gestor pré-visualiza — aí usamos a assinatura atual dele para
+    // que ele veja como ficará, sem alterar nenhum certificado já emitido.
+    let signature = enrollment.certificateSignature;
+    if (!signature?.text) {
+      const me = await User.findById(req.user.id).select('name signature');
+      signature = { name: me?.name, text: me?.signature?.text, font: me?.signature?.font };
+    }
+
     const doc = createCertificateDoc({
       studentName: enrollment.user.name,
       courseTitle: course.title,
@@ -71,6 +81,9 @@ const getCertificatePdf = async (req, res, next) => {
       endDate: course.endDate,
       issuedAt: enrollment.certificateIssuedAt || new Date(),
       certId: certIdFor(enrollment._id),
+      signerName: signature?.name,
+      signatureText: signature?.text,
+      signatureFont: signature?.font,
     });
 
     const download = req.query.download === '1' || req.query.download === 'true';

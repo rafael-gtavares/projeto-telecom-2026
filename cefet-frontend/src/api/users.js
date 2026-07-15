@@ -2,6 +2,7 @@ import api from './axios'
 
 export const getMeAPI = () => api.get('/users/me')
 export const updateMeAPI = (data) => api.put('/users/me', data)
+export const updateSignatureAPI = (data) => api.put('/users/me/signature', data)
 export const getUsersAPI = (params) => api.get('/users', { params })
 export const getUsersBaseAPI = (params) => api.get('/users/base')
 export const updateUserRoleAPI = (id, role) => api.put(`/users/${id}/role`, { role })

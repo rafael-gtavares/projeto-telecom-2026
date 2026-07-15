@@ -20,6 +20,14 @@ const enrollmentSchema = new mongoose.Schema({
   certificateStatus: { type: String, enum: Object.values(CERTIFICATE_STATUS), default: CERTIFICATE_STATUS.UNDER_REVIEW },
   certificateIssuedAt: { type: Date, default: null },
   certificateIssuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // Assinatura "congelada" no momento da emissão. Um certificado emitido é
+  // imutável: alterar/remover a assinatura no perfil NÃO afeta este snapshot.
+  // Só é regravado se o certificado for revogado e emitido novamente.
+  certificateSignature: {
+    name: { type: String, default: null },
+    text: { type: String, default: null },
+    font: { type: String, default: null },
+  },
 }, { timestamps: true });
 
 enrollmentSchema.index({ user: 1, course: 1 }, { unique: true });

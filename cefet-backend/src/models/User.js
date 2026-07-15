@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { ROLES } = require('../constants/roles')
+const { SIGNATURE_FONTS } = require('../constants/signatureFonts')
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -45,6 +46,14 @@ const userSchema = new mongoose.Schema({
   canEditPersonalInfo: {
     type: Boolean,
     default: false,
+  },
+
+  // Assinatura personalizada (professor/admin) usada nos certificados.
+  // `text` = os caracteres da assinatura; `font` = uma das fontes do sistema.
+  // Ambos null enquanto não configurada. Ver constants/signatureFonts.js.
+  signature: {
+    text: { type: String, trim: true, maxlength: 60, default: null },
+    font: { type: String, enum: [...Object.values(SIGNATURE_FONTS), null], default: null },
   },
 
   // Versão da sessão: incrementar invalida todos os refresh tokens já emitidos

@@ -74,6 +74,9 @@ const CertificateTab = ({ courseId, enrollment, course, lessons = [], studentNam
           lessons={lessons}
           issuedAt={enrollment.certificateIssuedAt}
           enrollmentId={enrollment._id}
+          signatureText={enrollment.certificateSignature?.text}
+          signatureFont={enrollment.certificateSignature?.font}
+          signerName={enrollment.certificateSignature?.name}
         />
       </div>
     </div>

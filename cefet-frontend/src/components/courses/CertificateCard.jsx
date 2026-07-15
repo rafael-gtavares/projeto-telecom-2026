@@ -1,13 +1,18 @@
 import LogoSVG from '../../assets/cefetrj-logo'
 import { formatModality } from '../../utils/formatModality'
 import { certificateWorkloadLabel, certificateId } from '../../utils/certificate'
+import { signatureFontFamily } from '../../constants/signatureFonts'
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' }) : '—'
 
 // Prévia visual (estática) do certificado — espelha o layout do PDF gerado no
 // backend. Usada tanto pelo aluno quanto pelo admin.
-const CertificateCard = ({ studentName, course, lessons = [], issuedAt, enrollmentId }) => (
+// signatureText/signatureFont/signerName = assinatura de quem emite (ver PDF).
+const CertificateCard = ({
+  studentName, course, lessons = [], issuedAt, enrollmentId,
+  signatureText, signatureFont, signerName,
+}) => (
   <div className="relative bg-white rounded-lg border-2 border-primary px-5 py-8 sm:px-10 sm:py-12 text-center overflow-hidden">
     <span className="pointer-events-none absolute inset-2 border border-primary/50 rounded" />
     <div className="relative flex flex-col items-center">
@@ -33,8 +38,18 @@ const CertificateCard = ({ studentName, course, lessons = [], issuedAt, enrollme
       </p>
 
       <div className="mt-8 sm:mt-12 flex flex-col items-center">
+        {signatureText && signatureFont && (
+          <span
+            className="text-3xl sm:text-4xl text-text-primary leading-none pb-1"
+            style={{ fontFamily: signatureFontFamily(signatureFont) }}
+          >
+            {signatureText}
+          </span>
+        )}
         <span className="w-44 border-t border-text-primary" />
-        <p className="text-xs sm:text-sm font-bold text-text-primary mt-1.5">Coordenação de Cursos e Eventos</p>
+        <p className="text-xs sm:text-sm font-bold text-text-primary mt-1.5">
+          {signerName || 'Coordenação de Cursos e Eventos'}
+        </p>
         <p className="text-[10px] sm:text-xs text-text-muted">CEFET/RJ</p>
       </div>
 

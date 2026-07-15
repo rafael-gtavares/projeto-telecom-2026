@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fontes de assinatura (mesmas usadas no PDF do certificado). Servidas de
+   public/fonts. As famílias batem com src/constants/signatureFonts.js. */
+@font-face {
+  font-family: 'Great Vibes';
+  src: url('/fonts/GreatVibes-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Allura';
+  src: url('/fonts/Allura-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Sacramento';
+  src: url('/fonts/Sacramento-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Alex Brush';
+  src: url('/fonts/AlexBrush-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
 @layer base {
   * {
     box-sizing: border-box;

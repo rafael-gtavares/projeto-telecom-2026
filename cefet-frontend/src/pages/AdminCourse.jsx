@@ -30,6 +30,7 @@ import FeedbackTab from '../components/courses/admin/feedback/FeedbackTab'
 
 import { useConfirmModal } from '../hooks/useConfirmModal'
 import { useToast } from '../hooks/useToast'
+import { useAuth } from '../context/AuthContext'
 
 import { isAdmin as isAdminRole } from '../utils/permissions'
 import {
@@ -117,6 +118,11 @@ const AdminCourse = () => {
 
   const { toast, showToast, closeToast } = useToast()
   const { confirmModal, confirm, close: closeConfirm, handleConfirm } = useConfirmModal()
+  const { user } = useAuth()
+
+  // Aviso exibido quando o gestor tenta emitir sem ter uma assinatura configurada
+  const [signatureWarnOpen, setSignatureWarnOpen] = useState(false)
+  const hasSignature = !!user?.signature?.text
 
   const loadData = async () => {
     setLoading(true)
@@ -432,6 +438,11 @@ const AdminCourse = () => {
 
   const handleReleaseCertificate = (enrollmentId, status) => {
     const emitir = status === 'emitido'
+    // Emitir exige assinatura configurada no perfil de quem emite
+    if (emitir && !hasSignature) {
+      setSignatureWarnOpen(true)
+      return
+    }
     confirm(
       emitir
         ? 'Emitir o certificado deste aluno? Ele será notificado e poderá baixar o PDF.'
@@ -765,9 +776,34 @@ const AdminCourse = () => {
               lessons={lessons}
               issuedAt={certPreview.enrollment.certificateIssuedAt}
               enrollmentId={certPreview.enrollment._id}
+              signatureText={certPreview.enrollment.certificateSignature?.text || user?.signature?.text}
+              signatureFont={certPreview.enrollment.certificateSignature?.font || user?.signature?.font}
+              signerName={certPreview.enrollment.certificateSignature?.name || user?.name}
             />
           </div>
         )}
+      </Modal>
+
+      {/* --- Aviso: precisa de assinatura para emitir certificado --- */}
+      <Modal open={signatureWarnOpen} onClose={() => setSignatureWarnOpen(false)} title="Assinatura necessária" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Para emitir certificados, você precisa primeiro criar sua <strong>assinatura</strong>.
+            Ela aparecerá no certificado dos alunos.
+          </p>
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Você pode configurá-la em <strong>Meu Perfil</strong>, na seção
+            <strong> “Assinatura do certificado”</strong>.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-end pt-1">
+            <Button variant="secondary" onClick={() => setSignatureWarnOpen(false)}>
+              Agora não
+            </Button>
+            <Button variant="primary" onClick={() => { setSignatureWarnOpen(false); navigate('/meu-perfil') }}>
+              Criar assinatura
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* --- Modal de confirmação genérico + Toast --- */}

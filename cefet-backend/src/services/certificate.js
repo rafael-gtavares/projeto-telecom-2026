@@ -1,5 +1,9 @@
+const path = require('path');
 const PDFDocument = require('pdfkit');
 const SVGtoPDF = require('svg-to-pdfkit');
+const { SIGNATURE_FONT_FILES } = require('../constants/signatureFonts');
+
+const FONTS_DIR = path.join(__dirname, '..', 'assets', 'fonts');
 
 const CEFET_BLUE = '#1565C0';
 const INK = '#1f2933';
@@ -77,9 +81,18 @@ function createCertificateDoc(data) {
 
   // Rodapé: assinatura + emissão/código
   const footY = H - 120;
+
+  // Assinatura manuscrita de quem emitiu, logo acima da linha (quando configurada).
+  const sigFile = data.signatureFont && SIGNATURE_FONT_FILES[data.signatureFont];
+  if (data.signatureText && sigFile) {
+    doc.registerFont('signature', path.join(FONTS_DIR, sigFile));
+    doc.fillColor(INK).font('signature').fontSize(34)
+      .text(data.signatureText, cx - 160, footY - 46, { width: 320, align: 'center', lineBreak: false });
+  }
+
   doc.moveTo(cx - 110, footY).lineTo(cx + 110, footY).lineWidth(1).strokeColor(INK).stroke();
   doc.fillColor(INK).font('Helvetica-Bold').fontSize(11)
-    .text('Coordenação de Cursos e Eventos', cx - 150, footY + 6, { width: 300, align: 'center' });
+    .text(data.signerName || 'Coordenação de Cursos e Eventos', cx - 150, footY + 6, { width: 300, align: 'center' });
   doc.fillColor(MUTED).font('Helvetica').fontSize(9)
     .text('CEFET/RJ', cx - 150, footY + 20, { width: 300, align: 'center' });
 
