@@ -28,6 +28,7 @@ import SchoolChartCard from '../components/admin/charts/SchoolChartCard'
 // Tables
 import CourseTable from '../components/admin/CourseTable'
 import UserTable from '../components/admin/UserTable'
+import AdminFeedbacksPanel from '../components/admin/AdminFeedbacksPanel'
 
 // Manager
 import SchoolsManager from '../components/admin/SchoolsManager'
@@ -767,6 +768,10 @@ const Admin = () => {
               </div>
 
             </div>
+          )}
+
+          {tab === 'feedbacks' && canManageUsers(role) && (
+            <AdminFeedbacksPanel onNotify={(message) => setToast({ show: true, message })} />
           )}
 
         </div>

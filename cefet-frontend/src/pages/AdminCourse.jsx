@@ -27,6 +27,7 @@ import AnnouncementsTab from '../components/courses/admin/AnnouncementsTab'
 import AnnouncementModal from '../components/courses/admin/AnnouncementModal'
 import CertificateCard from '../components/courses/CertificateCard'
 import FeedbackTab from '../components/courses/admin/feedback/FeedbackTab'
+import FeedbacksTab from '../components/courses/admin/FeedbacksTab'
 
 import { useConfirmModal } from '../hooks/useConfirmModal'
 import { useToast } from '../hooks/useToast'
@@ -46,6 +47,7 @@ import {
   createAssessmentAPI, updateAssessmentAPI, deleteAssessmentAPI, saveScoresAPI,
 } from '../api/assessments'
 import { getAnnouncementsAPI, createAnnouncementAPI, deleteAnnouncementAPI } from '../api/announcements'
+import { getCourseFeedbacksAPI } from '../api/feedbacks'
 import { readBlobError } from '../utils/blobError'
 import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
@@ -115,6 +117,10 @@ const AdminCourse = () => {
   const [configUsers, setConfigUsers] = useState([])
   const [configUsersLoading, setConfigUsersLoading] = useState(false)
 
+  // Depoimentos (feedback antigo) do curso — carregados ao abrir a aba
+  const [courseFeedbacks, setCourseFeedbacks] = useState([])
+  const [courseFeedbacksLoading, setCourseFeedbacksLoading] = useState(true)
+
 
   const { toast, showToast, closeToast } = useToast()
   const { confirmModal, confirm, close: closeConfirm, handleConfirm } = useConfirmModal()
@@ -159,6 +165,16 @@ const AdminCourse = () => {
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId])
+
+  // Carrega os depoimentos (feedback antigo) do curso ao abrir a aba de feedback
+  useEffect(() => {
+    if (activeTab !== 'feedbacks') return
+    setCourseFeedbacksLoading(true)
+    getCourseFeedbacksAPI(courseId)
+      .then(({ data }) => setCourseFeedbacks(data.data))
+      .catch(() => setCourseFeedbacks([]))
+      .finally(() => setCourseFeedbacksLoading(false))
+  }, [activeTab, courseId])
 
 
   // --- Handlers do Curso ---
@@ -664,7 +680,14 @@ const AdminCourse = () => {
             )}
 
             {activeTab === 'feedbacks' && (
-              <FeedbackTab courseId={courseId} course={course} />
+              <div>
+                {/* Depoimentos dos alunos (sistema antigo) */}
+                <FeedbacksTab feedbacks={courseFeedbacks} loading={courseFeedbacksLoading} />
+                {/* Separador entre os dois tipos de feedback */}
+                <div className="h-2 bg-surface-page border-y border-border" />
+                {/* Formulário de feedback (sistema novo) */}
+                <FeedbackTab courseId={courseId} course={course} />
+              </div>
             )}
 
             {activeTab === 'config' && (

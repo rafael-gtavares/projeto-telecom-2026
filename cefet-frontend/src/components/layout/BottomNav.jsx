@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { LayoutDashboard, BookOpen, Home, Users, School } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Home, Users, School, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { isAdmin } from '../../utils/permissions'
 
@@ -10,6 +10,7 @@ const items = [
   { tab: 'cursos', label: 'Cursos', icon: BookOpen },
   { tab: 'usuarios', label: 'Usuários', icon: Users, adminOnly: true },
   { tab: 'escolas', label: 'Escolas', icon: School, adminOnly: true },
+  { tab: 'feedbacks', label: 'Feedbacks', icon: MessageSquare, adminOnly: true },
 ]
 
 const BottomNav = () => {

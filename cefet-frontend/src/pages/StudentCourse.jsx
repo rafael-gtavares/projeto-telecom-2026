@@ -9,9 +9,12 @@ import MarkdownPreview from '../components/markdown/MarkdownPreview'
 import ExerciseRunner from '../components/exercises/ExerciseRunner'
 import CertificateTab from '../components/courses/CertificateTab'
 import StudentFeedbackTab from '../components/courses/StudentFeedbackTab'
+import StudentTestimonial from '../components/courses/StudentTestimonial'
+import { STATUS } from '../constants/enrollmentStatus'
 import StudentAssessmentsTab from '../components/courses/StudentAssessmentsTab'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyEnrollmentsAPI } from '../api/courses'
 import { getAnnouncementsAPI } from '../api/announcements'
+import { getStudentFeedbackAPI } from '../api/feedback'
 import { formatDate, parseUTCDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
 import { generateCalendarDays } from '../utils/generateCalendarDays'
@@ -92,6 +95,19 @@ const StudentCourse = () => {
   const [viewLesson, setViewLesson] = useState(null)
   const [quizLesson, setQuizLesson] = useState(null)
   const [myEnrollment, setMyEnrollment] = useState(null)
+  // Existe formulário de feedback (novo) disponível para responder? Define a
+  // ordem da aba: com formulário → formulário primeiro e depoimento por último;
+  // sem formulário → apenas o depoimento.
+  const [hasFeedbackForm, setHasFeedbackForm] = useState(false)
+
+  useEffect(() => {
+    if (course?.status !== 'closed') { setHasFeedbackForm(false); return }
+    let active = true
+    getStudentFeedbackAPI(courseId)
+      .then(({ data }) => { if (active) setHasFeedbackForm(!!(data.data?.available && data.data?.form)) })
+      .catch(() => { if (active) setHasFeedbackForm(false) })
+    return () => { active = false }
+  }, [course?.status, courseId])
 
   const openLesson = (lesson) => setViewLesson(lesson)
   const startQuiz = () => { setQuizLesson(viewLesson); setViewLesson(null) }
@@ -184,6 +200,10 @@ const StudentCourse = () => {
     </>
   )
 
+  // Só quem participou do curso (inscrição concluída) vê a aba de feedback.
+  // Fila de espera / não-participantes ficam de fora.
+  const isCourseParticipant = myEnrollment?.status === STATUS.COMPLETED
+
 
   return (
     <div className="min-h-screen bg-surface-page">
@@ -209,7 +229,9 @@ const StudentCourse = () => {
 
           <div className="border-b border-border bg-white rounded-t-card px-4">
             <Tabs
-              tabs={course?.status === 'closed' ? [...tabs, CERTIFICATE_TAB, FEEDBACK_TAB] : tabs}
+              tabs={course?.status === 'closed'
+                ? [...tabs, CERTIFICATE_TAB, ...(isCourseParticipant ? [FEEDBACK_TAB] : [])]
+                : tabs}
               active={activeTab}
               onChange={setActiveTab}
             />
@@ -601,8 +623,26 @@ const StudentCourse = () => {
               />
             )}
 
-            {activeTab === 'feedback' && course?.status === 'closed' && (
-              <StudentFeedbackTab courseId={courseId} />
+            {activeTab === 'feedback' && course?.status === 'closed' && isCourseParticipant && (
+              <div className="space-y-6">
+                {/* Com formulário (novo): ele vem primeiro; o depoimento fica por último.
+                    Sem formulário: aparece apenas o depoimento. */}
+                {hasFeedbackForm && (
+                  <>
+                    <StudentFeedbackTab courseId={courseId} />
+                    <div className="h-px bg-border" />
+                  </>
+                )}
+                {/* Depoimento (feedback antigo) — apenas o do próprio aluno */}
+                <StudentTestimonial
+                  courseId={courseId}
+                  user={user}
+                  // Depoimento acompanha a liberação da aba: basta ter concluído o
+                  // curso (mesma regra do backend). Sem trava extra de situação.
+                  canReview={myEnrollment?.status === STATUS.COMPLETED}
+                  onNotify={(message) => setToast({ show: true, message })}
+                />
+              </div>
             )}
 
 
