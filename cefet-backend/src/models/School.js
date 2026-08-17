@@ -12,6 +12,16 @@ const schoolSchema = new mongoose.Schema({
     trim: true,
     default: '',
   },
+  contactName: {
+    type: String,
+    trim: true,
+    default: 'Sem nome de contato'
+  },
+  contactNumber: {
+    type: String,
+    trim: true,
+    default: 'Sem número de contato'
+  },
   active: {
     type: Boolean,
     default: true,
