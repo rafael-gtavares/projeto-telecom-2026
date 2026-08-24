@@ -12,6 +12,7 @@ import Toast from '../components/ui/Toast'
 import Button from '../components/ui/Button'
 import { useAuth } from '../context/AuthContext'
 import { getCoursesAPI } from '../api/courses'
+import { cancelEnrollmentRequestAPI } from '../api/enrollmentRequests'
 import { mockCourses, mockPartners } from '../mockData/courses'
 import { MODALITY_LABELS } from '../utils/formatModality'
 import { getFeaturedFeedbacksAPI } from '../api/feedbacks'
@@ -68,6 +69,8 @@ const Home = () => {
   );
   const [showDinoGame, setShowDinoGame] = useState(false);
 
+  const [cancelingRequest, setCancelingRequest] = useState(null) // courseId em cancelamento
+
   // Refaz a busca quando o login/logout muda — assim os flags isEnrolled/isWaitlisted
   // acompanham o usuário atual (ao deslogar, os botões voltam para "Inscrever-se").
   useEffect(() => {
@@ -121,6 +124,36 @@ const Home = () => {
   const handleWaitlistChange = (courseId, waitlisted) => {
     setCourses(prev => prev.map(c =>
       c._id === courseId ? { ...c, isWaitlisted: waitlisted, isEnrolled: false } : c
+    ))
+  }
+
+  const handleCancelRequestFromCard = async (course) => {
+    if (!course.pendingRequestId) return
+    setCancelingRequest(course._id)
+    try {
+      await cancelEnrollmentRequestAPI(course.pendingRequestId)
+      setCourses(prev => prev.map(c =>
+        c._id === course._id ? { ...c, isPendingRequest: false, pendingRequestId: null } : c
+      ))
+      setToast({ show: true, message: 'Solicitação cancelada.' })
+    } catch (err) {
+      setToast({ show: true, message: err.response?.data?.message || 'Erro ao cancelar solicitação' })
+    } finally {
+      setCancelingRequest(null)
+    }
+  }
+
+  // Chamado pelo CourseDetailModal quando o aluno solicita vaga com sucesso
+  const handleRequestCreated = (courseId, requestId) => {
+    setCourses(prev => prev.map(c =>
+      c._id === courseId ? { ...c, isPendingRequest: true, pendingRequestId: requestId } : c
+    ))
+  }
+
+  // Chamado pelo CourseDetailModal quando o aluno cancela a solicitação por lá
+  const handleRequestCanceled = (courseId) => {
+    setCourses(prev => prev.map(c =>
+      c._id === courseId ? { ...c, isPendingRequest: false, pendingRequestId: null } : c
     ))
   }
 
@@ -425,11 +458,13 @@ const Home = () => {
 
       <CourseDetailModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setSelectedCourse(null) }}
+        onClose={() => setModalOpen(false)}
         course={selectedCourse}
         onEnrollSuccess={handleEnrollSuccess}
         onCancelSuccess={handleCancelSuccess}
         onWaitlistChange={handleWaitlistChange}
+        onRequestCreated={handleRequestCreated}
+        onRequestCanceled={handleRequestCanceled}
       />
 
       <Toast

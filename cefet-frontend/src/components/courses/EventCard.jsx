@@ -1,4 +1,4 @@
-import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass } from 'lucide-react'
+import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { formatDate } from '../../utils/formatDate'
@@ -6,9 +6,10 @@ import { formatModality } from '../../utils/formatModality'
 
 const CARD_GRADIENT = 'from-primary to-primary-light'
 
-const EventCard = ({ course, onOpenModal }) => {
+const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) => {
   const isEnrolled = course.isEnrolled ?? false
   const isWaitlisted = course.isWaitlisted ?? false
+  const isPendingRequest = course.isPendingRequest ?? false
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
@@ -80,8 +81,8 @@ const EventCard = ({ course, onOpenModal }) => {
         </div>
 
         <Button
-          variant={(isEnrolled || isWaitlisted) ? 'secondary' : 'primary'}
-          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : ''}`}
+          variant={(isEnrolled || isWaitlisted || isPendingRequest) ? 'secondary' : 'primary'}
+          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : isPendingRequest ? 'border-primary/50 text-primary' : ''}`}
         >
           {isEnrolled ? (
             <span className="flex items-center justify-center gap-2">
@@ -91,15 +92,23 @@ const EventCard = ({ course, onOpenModal }) => {
             <span className="flex items-center justify-center gap-2">
               <Hourglass size={16} /> Na fila de espera
             </span>
+          ) : isPendingRequest ? (
+            <span className="flex items-center justify-center gap-2">
+              <Hourglass size={16} /> Solicitação em análise
+            </span>
           ) : isFull ? (
             'Entrar na fila de espera'
+          ) : course.enrollmentType === 'approval' ? (
+            <span className="flex items-center justify-center gap-2">
+              <Send size={16} /> Solicitar vaga
+            </span>
           ) : (
             'Inscrever-se'
           )}
         </Button>
 
         {/* Aviso: vaga só com desistência */}
-        {isFull && !isEnrolled && (
+        {isFull && !isEnrolled && !isPendingRequest && course.enrollmentType !== 'approval' && (
           <p className="text-[11px] text-text-muted text-center mt-2">
             {isWaitlisted
               ? 'Você assume a vaga somente se houver desistência.'

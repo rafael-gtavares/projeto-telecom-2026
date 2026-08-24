@@ -7,6 +7,8 @@ const NOTIFICATION_TYPES = {
   SCHEDULE: 'schedule',
   CERTIFICATE: 'certificate',
   FEEDBACK: 'feedback',
+  ENROLLMENT_APPROVED: 'enrollment_approved',
+  ENROLLMENT_REJECTED: 'enrollment_rejected',
 };
 
 const NOTIFICATION_TABS = {
@@ -16,6 +18,7 @@ const NOTIFICATION_TABS = {
   CRONOGRAMA: 'cronograma',
   CERTIFICADO: 'certificado',
   FEEDBACK: 'feedback',
+  SOBRE: 'sobre',
 };
 
 module.exports = { NOTIFICATION_TYPES, NOTIFICATION_TABS };

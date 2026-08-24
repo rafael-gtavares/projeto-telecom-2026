@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, FileText, Award, Megaphone, CheckCheck, BookOpen, CalendarClock, GraduationCap, MessageSquareText } from 'lucide-react'
+import { Bell, FileText, Award, Megaphone, CheckCheck, BookOpen, CalendarClock, GraduationCap, MessageSquareText, UserCheck, UserX } from 'lucide-react'
 import { useNotifications } from '../../context/NotificationContext'
 
 // Ícone por tipo de notificação
@@ -12,6 +12,8 @@ const typeIcon = {
   schedule: CalendarClock,
   certificate: GraduationCap,
   feedback: MessageSquareText,
+  enrollment_approved: UserCheck,
+  enrollment_rejected: UserX,
 }
 
 // Tempo relativo curto em pt-BR ("agora", "há 5 min", "há 2 h", "há 3 d")

@@ -29,6 +29,8 @@ import CertificateCard from '../components/courses/CertificateCard'
 import FeedbackTab from '../components/courses/admin/feedback/FeedbackTab'
 import FeedbacksTab from '../components/courses/admin/FeedbacksTab'
 
+import CandidatesTab from '../components/courses/admin/CandidatesTab'
+
 import { useConfirmModal } from '../hooks/useConfirmModal'
 import { useToast } from '../hooks/useToast'
 import { useAuth } from '../context/AuthContext'
@@ -53,9 +55,16 @@ import { getUsersBaseAPI } from '../api/users'
 import { uploadFileAPI } from '../api/upload'
 import { formatModality } from '../utils/formatModality'
 
+import {
+  getCourseEnrollmentRequestsAPI,
+  approveEnrollmentRequestAPI,
+  rejectEnrollmentRequestAPI,
+} from '../api/enrollmentRequest'
+
 const TABS = [
   { value: 'aulas', label: 'Aulas' },
   { value: 'alunos', label: 'Alunos' },
+  { value: 'candidatos', label: 'Candidatos' },
   { value: 'avaliacoes', label: 'Avaliações' },
   { value: 'material', label: 'Material' },
   { value: 'avisos', label: 'Avisos' },
@@ -130,6 +139,10 @@ const AdminCourse = () => {
   const [signatureWarnOpen, setSignatureWarnOpen] = useState(false)
   const hasSignature = !!user?.signature?.text
 
+  // Candidatos (solicitações de entrada — só relevante quando enrollmentType === 'approval')
+  const [enrollmentRequests, setEnrollmentRequests] = useState([])
+  const [requestActionLoading, setRequestActionLoading] = useState(null) // _id da solicitação em ação
+
   const loadData = async () => {
     setLoading(true)
     setLoadError(null)
@@ -175,6 +188,16 @@ const AdminCourse = () => {
       .catch(() => setCourseFeedbacks([]))
       .finally(() => setCourseFeedbacksLoading(false))
   }, [activeTab, courseId])
+
+  // Carrega candidatos ao abrir a aba (só relevante em cursos com aprovação)
+  useEffect(() => {
+    if (activeTab !== 'candidatos' || !course) return
+    if (course.enrollmentType !== 'approval') { setEnrollmentRequests([]); return }
+
+    getCourseEnrollmentRequestsAPI(courseId, 'pendente')
+      .then(({ data }) => setEnrollmentRequests(data.data))
+      .catch(() => setEnrollmentRequests([]))
+  }, [activeTab, course?.enrollmentType, courseId])
 
 
   // --- Handlers do Curso ---
@@ -555,6 +578,37 @@ const AdminCourse = () => {
     })
   }
 
+  const handleApproveRequest = (request) => {
+    confirm(`Aprovar a entrada de "${request.student?.name}" no curso?`, async () => {
+      setRequestActionLoading(request._id)
+      try {
+        await approveEnrollmentRequestAPI(courseId, request._id)
+        setEnrollmentRequests(prev => prev.filter(r => r._id !== request._id))
+        await reloadStudents()
+        showToast('Aluno aprovado e matriculado com sucesso.')
+      } catch (err) {
+        showToast(err.response?.data?.message || 'Erro ao aprovar solicitação')
+      } finally {
+        setRequestActionLoading(null)
+      }
+    })
+  }
+
+  const handleRejectRequest = (request) => {
+    confirm(`Rejeitar a solicitação de "${request.student?.name}"?`, async () => {
+      setRequestActionLoading(request._id)
+      try {
+        await rejectEnrollmentRequestAPI(courseId, request._id)
+        setEnrollmentRequests(prev => prev.filter(r => r._id !== request._id))
+        showToast('Solicitação rejeitada.')
+      } catch (err) {
+        showToast(err.response?.data?.message || 'Erro ao rejeitar solicitação')
+      } finally {
+        setRequestActionLoading(null)
+      }
+    })
+  }
+
   if (loading) return <div className="flex justify-center p-12"><Spinner /></div>
   if (loadError) return (
     <div className="flex flex-col items-center justify-center p-12 gap-3">
@@ -632,6 +686,15 @@ const AdminCourse = () => {
                 onOpenStudent={(enrollment) => setStudentModal({ open: true, enrollment })}
                 onReleaseCertificate={handleReleaseCertificate}
                 onPreviewCertificate={handlePreviewCertificate}
+              />
+            )}
+
+            {activeTab === 'candidatos' && (
+              <CandidatesTab
+                requests={enrollmentRequests}
+                actionLoading={requestActionLoading}
+                onApprove={handleApproveRequest}
+                onReject={handleRejectRequest}
               />
             )}
 

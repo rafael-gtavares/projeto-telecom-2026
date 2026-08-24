@@ -1,9 +1,11 @@
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
+const EnrollmentRequest = require('../models/EnrollmentRequest');
 const School = require('../models/School');
 const Lesson = require('../models/Lesson');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { ENROLLMENT_REQUEST_STATUS } = require('../constants/enrollmentRequestStatus');
 const { COURSE_STATUS } = require('../constants/courseStatus');
 const { COURSE_PHASE } = require('../constants/coursePhase');
 const { NOTIFICATION_TYPES, NOTIFICATION_TABS } = require('../constants/notifications');
@@ -52,6 +54,7 @@ const getCourses = async (req, res, next) => {
     // Distingue inscrição com vaga (isEnrolled) de fila de espera (isWaitlisted).
     let enrolledIds = new Set();
     let waitlistedIds = new Set();
+    let pendingRequestMap = new Map(); // courseId -> requestId
     if (req.user?.id) {
       const enrollments = await Enrollment.find(
         { user: req.user.id, course: { $in: courses.map(c => c._id) } },
@@ -61,12 +64,20 @@ const getCourses = async (req, res, next) => {
         if (e.status === ENROLLMENT_STATUS.WAITING_LIST) waitlistedIds.add(e.course.toString());
         else enrolledIds.add(e.course.toString());
       }
+
+      const pendingRequests = await EnrollmentRequest.find(
+        { student: req.user.id, course: { $in: courses.map(c => c._id) }, status: ENROLLMENT_REQUEST_STATUS.PENDING },
+        'course'
+      );
+      for (const r of pendingRequests) pendingRequestMap.set(r.course.toString(), r._id.toString());
     }
 
     const coursesWithEnrollment = courses.map(c => ({
       ...c.toJSON(),
       isEnrolled: enrolledIds.has(c._id.toString()),
       isWaitlisted: waitlistedIds.has(c._id.toString()),
+      isPendingRequest: pendingRequestMap.has(c._id.toString()),
+      pendingRequestId: pendingRequestMap.get(c._id.toString()) || null,
     }));
 
     res.json({ success: true, data: { courses: coursesWithEnrollment, total, page: Number(page), limit: Number(limit) } });

@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle } from 'lucide-react'
+import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Badge, Spinner } from '../ui/index'
 import Toast from '../ui/Toast'
 import { useAuth } from '../../context/AuthContext'
 import { enrollAPI, checkEnrollmentAPI, cancelEnrollmentAPI } from '../../api/courses'
+import { requestEnrollmentAPI, getMyEnrollmentRequestsAPI, cancelEnrollmentRequestAPI } from '../../api/enrollmentRequests'
 import { getCourseConflictsAPI } from '../../api/calendar'
 import { formatDate } from '../../utils/formatDate'
 import { WEEKDAY_LABELS } from '../../utils/scheduleConflicts'
 
-const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange }) => {
+const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange, onRequestCreated, onRequestCanceled }) => {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [enrollmentStatus, setEnrollmentStatus] = useState(null)
@@ -20,11 +21,16 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const [confirmCancel, setConfirmCancel] = useState(false)
   const [conflicts, setConflicts] = useState([])
   const [toast, setToast] = useState({ show: false, message: '' })
+  // Solicitação de entrada (só para cursos com enrollmentType === 'approval')
+  const [myRequest, setMyRequest] = useState(null)
+
+  const requiresApproval = course?.enrollmentType === 'approval'
 
   useEffect(() => {
     if (!open || !course) return
     setConfirmCancel(false)
     setConflicts([])
+    setMyRequest(null)
 
     if (!isAuthenticated) {
       setEnrollmentStatus(null)
@@ -38,8 +44,16 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
         if (data.data.waitlisted) {
           setWaitlistPosition(data.data.waitlistPosition)
           setEnrollmentStatus('waitlisted')
+        } else if (data.data.enrolled) {
+          setEnrollmentStatus('enrolled')
+        } else if (requiresApproval) {
+          // Não matriculado ainda — verifica se já existe solicitação pendente
+          const { data: reqData } = await getMyEnrollmentRequestsAPI('pendente')
+          const pending = reqData.data.find(r => (r.course?._id || r.course) === course._id)
+          setMyRequest(pending || null)
+          setEnrollmentStatus('not_enrolled')
         } else {
-          setEnrollmentStatus(data.data.enrolled ? 'enrolled' : 'not_enrolled')
+          setEnrollmentStatus('not_enrolled')
         }
       } catch (error) {
         setEnrollmentStatus('not_enrolled')
@@ -173,6 +187,37 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
     }
   }
 
+  // Curso com aprovação: cria a solicitação em vez de matricular direto
+  const handleRequestEnrollment = async () => {
+    try {
+      setActionLoading(true)
+      const { data } = await requestEnrollmentAPI(course._id)
+      setMyRequest(data.data)
+      onRequestCreated?.(course._id, data.data._id)
+      setToast({ show: true, message: 'Solicitação enviada! Aguarde a aprovação do professor.' })
+    } catch (err) {
+      setToast({ show: true, message: err.response?.data?.message || 'Erro ao solicitar entrada' })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  // Cancela a solicitação pendente (antes de ser aprovada)
+  const handleCancelRequest = async () => {
+    if (!myRequest) return
+    try {
+      setActionLoading(true)
+      await cancelEnrollmentRequestAPI(myRequest._id)
+      setMyRequest(null)
+      onRequestCanceled?.(course._id)
+      setToast({ show: true, message: 'Solicitação cancelada.' })
+    } catch (err) {
+      setToast({ show: true, message: err.response?.data?.message || 'Erro ao cancelar solicitação' })
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handleCancel = async () => {
     try {
       setActionLoading(true)
@@ -195,8 +240,6 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       setWaitlistPosition(null)
       onWaitlistChange?.(course._id, false)
       setToast({ show: true, message: 'Você saiu da fila de espera.' })
-    } catch (err) {
-      setToast({ show: true, message: err.response?.data?.message || 'Erro ao sair da fila' })
     } finally {
       setActionLoading(false)
     }
@@ -428,14 +471,42 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                 Sair da fila de espera
               </Button>
             </div>
+          ) : requiresApproval && myRequest ? (
+            // Solicitação pendente de aprovação
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between bg-warning/10 py-3 px-6 rounded-lg border border-warning/20">
+                <div className="flex items-center gap-2 text-warning-text font-bold text-sm">
+                  <Hourglass size={18} /> Solicitação em análise
+                </div>
+              </div>
+              <p className="text-xs text-text-muted text-center">
+                O professor ainda não avaliou seu pedido de entrada neste curso.
+              </p>
+              <Button
+                variant="secondary"
+                className="w-full py-3 text-sm"
+                loading={actionLoading}
+                onClick={handleCancelRequest}
+              >
+                Cancelar solicitação
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {isFull && course.status !== 'closed' && (
+              {isFull && course.status !== 'closed' && !requiresApproval && (
                 <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-primary">
                     Este curso está <strong>sem vagas</strong>. Você pode entrar na fila de espera, mas
                     {' '}<strong>só fará o curso se houver alguma desistência</strong>.
+                  </p>
+                </div>
+              )}
+              {requiresApproval && course.status !== 'closed' && (
+                <div className="flex items-start gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2.5">
+                  <Info size={15} className="text-primary flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-text-primary">
+                    Este curso <strong>requer aprovação</strong>. Sua entrada será avaliada pelo professor responsável.
                   </p>
                 </div>
               )}
@@ -469,13 +540,15 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                 className="w-full py-4 text-lg"
                 disabled={course.status === 'closed'}
                 loading={actionLoading}
-                onClick={handleEnroll}
+                onClick={requiresApproval ? handleRequestEnrollment : handleEnroll}
               >
                 {course.status === 'closed'
                   ? 'Encerrado'
-                  : isFull
-                    ? 'Entrar na fila de espera'
-                    : 'Quero me inscrever'}
+                  : requiresApproval
+                    ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
+                    : isFull
+                      ? 'Entrar na fila de espera'
+                      : 'Quero me inscrever'}
               </Button>
             </div>
           )}

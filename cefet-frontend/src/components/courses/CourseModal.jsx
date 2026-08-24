@@ -33,6 +33,7 @@ const INITIAL = {
   location: '',
   maxSlots: '',
   status: 'published',
+  enrollmentType: 'open',
   imageUrl: '',
   imageType: 'upload',
   imageFile: null,
@@ -55,6 +56,7 @@ const parseCourseToForm = (course) => {
     location: course.location || '',
     maxSlots: course.maxSlots || '',
     status: course.status || 'published',
+    enrollmentType: course.enrollmentType || 'open',
     imageUrl: course.imageUrl || '',
     scheduleType: course.scheduleType || 'single',
     singleConfig: INITIAL_SINGLE,
@@ -100,6 +102,7 @@ const buildPayload = (form) => {
       : '',
     maxSlots: form.maxSlots,
     status: form.status,
+    enrollmentType: form.enrollmentType,
     imageUrl: form.imageUrl || null,
     scheduleType: form.scheduleType,
   }
@@ -357,6 +360,17 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
               <option value="closed">Encerrado</option>
             </select>
           </div>
+        </div>
+
+        {/* Tipo de inscrição */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-1.5">
+            Inscrição no curso
+          </label>
+          <select value={form.enrollmentType} onChange={set('enrollmentType')} className="input-field w-full">
+            <option value="open">Aberta a todos — qualquer aluno logado pode se inscrever</option>
+            <option value="approval">Requer aprovação — aluno solicita e você aprova a entrada</option>
+          </select>
         </div>
 
         {/* Imagem de capa */}

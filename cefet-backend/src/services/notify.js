@@ -166,6 +166,25 @@ const removeNotificationsByRef = async (refId) => {
   }
 };
 
+// Solicitação de entrada resolvida (aprovada ou rejeitada) → notifica só o aluno que solicitou.
+const notifyEnrollmentRequestResolved = async ({ course, studentId, approved, createdBy = null }) => {
+  try {
+    await createNotifications([studentId], {
+      type: approved ? NOTIFICATION_TYPES.ENROLLMENT_APPROVED : NOTIFICATION_TYPES.ENROLLMENT_REJECTED,
+      course,
+      title: approved ? 'Solicitação aprovada' : 'Solicitação rejeitada',
+      message: approved
+        ? 'Sua entrada no curso foi aprovada! Você já está matriculado.'
+        : 'Sua solicitação de entrada no curso não foi aprovada.',
+      tab: NOTIFICATION_TABS.SOBRE,
+      refId: null,
+      createdBy,
+    });
+  } catch (err) {
+    console.error('[notify] notifyEnrollmentRequestResolved falhou:', err.message);
+  }
+};
+
 module.exports = {
   getEnrolledStudentIds,
   notifyCourseStudents,
@@ -175,4 +194,5 @@ module.exports = {
   notifyCertificate,
   notifyFeedbackAvailable,
   removeNotificationsByRef,
+  notifyEnrollmentRequestResolved,
 };
