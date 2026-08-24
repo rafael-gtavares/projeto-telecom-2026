@@ -11,7 +11,7 @@ import {
   deleteSchoolAPI,
 } from '../../api/users'
 
-const INITIAL_FORM = { name: '', city: '', active: true }
+const INITIAL_FORM = { name: '', city: '', contactName: '', contactNumber: '', active: true }
 
 const SchoolsManager = () => {
   const [schools, setSchools] = useState([])
@@ -50,7 +50,13 @@ const SchoolsManager = () => {
   }
 
   const openEdit = (school) => {
-    setForm({ name: school.name, city: school.city || '', active: school.active })
+    setForm({
+      name: school.name,
+      city: school.city || '',
+      contactName: school.contactName || '',
+      contactNumber: school.contactNumber || '',
+      active: school.active,
+    })
     setFormError('')
     setModal({ open: true, school })
   }
@@ -158,6 +164,11 @@ const SchoolsManager = () => {
                 {school.city && (
                   <p className="text-xs text-text-muted">{school.city}</p>
                 )}
+                {(school.contactName || school.contactNumber) && (
+                  <p className="text-xs text-text-muted truncate">
+                    {[school.contactName, school.contactNumber].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
 
               <Badge variant={school.active ? 'success' : 'gray'}>
@@ -216,6 +227,18 @@ const SchoolsManager = () => {
             value={form.city}
             onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
             placeholder="Ex: Rio de Janeiro"
+          />
+          <Input
+            label="Nome do contato"
+            value={form.contactName}
+            onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))}
+            placeholder="Ex: Maria Souza"
+          />
+          <Input
+            label="Telefone de contato"
+            value={form.contactNumber}
+            onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))}
+            placeholder="Ex: (21) 99999-9999"
           />
 
           {modal.school && (

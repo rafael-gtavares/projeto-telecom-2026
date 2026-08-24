@@ -141,6 +141,11 @@ const courseSchema = new mongoose.Schema({
     enum: Object.values(COURSE_PHASE),
     default: COURSE_PHASE.WAITING,
   },
+    enrollmentType: {
+    type: String,
+    enum: ['open', 'approval'],
+    default: 'open',
+  },
 }, {
   timestamps: true,
 });

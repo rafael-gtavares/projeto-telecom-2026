@@ -24,6 +24,7 @@ if (missing.length) {
 const authRoutes = require('./src/routes/auth.routes');
 const coursesRoutes = require('./src/routes/courses.routes');
 const enrollmentsRoutes = require('./src/routes/enrollments.routes');
+const enrollmentRequestRoutes = require('./src/routes/enrollmentRequest.routes');
 const usersRoutes = require('./src/routes/users.routes');
 const adminRoutes = require('./src/routes/admin.routes');
 const schoolsRoutes = require('./src/routes/schools.routes');
@@ -73,6 +74,7 @@ app.use(apiLimiter);
 app.use('/auth', authRoutes);
 app.use('/courses', coursesRoutes);
 app.use('/enrollments', enrollmentsRoutes);
+app.use('/', enrollmentRequestRoutes);
 app.use('/users', usersRoutes);
 app.use('/admin', adminRoutes);
 app.use('/schools', schoolsRoutes);

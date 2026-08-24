@@ -13,30 +13,73 @@ const { recomputeEnrollment } = require('../helpers/gradeCompute');
 const enroll = async (req, res, next) => {
   try {
     const { courseId } = req.body;
-    const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
-    if (course.status !== COURSE_STATUS.PUBLISHED)
-      return res.status(400).json({ success: false, message: 'Inscrições encerradas para este curso' });
 
-    // 1) Cria a inscrição primeiro — o índice único (user, course) impede duplicidade
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Curso não encontrado',
+      });
+    }
+
+    if (course.status !== COURSE_STATUS.PUBLISHED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Inscrições encerradas para este curso',
+      });
+    }
+
+    // 1) Cria a inscrição
     let enrollment;
+
     try {
-      enrollment = await Enrollment.create({ user: req.user.id, course: courseId });
+      enrollment = await Enrollment.create({
+        user: req.user.id,
+        course: courseId,
+      });
     } catch (e) {
-      if (e.code === 11000)
-        return res.status(409).json({ success: false, message: 'Você já está inscrito neste curso' });
+      if (e.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: 'Você já está inscrito neste curso',
+        });
+      }
+
       throw e;
     }
 
-    // 2) Tenta ocupar uma vaga de forma atômica (só incrementa se ainda houver vaga)
+    // 2) Tenta ocupar uma vaga atomicamente
     const updated = await Course.findOneAndUpdate(
-      { _id: courseId, $expr: { $lt: ['$enrolledCount', '$maxSlots'] } },
-      { $inc: { enrolledCount: 1 } },
-      { new: true }
+      {
+        _id: courseId,
+        $expr: {
+          $lt: ['$enrolledCount', '$maxSlots'],
+        },
+      },
+      {
+        $inc: {
+          enrolledCount: 1,
+        },
+      },
+      {
+        new: true,
+      }
     );
 
-    // 3a) Conseguiu vaga → inscrição confirmada
+    // 3a) Conseguiu vaga
     if (updated) {
+      // Se veio de uma aprovação, não responde ainda.
+      // Continua para finalizeApproval.
+      if (req._resolvingRequest) {
+        req.enrollment = enrollment;
+        req.waitlisted = false;
+        req.enrolledCount = updated.enrolledCount;
+
+        return next();
+      }
+
+      // Inscrição normal
       return res.status(201).json({
         success: true,
         data: enrollment,
@@ -45,15 +88,30 @@ const enroll = async (req, res, next) => {
       });
     }
 
-    // 3b) Sem vaga → entra na fila de espera (não apaga a inscrição)
+    // 3b) Sem vaga → fila de espera
     enrollment.status = ENROLLMENT_STATUS.WAITING_LIST;
+
     await enrollment.save();
+
     const waitlistPosition = await Enrollment.countDocuments({
       course: courseId,
       status: ENROLLMENT_STATUS.WAITING_LIST,
-      createdAt: { $lte: enrollment.createdAt },
+      createdAt: {
+        $lte: enrollment.createdAt,
+      },
     });
 
+    // Se veio de uma aprovação, continua para finalizeApproval.
+    if (req._resolvingRequest) {
+      req.enrollment = enrollment;
+      req.waitlisted = true;
+      req.waitlistPosition = waitlistPosition;
+      req.enrolledCount = course.enrolledCount;
+
+      return next();
+    }
+
+    // Inscrição normal
     return res.status(201).json({
       success: true,
       data: enrollment,
@@ -61,7 +119,9 @@ const enroll = async (req, res, next) => {
       waitlistPosition,
       enrolledCount: course.enrolledCount,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
 const getMyEnrollments = async (req, res, next) => {
