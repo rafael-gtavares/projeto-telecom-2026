@@ -5,6 +5,7 @@ import { isAdmin as isAdminRole } from '../../../utils/permissions'
 const STATUS_OPTIONS = [
   { key: 'draft', label: 'Rascunho', desc: 'Oculto para alunos', dot: 'bg-text-muted' },
   { key: 'published', label: 'Publicado', desc: 'Visível, inscrições abertas', dot: 'bg-success' },
+  { key: 'vagas_encerradas', label: 'Vagas Encerradas', desc: 'Visível, sem novas inscrições', dot: 'bg-orange-500' },
   { key: 'em_andamento', label: 'Em Andamento', desc: 'Curso em execução', dot: 'bg-blue-500' },
   { key: 'closed', label: 'Encerrado', desc: 'Curso finalizado', dot: 'bg-warning' },
 ]
@@ -16,7 +17,7 @@ const ConfigTab = ({ course, configUsers, configUsersLoading, onGrantAccess, onR
     <div className="pb-6 border-b border-border">
       <h3 className="font-semibold text-text-primary mb-1">Status do curso</h3>
       <p className="text-xs text-text-muted mb-4">
-        O status é definido automaticamente conforme as datas do curso.
+        O status é definido automaticamente conforme as datas do curso. "Vagas Encerradas" é uma exceção: pode ser definido manualmente na edição do curso para bloquear novas inscrições antes do início.
       </p>
 
       <div className="grid grid-cols-2 gap-3">

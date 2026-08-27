@@ -2,47 +2,52 @@ const EnrollmentRequest = require('../models/EnrollmentRequest');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_REQUEST_STATUS } = require('../constants/enrollmentRequestStatus');
+const { COURSE_STATUS } = require('../constants/courseStatus');
 const { notifyEnrollmentRequestResolved } = require('../services/notify');
 
 // POST /courses/:courseId/enrollment-requests
 // Aluno solicita entrada no curso.
 const requestEnrollment = async (req, res, next) => {
-    try {
-        const { courseId } = req.params;
-        const studentId = req.user.id;
+  try {
+    const { courseId } = req.params;
+    const studentId = req.user.id;
 
-        const course = await Course.findById(courseId);
-        if (!course) {
-            return res.status(404).json({ success: false, message: 'Curso não encontrado.' });
-        }
-
-        if (course.enrollmentType !== 'approval') {
-            return res.status(400).json({ success: false, message: 'Este curso não requer aprovação para matrícula.' });
-        }
-
-        const alreadyEnrolled = await Enrollment.findOne({ user: studentId, course: courseId });
-        if (alreadyEnrolled) {
-            return res.status(409).json({ success: false, message: 'Você já está matriculado neste curso.' });
-        }
-
-        const existingPending = await EnrollmentRequest.findOne({
-            student: studentId,
-            course: courseId,
-            status: ENROLLMENT_REQUEST_STATUS.PENDING,
-        });
-        if (existingPending) {
-            return res.status(409).json({ success: false, message: 'Você já possui uma solicitação pendente para este curso.' });
-        }
-
-        const request = await EnrollmentRequest.create({ student: studentId, course: courseId });
-
-        return res.status(201).json({ success: true, data: request });
-    } catch (err) {
-        if (err.code === 11000) {
-            return res.status(409).json({ success: false, message: 'Você já possui uma solicitação pendente para este curso.' });
-        }
-        return next(err);
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Curso não encontrado.' });
     }
+
+    if (course.status !== COURSE_STATUS.PUBLISHED) {
+      return res.status(400).json({ success: false, message: 'Inscrições encerradas para este curso' });
+    }
+
+    if (course.enrollmentType !== 'approval') {
+      return res.status(400).json({ success: false, message: 'Este curso não requer aprovação para matrícula.' });
+    }
+
+    const alreadyEnrolled = await Enrollment.findOne({ user: studentId, course: courseId });
+    if (alreadyEnrolled) {
+      return res.status(409).json({ success: false, message: 'Você já está matriculado neste curso.' });
+    }
+
+    const existingPending = await EnrollmentRequest.findOne({
+      student: studentId,
+      course: courseId,
+      status: ENROLLMENT_REQUEST_STATUS.PENDING,
+    });
+    if (existingPending) {
+      return res.status(409).json({ success: false, message: 'Você já possui uma solicitação pendente para este curso.' });
+    }
+
+    const request = await EnrollmentRequest.create({ student: studentId, course: courseId });
+
+    return res.status(201).json({ success: true, data: request });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Você já possui uma solicitação pendente para este curso.' });
+    }
+    return next(err);
+  }
 };
 
 // GET /courses/:courseId/enrollment-requests
@@ -71,17 +76,17 @@ const listCourseRequests = async (req, res, next) => {
 // GET /users/me/enrollment-requests
 // Aluno vê suas próprias solicitações.
 const listMyRequests = async (req, res, next) => {
-    try {
-        const { status } = req.query;
-        const filter = { student: req.user.id };
-        if (status) filter.status = status;
+  try {
+    const { status } = req.query;
+    const filter = { student: req.user.id };
+    if (status) filter.status = status;
 
-        const requests = await EnrollmentRequest.find(filter)
-            .populate('course', 'title imageUrl')
-            .sort({ createdAt: -1 });
+    const requests = await EnrollmentRequest.find(filter)
+      .populate('course', 'title imageUrl')
+      .sort({ createdAt: -1 });
 
-        res.json({ success: true, data: requests });
-    } catch (err) { next(err); }
+    res.json({ success: true, data: requests });
+  } catch (err) { next(err); }
 };
 
 // PATCH /enrollment-requests/:id/approve
@@ -203,34 +208,34 @@ const rejectRequest = async (req, res, next) => {
 // DELETE /enrollment-requests/:id
 // Aluno cancela a própria solicitação, somente se ainda pendente.
 const cancelRequest = async (req, res, next) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const request = await EnrollmentRequest.findById(id);
-        if (!request) {
-            return res.status(404).json({ success: false, message: 'Solicitação não encontrada.' });
-        }
-        if (String(request.student) !== String(req.user.id)) {
-            return res.status(403).json({ success: false, message: 'Você não pode cancelar esta solicitação.' });
-        }
-        if (request.status !== ENROLLMENT_REQUEST_STATUS.PENDING) {
-            return res.status(400).json({ success: false, message: 'Apenas solicitações pendentes podem ser canceladas.' });
-        }
+    const request = await EnrollmentRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Solicitação não encontrada.' });
+    }
+    if (String(request.student) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Você não pode cancelar esta solicitação.' });
+    }
+    if (request.status !== ENROLLMENT_REQUEST_STATUS.PENDING) {
+      return res.status(400).json({ success: false, message: 'Apenas solicitações pendentes podem ser canceladas.' });
+    }
 
-        request.status = ENROLLMENT_REQUEST_STATUS.CANCELED;
-        request.resolvedAt = new Date();
-        await request.save();
+    request.status = ENROLLMENT_REQUEST_STATUS.CANCELED;
+    request.resolvedAt = new Date();
+    await request.save();
 
-        res.json({ success: true, data: request });
-    } catch (err) { next(err); }
+    res.json({ success: true, data: request });
+  } catch (err) { next(err); }
 };
 
 module.exports = {
-    requestEnrollment,
-    listCourseRequests,
-    listMyRequests,
-    approveRequest,
-    finalizeApproval,
-    rejectRequest,
-    cancelRequest,
+  requestEnrollment,
+  listCourseRequests,
+  listMyRequests,
+  approveRequest,
+  finalizeApproval,
+  rejectRequest,
+  cancelRequest,
 };

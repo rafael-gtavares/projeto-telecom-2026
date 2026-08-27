@@ -28,6 +28,7 @@ export default {
         success: { DEFAULT: '#2E7D32', light: '#E8F5E9', text: '#1B5E20' },
         error: { DEFAULT: '#C62828', light: '#FFEBEE', text: '#B71C1C' },
         warning: { DEFAULT: '#E65100', light: '#FFF3E0', text: '#BF360C' },
+        purple: { DEFAULT: '#7B1FA2', light: '#F3E5F5', text: '#6A1B9A' },
       },
       fontFamily: { sans: ['DM Sans', 'sans-serif'] },
       borderRadius: { card: '12px', modal: '16px', btn: '8px' },

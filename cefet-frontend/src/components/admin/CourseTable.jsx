@@ -7,6 +7,7 @@ const statusMap = {
   published: ['success', 'Publicado'],
   em_andamento: ['blue', 'Em Andamento'],
   closed: ['warning', 'Encerrado'],
+  vagas_encerradas: ['purple', 'Vagas Encerradas']
 }
 
 const CourseTable = ({ courses, onEdit, onDelete, onView }) => {

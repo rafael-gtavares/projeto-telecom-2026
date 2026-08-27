@@ -59,7 +59,7 @@ import {
   getCourseEnrollmentRequestsAPI,
   approveEnrollmentRequestAPI,
   rejectEnrollmentRequestAPI,
-} from '../api/enrollmentRequest'
+} from '../api/enrollmentRequests'
 
 const TABS = [
   { value: 'aulas', label: 'Aulas' },

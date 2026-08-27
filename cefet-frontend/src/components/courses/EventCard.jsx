@@ -10,6 +10,7 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
   const isEnrolled = course.isEnrolled ?? false
   const isWaitlisted = course.isWaitlisted ?? false
   const isPendingRequest = course.isPendingRequest ?? false
+  const isVacanciesClosed = course.status === 'vagas_encerradas'
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
@@ -81,7 +82,8 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
         </div>
 
         <Button
-          variant={(isEnrolled || isWaitlisted || isPendingRequest) ? 'secondary' : 'primary'}
+          variant={(isEnrolled || isWaitlisted || isPendingRequest || isVacanciesClosed) ? 'secondary' : 'primary'}
+          disabled={isVacanciesClosed && !isEnrolled && !isWaitlisted && !isPendingRequest}
           className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : isPendingRequest ? 'border-primary/50 text-primary' : ''}`}
         >
           {isEnrolled ? (
@@ -96,6 +98,10 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
             <span className="flex items-center justify-center gap-2">
               <Hourglass size={16} /> Solicitação em análise
             </span>
+          ) : isVacanciesClosed ? (
+            <span className="flex items-center justify-center gap-2">
+              <X size={16} /> Vagas encerradas
+            </span>
           ) : isFull ? (
             'Entrar na fila de espera'
           ) : course.enrollmentType === 'approval' ? (
@@ -108,7 +114,7 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
         </Button>
 
         {/* Aviso: vaga só com desistência */}
-        {isFull && !isEnrolled && !isPendingRequest && course.enrollmentType !== 'approval' && (
+        {isFull && !isVacanciesClosed && !isEnrolled && !isPendingRequest && course.enrollmentType !== 'approval' && (
           <p className="text-[11px] text-text-muted text-center mt-2">
             {isWaitlisted
               ? 'Você assume a vaga somente se houver desistência.'

@@ -33,7 +33,9 @@ const getCourses = async (req, res, next) => {
     const filter = {};
 
     if (req.user?.role === 'aluno' || !req.user) {
-      filter.status = COURSE_STATUS.PUBLISHED;
+      // Cursos com vagas encerradas continuam visíveis na home (para consulta),
+      // só não aceitam novas inscrições/solicitações.
+      filter.status = { $in: [COURSE_STATUS.PUBLISHED, COURSE_STATUS.VACANCIES_CLOSED] };
     } else if (status && status !== 'all') {
       filter.status = status;
     }

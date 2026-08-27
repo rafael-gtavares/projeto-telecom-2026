@@ -25,6 +25,10 @@ const brDayEnd = (d) => {
 
 // Status "correto" de um curso a partir das datas (fonte única da verdade).
 // DRAFT é preservado; os demais derivam puramente das datas.
+// VACANCIES_CLOSED (vagas encerradas) é um fechamento manual de inscrições,
+// não uma fase do curso: antes do início, ele é preservado (assim como DRAFT);
+// a partir do início, o curso segue o ciclo normal (em_andamento -> closed),
+// já que "vagas encerradas" não é o mesmo que o curso ter acontecido/encerrado.
 const getCourseStatus = ({ status, startDate, endDate }) => {
   if (status === COURSE_STATUS.DRAFT) {
     return COURSE_STATUS.DRAFT;
@@ -32,15 +36,19 @@ const getCourseStatus = ({ status, startDate, endDate }) => {
 
   const now = Date.now();
 
-  if (now < brDayStart(startDate)) {
-    return COURSE_STATUS.PUBLISHED;
-  }
-
   if (now > brDayEnd(endDate)) {
     return COURSE_STATUS.CLOSED;
   }
 
-  return COURSE_STATUS.IN_PROGRESS;
+  if (now >= brDayStart(startDate)) {
+    return COURSE_STATUS.IN_PROGRESS;
+  }
+
+  if (status === COURSE_STATUS.VACANCIES_CLOSED) {
+    return COURSE_STATUS.VACANCIES_CLOSED;
+  }
+
+  return COURSE_STATUS.PUBLISHED;
 };
 
 // Sincroniza os enrollments de um curso conforme a NOVA fase — espelha o que o

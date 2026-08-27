@@ -74,7 +74,7 @@ const Home = () => {
   // Refaz a busca quando o login/logout muda — assim os flags isEnrolled/isWaitlisted
   // acompanham o usuário atual (ao deslogar, os botões voltam para "Inscrever-se").
   useEffect(() => {
-    getCoursesAPI({ status: 'published' })
+    getCoursesAPI({ status: ['published', 'vagas_encerradas'] })
       .then(r => setCourses(r.data.data.courses))
       .catch(() => setCourses(mockCourses))
   }, [isAuthenticated])

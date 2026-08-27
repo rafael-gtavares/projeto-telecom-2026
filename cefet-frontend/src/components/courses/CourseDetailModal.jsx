@@ -493,7 +493,15 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {isFull && course.status !== 'closed' && !requiresApproval && (
+              {course.status === 'vagas_encerradas' && (
+                <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
+                  <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-text-primary">
+                    As <strong>inscrições para este curso foram encerradas</strong> pelo professor responsável.
+                  </p>
+                </div>
+              )}
+              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && (
                 <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-primary">
@@ -502,7 +510,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </p>
                 </div>
               )}
-              {requiresApproval && course.status !== 'closed' && (
+              {requiresApproval && course.status !== 'closed' && course.status !== 'vagas_encerradas' && (
                 <div className="flex items-start gap-2 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2.5">
                   <Info size={15} className="text-primary flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-primary">
@@ -510,7 +518,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </p>
                 </div>
               )}
-              {conflicts.length > 0 && course.status !== 'closed' && (
+              {conflicts.length > 0 && course.status !== 'closed' && course.status !== 'vagas_encerradas' && (
                 <div className="flex items-start gap-2 bg-error/5 border border-error/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-error flex-shrink-0 mt-0.5" />
                   <div className="text-xs text-text-primary">
@@ -538,17 +546,19 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
               <Button
                 variant="primary"
                 className="w-full py-4 text-lg"
-                disabled={course.status === 'closed'}
+                disabled={course.status === 'closed' || course.status === 'vagas_encerradas'}
                 loading={actionLoading}
                 onClick={requiresApproval ? handleRequestEnrollment : handleEnroll}
               >
                 {course.status === 'closed'
                   ? 'Encerrado'
-                  : requiresApproval
-                    ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
-                    : isFull
-                      ? 'Entrar na fila de espera'
-                      : 'Quero me inscrever'}
+                  : course.status === 'vagas_encerradas'
+                    ? 'Vagas encerradas'
+                    : requiresApproval
+                      ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
+                      : isFull
+                        ? 'Entrar na fila de espera'
+                        : 'Quero me inscrever'}
               </Button>
             </div>
           )}

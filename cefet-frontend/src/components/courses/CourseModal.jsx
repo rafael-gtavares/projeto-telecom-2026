@@ -356,6 +356,7 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             <select value={form.status} onChange={set('status')} className="input-field w-full">
               <option value="draft">Rascunho</option>
               <option value="published">Publicado</option>
+              <option value="vagas_encerradas">Vagas Encerradas</option>
               <option value="em_andamento">Em Andamento</option>
               <option value="closed">Encerrado</option>
             </select>

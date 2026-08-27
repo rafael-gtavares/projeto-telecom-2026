@@ -9,10 +9,12 @@ export const Badge = ({ children, variant = 'default', className = '' }) => {
     warning: 'bg-warning-light text-warning-text',
     gray: 'bg-surface-hover text-text-muted',
     blue: 'bg-surface-hover text-primary',
+    purple: 'bg-[#F3E5F5] text-[#6A1B9A]',
   }
+
   return (
     <span className={`capitalize inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}>
-      { children }
+      {children}
     </span>
   )
 }
@@ -62,11 +64,10 @@ export const Tabs = ({ tabs, active, onChange }) => (
       <button
         key={tab.value}
         onClick={() => onChange(tab.value)}
-        className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap shrink-0 transition-all border-b-2 -mb-px ${
-          active === tab.value
-            ? 'border-primary text-primary'
-            : 'border-transparent text-text-secondary hover:text-text-primary'
-        }`}
+        className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap shrink-0 transition-all border-b-2 -mb-px ${active === tab.value
+          ? 'border-primary text-primary'
+          : 'border-transparent text-text-secondary hover:text-text-primary'
+          }`}
       >
         {tab.label}
       </button>

@@ -189,7 +189,7 @@ const Admin = () => {
 
       setLoad('courses', true)
 
-      // envia o filtro de status (pode ser 'all', 'published', 'draft', 'closed')
+      // envia o filtro de status (pode ser 'all', 'published', 'draft', 'closed', 'em_andamento', vagas_encerradas)
       getAllCoursesAPI({ limit: 100, status: statusFilter })
 
         .then(response => {
@@ -583,6 +583,7 @@ const Admin = () => {
                     <option value="published">Publicados</option>
                     <option value="em_andamento">Em andamento</option>
                     <option value="closed">Encerrados</option>
+                    <option value="vagas_encerradas">Vagas Encerradas</option>
                   </select>
 
                   <Button
