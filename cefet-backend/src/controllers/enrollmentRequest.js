@@ -162,13 +162,26 @@ const finalizeApproval = async (req, res, next) => {
     request.resolvedBy = req.approverId;
     await request.save();
 
-    await notifyEnrollmentRequestResolved({
+    res.status(200).json({
+      success: true,
+      data: {
+        request,
+        enrollment: req.enrollment,
+        waitlisted: req.waitlisted,
+        waitlistPosition: req.waitlistPosition,
+        enrolledCount: req.enrolledCount,
+      },
+    });
+
+    notifyEnrollmentRequestResolved({
       course: request.course,
       studentId: request.student,
       approved: true,
       createdBy: req.approverId,
-    });
-  } catch (err) { console.error('Erro ao finalizar aprovação de solicitação:', err); }
+    }).catch(err => console.error('Erro ao notificar aprovação:', err));
+  } catch (err) {
+    next(err);
+  }
 };
 
 // PATCH /enrollment-requests/:id/reject
