@@ -452,6 +452,8 @@ const createCourse = async (req, res, next) => {
       instructor,
       materials,
 
+      enrollmentType,
+
       startDate,
       endDate,
     } = req.body;
@@ -492,6 +494,8 @@ const createCourse = async (req, res, next) => {
       maxSlots,
 
       status: status || COURSE_STATUS.DRAFT,
+
+      enrollmentType: enrollmentType || 'open',
 
       imageUrl: imageUrl || null,
     });
@@ -558,7 +562,8 @@ const updateCourse = async (req, res, next) => {
       'status',
       'imageUrl',
       'instructor',
-      'materials'
+      'materials',
+      'enrollmentType',
     ];
 
     const updates = {};
