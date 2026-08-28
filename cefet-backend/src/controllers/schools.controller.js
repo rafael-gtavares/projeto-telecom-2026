@@ -24,11 +24,10 @@ const getAllSchools = async (req, res, next) => {
 // POST /schools — cria escola (admin only)
 const createSchool = async (req, res, next) => {
   try {
-    const { name, city } = req.body;
+    const { name, city, contactName, contactNumber } = req.body;
     if (!name || !name.trim())
       return res.status(400).json({ success: false, message: 'Nome da escola é obrigatório' });
 
-    // Verifica duplicata (case insensitive)
     const exists = await School.findOne({
       name: { $regex: new RegExp(`^${escapeRegex(name.trim())}$`, 'i') },
       city: city?.trim() || '',
@@ -36,7 +35,12 @@ const createSchool = async (req, res, next) => {
     if (exists)
       return res.status(409).json({ success: false, message: 'Já existe uma escola com este nome e cidade' });
 
-    const school = await School.create({ name: name.trim(), city: city?.trim() || '' });
+    const school = await School.create({
+      name: name.trim(),
+      city: city?.trim() || '',
+      contactName: contactName?.trim() || undefined,
+      contactNumber: contactNumber?.trim() || undefined,
+    });
     res.status(201).json({ success: true, data: school });
   } catch (err) { next(err); }
 };
@@ -44,13 +48,15 @@ const createSchool = async (req, res, next) => {
 // PUT /schools/:id — edita escola (admin only)
 const updateSchool = async (req, res, next) => {
   try {
-    const { name, city, active } = req.body;
+    const { name, city, contactName, contactNumber, active } = req.body;
     const school = await School.findById(req.params.id);
     if (!school)
       return res.status(404).json({ success: false, message: 'Escola não encontrada' });
 
     if (name !== undefined) school.name = name.trim();
     if (city !== undefined) school.city = city.trim();
+    if (contactName !== undefined) school.contactName = contactName.trim();
+    if (contactNumber !== undefined) school.contactNumber = contactNumber.trim();
     if (active !== undefined) school.active = active;
 
     await school.save();

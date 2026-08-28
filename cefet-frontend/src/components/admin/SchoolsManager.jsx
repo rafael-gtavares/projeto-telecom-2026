@@ -72,6 +72,8 @@ const SchoolsManager = () => {
       } else {
         const { data } = await createSchoolAPI(form)
         setSchools(prev => [data.data, ...prev])
+        console.log(data)
+        console.log(form)
       }
       setModal({ open: false, school: null })
     } catch (err) {
