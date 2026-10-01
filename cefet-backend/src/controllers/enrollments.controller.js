@@ -7,6 +7,7 @@ const { ENROLLMENT_SITUATION } = require('../constants/enrollmentSituation');
 const { COURSE_STATUS } = require('../constants/courseStatus');
 const { CERTIFICATE_STATUS } = require('../constants/certificateStatus');
 const { notifyCertificate } = require('../services/notify');
+const { sendCertificateByEmail } = require('../services/certificateDelivery');
 const { recomputeEnrollment } = require('../helpers/gradeCompute');
 
 // POST /enrollments
@@ -339,6 +340,10 @@ const releaseCertificate = async (req, res, next) => {
         return res.status(400).json({ success: false, message: 'Configure sua assinatura no perfil antes de emitir certificados' });
     }
 
+    // Só envia o e-mail na transição para "emitido" (evita duplicar em re-cliques)
+    const wasIssued = enrollment.certificateStatus === CERTIFICATE_STATUS.ISSUED;
+    let emailSent = false;
+
     enrollment.certificateStatus = status;
     if (status === CERTIFICATE_STATUS.ISSUED) {
       enrollment.certificateIssuedAt = new Date();
@@ -351,6 +356,8 @@ const releaseCertificate = async (req, res, next) => {
       };
       await enrollment.save();
       await notifyCertificate({ course: course._id, studentId: enrollment.user, createdBy: req.user.id });
+      // Emissão já gravada: o envio nunca lança, então não compromete a resposta
+      if (!wasIssued) emailSent = await sendCertificateByEmail({ enrollment, course });
     } else {
       enrollment.certificateIssuedAt = null;
       enrollment.certificateIssuedBy = null;
@@ -359,7 +366,7 @@ const releaseCertificate = async (req, res, next) => {
       await enrollment.save();
     }
 
-    res.json({ success: true, data: enrollment });
+    res.json({ success: true, data: enrollment, emailSent });
   } catch (err) { next(err); }
 };
 

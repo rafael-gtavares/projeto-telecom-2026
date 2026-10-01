@@ -493,7 +493,9 @@ const AdminCourse = () => {
           setStudents(prev =>
             prev.map(s => s._id === enrollmentId ? { ...s, certificateStatus: data.data.certificateStatus } : s)
           )
-          showToast(emitir ? 'Certificado emitido' : 'Certificado revogado')
+          showToast(emitir
+            ? (data.emailSent ? 'Certificado emitido e enviado por e-mail' : 'Certificado emitido, mas o e-mail não pôde ser enviado')
+            : 'Certificado revogado')
         } catch (err) {
           showToast(err.response?.data?.message || 'Erro ao atualizar certificado')
         } finally {

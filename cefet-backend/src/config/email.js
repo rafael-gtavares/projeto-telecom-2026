@@ -1,20 +1,24 @@
-const sendEmail = async (to, name, subject, html) => {
+// `attachments` (opcional): [{ name: 'arquivo.pdf', content: '<base64>' }]
+const sendEmail = async (to, name, subject, html, attachments = []) => {
+  const payload = {
+    to: [{ email: to, name }],
+    sender: { email: process.env.MAIL_FROM, name: 'CEFET/RJ' },
+    subject,
+    htmlContent: html,
+  };
+  if (attachments.length > 0) payload.attachment = attachments;
+
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'api-key': process.env.BREVO_API_KEY,
     },
-    body: JSON.stringify({
-      to: [{ email: to, name }],
-      sender: { email: process.env.MAIL_FROM, name: 'CEFET/RJ' },
-      subject,
-      htmlContent: html,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
-    const err = await response.json();
+    const err = await response.json().catch(() => ({}));
     console.error('❌ Erro ao enviar e-mail:', err);
     throw new Error(err.message || 'Erro ao enviar e-mail');
   }
@@ -91,4 +95,44 @@ const sendPasswordResetEmail = async (to, name, token) => {
   `);
 };
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail };
+const escapeHtml = (v) =>
+  String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const sendCertificateEmail = async (to, name, { courseTitle, pdfBuffer, fileName }) => {
+  const safeName = escapeHtml(name);
+  const safeCourse = escapeHtml(courseTitle);
+  const link = `${process.env.CLIENT_URL}/meus-cursos`;
+  // Assunto em linha única (sem quebras) para evitar header injection
+  const subject = `Seu certificado do curso "${String(courseTitle).replace(/\s+/g, ' ').trim()}" — CEFET/RJ`;
+
+  await sendEmail(to, name, subject, `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #F5F7FA; padding: 32px 16px;">
+      <div style="background: white; border-radius: 12px; padding: 40px; border: 1px solid #DDE3EE;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="color: #1565C0; font-size: 22px; font-weight: 700; margin: 0;">CEFET/RJ</h1>
+          <p style="color: #5C6880; font-size: 14px; margin: 8px 0 0;">Portal de Cursos e Eventos</p>
+        </div>
+        <h2 style="color: #1A1A2E; font-size: 20px; font-weight: 600; margin: 0 0 8px;">Parabéns, ${safeName}!</h2>
+        <p style="color: #5C6880; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          Seu certificado de conclusão do curso <strong>${safeCourse}</strong> foi emitido.
+          Ele está anexado a este e-mail em formato PDF.
+        </p>
+        <p style="color: #5C6880; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          Você também pode baixá-lo a qualquer momento acessando a área "Meus cursos" no portal.
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${link}" style="background: #1565C0; color: white; text-decoration: none; padding: 14px 32px;
+                    border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">
+            Acessar meus cursos
+          </a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #DDE3EE; margin: 24px 0;" />
+        <p style="color: #9EA8B8; font-size: 12px; text-align: center; margin: 0;">
+          Este é um e-mail automático, não é necessário respondê-lo.
+        </p>
+      </div>
+    </div>
+  `, [{ name: fileName, content: pdfBuffer.toString('base64') }]);
+};
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, sendCertificateEmail };
