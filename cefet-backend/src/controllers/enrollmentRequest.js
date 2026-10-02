@@ -4,6 +4,7 @@ const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_REQUEST_STATUS } = require('../constants/enrollmentRequestStatus');
 const { COURSE_STATUS } = require('../constants/courseStatus');
 const { notifyEnrollmentRequestResolved } = require('../services/notify');
+const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
 
 // POST /courses/:courseId/enrollment-requests
 // Aluno solicita entrada no curso.
@@ -37,6 +38,11 @@ const requestEnrollment = async (req, res, next) => {
     });
     if (existingPending) {
       return res.status(409).json({ success: false, message: 'Você já possui uma solicitação pendente para este curso.' });
+    }
+
+    const prereq = await getPrerequisiteStatus(studentId, course);
+    if (!prereq.met) {
+      return sendPrerequisitesNotMet(res, prereq.missing);
     }
 
     const request = await EnrollmentRequest.create({ student: studentId, course: courseId });

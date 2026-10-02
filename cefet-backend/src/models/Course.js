@@ -141,11 +141,17 @@ const courseSchema = new mongoose.Schema({
     enum: Object.values(COURSE_PHASE),
     default: COURSE_PHASE.WAITING,
   },
-    enrollmentType: {
+  enrollmentType: {
     type: String,
     enum: ['open', 'approval'],
     default: 'open',
   },
+  prerequisites: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+    },
+  ],
 }, {
   timestamps: true,
 });

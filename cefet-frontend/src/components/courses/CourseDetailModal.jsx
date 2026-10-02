@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send } from 'lucide-react'
+import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send, Lock, ListChecks } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Badge, Spinner } from '../ui/index'
@@ -23,6 +23,8 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const [toast, setToast] = useState({ show: false, message: '' })
   // Solicitação de entrada (só para cursos com enrollmentType === 'approval')
   const [myRequest, setMyRequest] = useState(null)
+  // Situação dos pré-requisitos do aluno: { met, missing: [{ _id, title }] }
+  const [prereq, setPrereq] = useState(null)
 
   const requiresApproval = course?.enrollmentType === 'approval'
 
@@ -31,6 +33,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
     setConfirmCancel(false)
     setConflicts([])
     setMyRequest(null)
+    setPrereq(null)
 
     if (!isAuthenticated) {
       setEnrollmentStatus(null)
@@ -41,6 +44,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       try {
         setEnrollmentStatus('loading')
         const { data } = await checkEnrollmentAPI(course._id)
+        setPrereq(data.data.prerequisites || null)
         if (data.data.waitlisted) {
           setWaitlistPosition(data.data.waitlistPosition)
           setEnrollmentStatus('waitlisted')
@@ -80,6 +84,10 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const isFull = slots <= 0
   const occupancyPercent = Math.min(100, (course.enrolledCount / course.maxSlots) * 100)
   const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
+  const prerequisiteList = course.prerequisites || []
+  const hasPrerequisites = prerequisiteList.length > 0
+  const missingIds = new Set((prereq?.missing || []).map((m) => String(m._id)))
+  const prerequisitesBlocked = hasPrerequisites && !!prereq && !prereq.met
 
   const renderScheduleInfo = () => {
     const config = Array.isArray(course.scheduleConfig) ? course.scheduleConfig : []
@@ -166,6 +174,13 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
     }
   }
 
+  // Se o backend recusar por pré-requisito, atualiza a tela com o que falta
+  const handlePrereqError = (err) => {
+    if (err.response?.data?.code === 'PREREQUISITES_NOT_MET') {
+      setPrereq({ met: false, missing: err.response.data.missingPrerequisites || [] })
+    }
+  }
+
   const handleEnroll = async () => {
     try {
       setActionLoading(true)
@@ -181,6 +196,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
         onClose()
       }
     } catch (err) {
+      handlePrereqError(err)
       setToast({ show: true, message: err.response?.data?.message || 'Erro ao se inscrever' })
     } finally {
       setActionLoading(false)
@@ -336,6 +352,45 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
             {renderScheduleInfo()}
           </div>
         </div>
+
+        {/* Pré-requisitos */}
+        {hasPrerequisites && (
+          <div className="mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-3 flex items-center gap-2">
+              <ListChecks size={16} />
+              Pré-requisitos
+            </h3>
+
+            <div className="bg-surface-hover p-4 rounded-xl border border-border">
+              <p className="text-xs text-text-muted mb-3">
+                Para se inscrever, é necessário ter concluído {prerequisiteList.length === 1 ? 'o curso abaixo' : 'os cursos abaixo'}:
+              </p>
+              <ul className="space-y-2">
+                {prerequisiteList.map((p) => {
+                  const pending = !!prereq && missingIds.has(String(p._id))
+                  const done = !!prereq && !pending
+                  return (
+                    <li
+                      key={p._id}
+                      className="flex items-center gap-2 p-3 bg-white rounded-lg border border-border text-sm"
+                    >
+                      {done ? (
+                        <CheckCircle size={16} className="text-success flex-shrink-0" />
+                      ) : pending ? (
+                        <XCircle size={16} className="text-error flex-shrink-0" />
+                      ) : (
+                        <Lock size={16} className="text-text-muted flex-shrink-0" />
+                      )}
+                      <span className="font-medium text-text-primary flex-1">{p.title}</span>
+                      {done && <span className="text-xs font-medium text-success-text">Concluído</span>}
+                      {pending && <span className="text-xs font-medium text-error-text">Pendente</span>}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Vagas e Ocupação */}
         <div className="bg-surface-secondary p-4 rounded-xl border border-border mb-8">
@@ -493,6 +548,23 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
             </div>
           ) : (
             <div className="flex flex-col gap-3">
+              {prerequisitesBlocked && course.status !== 'closed' && (
+                <div className="flex items-start gap-2 bg-error/5 border border-error/20 rounded-lg px-3 py-2.5">
+                  <Lock size={15} className="text-error flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-text-primary">
+                    <p className="mb-1">
+                      <strong>Pré-requisitos não cumpridos.</strong>{' '}
+                      Para {requiresApproval ? 'solicitar vaga' : 'se inscrever'}
+                      {isFull && !requiresApproval ? ' ou entrar na fila de espera' : ''}, você precisa concluir:
+                    </p>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      {prereq.missing.map((m) => (
+                        <li key={m._id} className="font-medium">{m.title}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
               {course.status === 'vagas_encerradas' && (
                 <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
@@ -501,7 +573,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </p>
                 </div>
               )}
-              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && (
+              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && !prerequisitesBlocked && (
                 <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-primary">
@@ -546,7 +618,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
               <Button
                 variant="primary"
                 className="w-full py-4 text-lg"
-                disabled={course.status === 'closed' || course.status === 'vagas_encerradas'}
+                disabled={course.status === 'closed' || course.status === 'vagas_encerradas' || prerequisitesBlocked}
                 loading={actionLoading}
                 onClick={requiresApproval ? handleRequestEnrollment : handleEnroll}
               >
@@ -554,11 +626,13 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   ? 'Encerrado'
                   : course.status === 'vagas_encerradas'
                     ? 'Vagas encerradas'
-                    : requiresApproval
-                      ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
-                      : isFull
-                        ? 'Entrar na fila de espera'
-                        : 'Quero me inscrever'}
+                    : prerequisitesBlocked
+                      ? (<><Lock size={18} className="inline mr-1" /> Pré-requisitos pendentes</>)
+                      : requiresApproval
+                        ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
+                        : isFull
+                          ? 'Entrar na fila de espera'
+                          : 'Quero me inscrever'}
               </Button>
             </div>
           )}

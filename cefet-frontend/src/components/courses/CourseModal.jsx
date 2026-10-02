@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Link, MapPin, User, Info } from 'lucide-react'
+import { X, Link, MapPin, User, Info, AlertTriangle } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -11,6 +11,7 @@ import {
 } from './schedule/index'
 import { formatDateForInput } from '../../utils/formatDate'
 import { uploadFileAPI } from '../../api/upload'
+import PrerequisitesPicker from './PrerequisitesPicker'
 
 const MODALITY_OPTIONS = [
   { value: 'presencial', label: 'Presencial' },
@@ -34,6 +35,8 @@ const INITIAL = {
   maxSlots: '',
   status: 'published',
   enrollmentType: 'open',
+  hasPrerequisites: false,
+  prerequisites: [],
   imageUrl: '',
   imageType: 'upload',
   imageFile: null,
@@ -57,6 +60,8 @@ const parseCourseToForm = (course) => {
     maxSlots: course.maxSlots || '',
     status: course.status || 'published',
     enrollmentType: course.enrollmentType || 'open',
+    prerequisites: course.prerequisites || [],
+    hasPrerequisites: (course.prerequisites || []).length > 0,
     imageUrl: course.imageUrl || '',
     scheduleType: course.scheduleType || 'single',
     singleConfig: INITIAL_SINGLE,
@@ -103,6 +108,7 @@ const buildPayload = (form) => {
     maxSlots: form.maxSlots,
     status: form.status,
     enrollmentType: form.enrollmentType,
+    prerequisites: form.hasPrerequisites ? form.prerequisites.map((c) => c._id) : [],
     imageUrl: form.imageUrl || null,
     scheduleType: form.scheduleType,
   }
@@ -198,7 +204,8 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     form.description.trim() &&
     form.maxSlots &&
     isScheduleValid(form) &&
-    !timeError
+    !timeError &&
+    (!form.hasPrerequisites || form.prerequisites.length > 0)
 
   const handleSubmit = async () => {
     if (!isFormValid) return
@@ -372,6 +379,41 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             <option value="open">Aberta a todos — qualquer aluno logado pode se inscrever</option>
             <option value="approval">Requer aprovação — aluno solicita e você aprova a entrada</option>
           </select>
+        </div>
+
+        {/* Pré-requisitos (opcional) */}
+        <div className="space-y-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.hasPrerequisites}
+              onChange={(e) => setForm((f) => ({ ...f, hasPrerequisites: e.target.checked }))}
+              className="mt-0.5 h-4 w-4 accent-primary"
+            />
+            <span>
+              <span className="block text-sm font-medium text-text-primary">
+                Este curso possui pré-requisitos
+              </span>
+              <span className="block text-xs text-text-muted">
+                O aluno só poderá se inscrever (ou entrar na fila) após concluir os cursos selecionados.
+              </span>
+            </span>
+          </label>
+
+          {form.hasPrerequisites && (
+            <>
+              <PrerequisitesPicker
+                value={form.prerequisites}
+                onChange={(list) => setForm((f) => ({ ...f, prerequisites: list }))}
+                excludeId={course?._id}
+              />
+              {form.prerequisites.length === 0 && (
+                <p className="text-xs text-warning-text">
+                  Selecione ao menos um curso ou desmarque a opção acima.
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         {/* Imagem de capa */}

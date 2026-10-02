@@ -3,7 +3,7 @@ const {
   getCourses, getAllCourses, getCourse, getCourseStats,
   createCourse, updateCourse, deleteCourse,
   addAllowedProfessor, removeAllowedProfessor,
-  changeCoursePhase,
+  changeCoursePhase, getPrerequisiteOptions
 } = require('../controllers/courses.controller');
 const verifyJWT = require('../middleware/auth');
 const optionalAuth = require('../middleware/optionalAuth');
@@ -25,6 +25,7 @@ router.get('/', optionalAuth, getCourses);
 // Agenda pública (aulas de todos os cursos) — antes de /:id para não ser capturada
 router.get('/calendar', optionalAuth, getCalendar);
 router.get('/all', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getAllCourses);
+router.get('/prerequisite-options', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getPrerequisiteOptions);
 router.get('/:id', verifyJWT, getCourse); // Obs.: Essa rota está deixando qualquer usuário autenticado acessar
 router.get('/:id/stats', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getCourseStats)
 router.post('/', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), createCourse);

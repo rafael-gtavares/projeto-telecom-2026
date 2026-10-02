@@ -1,4 +1,4 @@
-import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X } from 'lucide-react'
+import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X, Lock } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { formatDate } from '../../utils/formatDate'
@@ -11,6 +11,11 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
   const isWaitlisted = course.isWaitlisted ?? false
   const isPendingRequest = course.isPendingRequest ?? false
   const isVacanciesClosed = course.status === 'vagas_encerradas'
+  const hasPrerequisites = (course.prerequisites ?? []).length > 0
+  // prerequisitesMet === null → visitante (não bloqueia visualmente)
+  const isPrereqBlocked =
+    course.prerequisitesMet === false &&
+    !isEnrolled && !isWaitlisted && !isPendingRequest && !isVacanciesClosed
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
@@ -74,17 +79,22 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between gap-2 mb-3">
           {isFull
             ? <Badge variant="gray"><Users size={11} className="mr-1" />Vagas esgotadas</Badge>
             : <Badge variant="blue"><Users size={11} className="mr-1" />{slots} {slots === 1 ? 'vaga' : 'vagas'} restantes</Badge>
           }
+          {hasPrerequisites && (
+            <Badge variant={isPrereqBlocked ? 'warning' : 'gray'}>
+              <Lock size={11} className="mr-1" />Pré-requisito
+            </Badge>
+          )}
         </div>
 
         <Button
-          variant={(isEnrolled || isWaitlisted || isPendingRequest || isVacanciesClosed) ? 'secondary' : 'primary'}
+          variant={(isEnrolled || isWaitlisted || isPendingRequest || isVacanciesClosed || isPrereqBlocked) ? 'secondary' : 'primary'}
           disabled={isVacanciesClosed && !isEnrolled && !isWaitlisted && !isPendingRequest}
-          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : isPendingRequest ? 'border-primary/50 text-primary' : ''}`}
+          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : isPendingRequest ? 'border-primary/50 text-primary' : isPrereqBlocked ? 'border-warning/50 text-warning-text' : ''}`}
         >
           {isEnrolled ? (
             <span className="flex items-center justify-center gap-2">
@@ -102,6 +112,10 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
             <span className="flex items-center justify-center gap-2">
               <X size={16} /> Vagas encerradas
             </span>
+          ) : isPrereqBlocked ? (
+            <span className="flex items-center justify-center gap-2">
+              <Lock size={16} /> Pré-requisitos pendentes
+            </span>
           ) : isFull ? (
             'Entrar na fila de espera'
           ) : course.enrollmentType === 'approval' ? (
@@ -114,7 +128,7 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
         </Button>
 
         {/* Aviso: vaga só com desistência */}
-        {isFull && !isVacanciesClosed && !isEnrolled && !isPendingRequest && course.enrollmentType !== 'approval' && (
+        {isFull && !isVacanciesClosed && !isEnrolled && !isPendingRequest && !isPrereqBlocked && course.enrollmentType !== 'approval' && (
           <p className="text-[11px] text-text-muted text-center mt-2">
             {isWaitlisted
               ? 'Você assume a vaga somente se houver desistência.'

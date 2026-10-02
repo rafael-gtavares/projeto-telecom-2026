@@ -9,6 +9,7 @@ const { CERTIFICATE_STATUS } = require('../constants/certificateStatus');
 const { notifyCertificate } = require('../services/notify');
 const { sendCertificateByEmail } = require('../services/certificateDelivery');
 const { recomputeEnrollment } = require('../helpers/gradeCompute');
+const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
@@ -29,6 +30,12 @@ const enroll = async (req, res, next) => {
         success: false,
         message: 'Inscrições encerradas para este curso',
       });
+    }
+
+    // Pré-requisitos: sem eles não entra nem na fila de espera
+    const prereq = await getPrerequisiteStatus(req.user.id, course);
+    if (!prereq.met) {
+      return sendPrerequisitesNotMet(res, prereq.missing);
     }
 
     // 1) Cria a inscrição
@@ -182,6 +189,12 @@ const checkEnrollment = async (req, res, next) => {
       });
     }
 
+    // Situação dos pré-requisitos do aluno para este curso
+    const course = await Course.findById(req.params.courseId).select('prerequisites');
+    const prerequisites = course
+      ? await getPrerequisiteStatus(req.user.id, course)
+      : { met: true, missing: [] };
+
     res.json({
       success: true,
       data: {
@@ -189,6 +202,7 @@ const checkEnrollment = async (req, res, next) => {
         waitlisted,
         waitlistPosition,
         enrollment,
+        prerequisites,
       },
     });
   } catch (err) { next(err); }

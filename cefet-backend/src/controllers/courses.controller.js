@@ -22,6 +22,11 @@ const {
   getCourseStatus
 } = require('../helpers/courseStatusHelper');
 
+const {
+  resolvePrerequisites,
+  getPrerequisiteStatusMap,
+} = require('../helpers/prerequisiteHelper');
+
 const { notifyCourseStudents, removeNotificationsByRef, notifyFeedbackAvailable } = require('../services/notify');
 
 // Listagem pública (home) — apenas publicados
@@ -45,6 +50,7 @@ const getCourses = async (req, res, next) => {
 
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
+      .populate('prerequisites', 'title')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -57,6 +63,7 @@ const getCourses = async (req, res, next) => {
     let enrolledIds = new Set();
     let waitlistedIds = new Set();
     let pendingRequestMap = new Map(); // courseId -> requestId
+    let prereqMap = new Map(); // courseId -> { met, missing }  
     if (req.user?.id) {
       const enrollments = await Enrollment.find(
         { user: req.user.id, course: { $in: courses.map(c => c._id) } },
@@ -72,15 +79,23 @@ const getCourses = async (req, res, next) => {
         'course'
       );
       for (const r of pendingRequests) pendingRequestMap.set(r.course.toString(), r._id.toString());
+
+      prereqMap = await getPrerequisiteStatusMap(req.user.id, courses);
     }
 
-    const coursesWithEnrollment = courses.map(c => ({
-      ...c.toJSON(),
-      isEnrolled: enrolledIds.has(c._id.toString()),
-      isWaitlisted: waitlistedIds.has(c._id.toString()),
-      isPendingRequest: pendingRequestMap.has(c._id.toString()),
-      pendingRequestId: pendingRequestMap.get(c._id.toString()) || null,
-    }));
+    const coursesWithEnrollment = courses.map(c => {
+      const prereq = prereqMap.get(c._id.toString());
+      return {
+        ...c.toJSON(),
+        isEnrolled: enrolledIds.has(c._id.toString()),
+        isWaitlisted: waitlistedIds.has(c._id.toString()),
+        isPendingRequest: pendingRequestMap.has(c._id.toString()),
+        pendingRequestId: pendingRequestMap.get(c._id.toString()) || null,
+        // null = visitante (não dá para saber); true/false = aluno logado
+        prerequisitesMet: prereq ? prereq.met : null,
+        missingPrerequisites: prereq ? prereq.missing : [],
+      };
+    });
 
     res.json({ success: true, data: { courses: coursesWithEnrollment, total, page: Number(page), limit: Number(limit) } });
   } catch (err) { next(err); }
@@ -109,6 +124,7 @@ const getAllCourses = async (req, res, next) => {
 
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
+      .populate('prerequisites', 'title status')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -434,6 +450,31 @@ const getCourseStats = async (req, res, next) => {
   }
 };
 
+// GET /courses/prerequisite-options?exclude=<courseId>
+// Cursos disponíveis para seleção como pré-requisito (a busca por nome é feita no front).
+const getPrerequisiteOptions = async (req, res, next) => {
+  try {
+    const filter = {};
+    if (req.query.exclude) filter._id = { $ne: req.query.exclude };
+
+    // Professor não enxerga rascunhos de outros professores
+    if (req.user.role === 'professor') {
+      filter.$or = [
+        { status: { $ne: COURSE_STATUS.DRAFT } },
+        { professor: req.user.id },
+        { allowedProfessors: req.user.id },
+      ];
+    }
+
+    const courses = await Course.find(filter)
+      .select('title status startDate')
+      .sort({ title: 1 })
+      .lean();
+
+    res.json({ success: true, data: courses });
+  } catch (err) { next(err); }
+};
+
 const createCourse = async (req, res, next) => {
   try {
     const {
@@ -454,6 +495,8 @@ const createCourse = async (req, res, next) => {
 
       enrollmentType,
 
+      prerequisites,
+
       startDate,
       endDate,
     } = req.body;
@@ -471,6 +514,8 @@ const createCourse = async (req, res, next) => {
       startDate,
       endDate,
     });
+
+    const prerequisiteIds = await resolvePrerequisites(prerequisites);
 
     const course = await Course.create({
       title,
@@ -497,6 +542,8 @@ const createCourse = async (req, res, next) => {
 
       enrollmentType: enrollmentType || 'open',
 
+      prerequisites: prerequisiteIds,
+
       imageUrl: imageUrl || null,
     });
 
@@ -515,6 +562,8 @@ const createCourse = async (req, res, next) => {
       'professor',
       'name email'
     );
+
+    await course.populate('prerequisites', 'title status');
 
     res.status(201).json({
       success: true,
@@ -569,6 +618,11 @@ const updateCourse = async (req, res, next) => {
     const updates = {};
     for (const field of ALLOWED_FIELDS) {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
+    }
+
+    // Pré-requisitos: [] remove todos; undefined mantém o que já existe
+    if (req.body.prerequisites !== undefined) {
+      updates.prerequisites = await resolvePrerequisites(req.body.prerequisites, course._id);
     }
 
     const prevStatus = course.status;
@@ -644,6 +698,7 @@ const updateCourse = async (req, res, next) => {
       }
     )
       .populate('professor', 'name email')
+      .populate('prerequisites', 'title status')
       .populate(
         'allowedProfessors',
         'name email role'
@@ -778,6 +833,13 @@ const deleteCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Apenas o criador do curso ou um admin pode excluí-lo' });
 
     await course.deleteOne();
+
+    // Remove o curso excluído da lista de pré-requisitos dos demais
+    await Course.updateMany(
+      { prerequisites: course._id },
+      { $pull: { prerequisites: course._id } }
+    );
+
     res.json({ success: true, message: 'Curso excluído com sucesso' });
   } catch (err) { next(err); }
 };
@@ -860,6 +922,7 @@ const changeCoursePhase = async (req, res, next) => {
 
 module.exports = {
   getCourses, getAllCourses, getCourse, getCourseStats,
+  getPrerequisiteOptions,
   createCourse, updateCourse, deleteCourse,
   addAllowedProfessor, removeAllowedProfessor,
   changeCoursePhase,
