@@ -9,6 +9,7 @@ const NOTIFICATION_TYPES = {
   FEEDBACK: 'feedback',
   ENROLLMENT_APPROVED: 'enrollment_approved',
   ENROLLMENT_REJECTED: 'enrollment_rejected',
+  EXTERNAL_LINK: 'external_link',
 };
 
 const NOTIFICATION_TABS = {
@@ -19,6 +20,7 @@ const NOTIFICATION_TABS = {
   CERTIFICADO: 'certificado',
   FEEDBACK: 'feedback',
   SOBRE: 'sobre',
+  EXTERNO: 'externo', 
 };
 
 module.exports = { NOTIFICATION_TYPES, NOTIFICATION_TABS };

@@ -12,6 +12,7 @@ import StudentFeedbackTab from '../components/courses/StudentFeedbackTab'
 import StudentTestimonial from '../components/courses/StudentTestimonial'
 import { STATUS } from '../constants/enrollmentStatus'
 import StudentAssessmentsTab from '../components/courses/StudentAssessmentsTab'
+import StudentExternalTab from '../components/courses/StudentExternalTab'
 import { getCourseAPI, getLessonsAPI, getMaterialsAPI, getMyEnrollmentsAPI } from '../api/courses'
 import { getAnnouncementsAPI } from '../api/announcements'
 import { getStudentFeedbackAPI } from '../api/feedback'
@@ -33,7 +34,9 @@ const tabs = [
 const CERTIFICATE_TAB = { value: 'certificado', label: 'Certificado' }
 // A aba "Feedback" também só aparece com o curso concluído (destino de deep-link)
 const FEEDBACK_TAB = { value: 'feedback', label: 'Feedback' }
-const VALID_TABS = [...tabs.map((t) => t.value), CERTIFICATE_TAB.value, FEEDBACK_TAB.value]
+// A aba "Plataforma externa" só aparece em cursos ministrados fora (destino de deep-link)
+const EXTERNAL_TAB = { value: 'externo', label: 'Plataforma externa' }
+const VALID_TABS = [...tabs.map((t) => t.value), CERTIFICATE_TAB.value, FEEDBACK_TAB.value, EXTERNAL_TAB.value]
 
 // Card de aula reutilizado nas listas de próximas/anteriores.
 // isToday → destaque (aula do dia); past → esmaecido; onClick → abre o conteúdo.
@@ -133,6 +136,8 @@ const StudentCourse = () => {
         ])
         if (controller.signal.aborted) return
         setCourse(cData.data)
+        // Curso externo abre direto na aba de destaque (exceto com deep-link de notificação)
+        if (cData.data.isExternal && !VALID_TABS.includes(searchParams.get('tab'))) setActiveTab('externo')
         setLessons(lData.data)
         setMaterials(mData.data)
         setAnnouncements(aData.data)
@@ -229,15 +234,22 @@ const StudentCourse = () => {
 
           <div className="border-b border-border bg-white rounded-t-card px-4">
             <Tabs
-              tabs={course?.status === 'closed'
-                ? [...tabs, CERTIFICATE_TAB, ...(isCourseParticipant ? [FEEDBACK_TAB] : [])]
-                : tabs}
+              tabs={[
+                ...(course?.isExternal ? [EXTERNAL_TAB] : []),
+                ...(course?.status === 'closed'
+                  ? [...tabs, CERTIFICATE_TAB, ...(isCourseParticipant ? [FEEDBACK_TAB] : [])]
+                  : tabs),
+              ]}
               active={activeTab}
               onChange={setActiveTab}
             />
           </div>
 
           <div className="bg-white rounded-b-card border border-border border-t-0 p-4">
+
+            {activeTab === 'externo' && course?.isExternal && (
+              <StudentExternalTab course={course} />
+            )}
 
             {activeTab === 'sobre' && (
               <div className="space-y-5">

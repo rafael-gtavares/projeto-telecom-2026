@@ -37,6 +37,9 @@ const INITIAL = {
   enrollmentType: 'open',
   hasPrerequisites: false,
   prerequisites: [],
+  isExternal: false,
+  externalUrl: '',
+  externalMessage: '',
   imageUrl: '',
   imageType: 'upload',
   imageFile: null,
@@ -62,6 +65,9 @@ const parseCourseToForm = (course) => {
     enrollmentType: course.enrollmentType || 'open',
     prerequisites: course.prerequisites || [],
     hasPrerequisites: (course.prerequisites || []).length > 0,
+    isExternal: !!course.isExternal,
+    externalUrl: course.externalUrl || '',
+    externalMessage: course.externalMessage || '',
     imageUrl: course.imageUrl || '',
     scheduleType: course.scheduleType || 'single',
     singleConfig: INITIAL_SINGLE,
@@ -110,6 +116,9 @@ const buildPayload = (form) => {
     enrollmentType: form.enrollmentType,
     prerequisites: form.hasPrerequisites ? form.prerequisites.map((c) => c._id) : [],
     imageUrl: form.imageUrl || null,
+    isExternal: form.isExternal,
+    externalUrl: form.isExternal ? form.externalUrl.trim() : '',
+    externalMessage: form.isExternal ? form.externalMessage.trim() : '',
     scheduleType: form.scheduleType,
   }
 
@@ -161,6 +170,9 @@ const isScheduleValid = (form) => {
   return false
 }
 
+// Link externo é opcional, mas se preenchido precisa ser http(s) válido
+const isValidHttpUrl = (v) => /^https?:\/\/\S+$/i.test(v.trim())
+
 // Verifica que o horário de início é anterior ao de término em cada aula.
 // Retorna a mensagem de erro ou '' se estiver tudo certo.
 const getTimeError = (form) => {
@@ -199,12 +211,18 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
 
   const timeError = getTimeError(form)
 
+  const externalUrlError =
+    form.isExternal && form.externalUrl.trim() && !isValidHttpUrl(form.externalUrl)
+      ? 'Informe um link válido, começando com http:// ou https://'
+      : ''
+
   const isFormValid =
     form.title.trim() &&
     form.description.trim() &&
     form.maxSlots &&
     isScheduleValid(form) &&
     !timeError &&
+    !externalUrlError &&
     (!form.hasPrerequisites || form.prerequisites.length > 0)
 
   const handleSubmit = async () => {
@@ -281,6 +299,58 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             icon={MapPin}
           />
         )}
+
+        {/* Plataforma externa (opcional) */}
+        <div className="space-y-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.isExternal}
+              onChange={(e) => setForm((f) => ({ ...f, isExternal: e.target.checked }))}
+              className="mt-0.5 h-4 w-4 accent-primary"
+            />
+            <span>
+              <span className="block text-sm font-medium text-text-primary">
+                Este curso é ministrado em uma plataforma externa
+              </span>
+              <span className="block text-xs text-text-muted">
+                O aluno verá um aviso em destaque e um botão para acessar o curso na plataforma informada.
+              </span>
+            </span>
+          </label>
+
+          {form.isExternal && (
+            <div className="space-y-4 rounded-card border border-border bg-surface-page p-4">
+              <Input
+                label="Link da plataforma"
+                type="url"
+                value={form.externalUrl}
+                onChange={set('externalUrl')}
+                placeholder="https://plataforma.com/meu-curso"
+                icon={Link}
+                error={externalUrlError}
+              />
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Mensagem para o aluno
+                </label>
+                <textarea
+                  value={form.externalMessage}
+                  onChange={set('externalMessage')}
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="Ex: As aulas acontecem na plataforma X. Entre com o mesmo e-mail da sua inscrição."
+                  className="input-field resize-none w-full"
+                />
+              </div>
+
+              <p className="text-xs text-text-muted">
+                Se você alterar o link depois, os alunos inscritos serão notificados automaticamente.
+              </p>
+            </div>
+          )}
+        </div>
 
         <hr className="border-border" />
 

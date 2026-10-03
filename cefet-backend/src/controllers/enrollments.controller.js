@@ -141,6 +141,13 @@ const getMyEnrollments = async (req, res, next) => {
     // Anexa a posição na fila para inscrições em fila_espera
     const data = await Promise.all(enrollments.map(async (e) => {
       const obj = e.toObject();
+      // Link da plataforma externa só para quem tem vaga confirmada
+      if (
+        obj.course &&
+        [ENROLLMENT_STATUS.WAITING_LIST, ENROLLMENT_STATUS.CANCELED].includes(e.status)
+      ) {
+        delete obj.course.externalUrl;
+      }
       if (e.status === ENROLLMENT_STATUS.WAITING_LIST && e.course) {
         obj.waitlistPosition = await Enrollment.countDocuments({
           course: e.course._id,

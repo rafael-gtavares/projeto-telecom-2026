@@ -29,6 +29,17 @@ const {
 
 const { notifyCourseStudents, removeNotificationsByRef, notifyFeedbackAvailable } = require('../services/notify');
 
+// Normaliza os campos de plataforma externa: link e mensagem só são mantidos
+// quando a opção está ativada (desativar limpa os dois).
+const normalizeExternal = ({ isExternal, externalUrl, externalMessage }) => {
+  const enabled = isExternal === true || isExternal === 'true';
+  return {
+    isExternal: enabled,
+    externalUrl: enabled ? String(externalUrl ?? '').trim() : '',
+    externalMessage: enabled ? String(externalMessage ?? '').trim() : '',
+  };
+};
+
 // Listagem pública (home) — apenas publicados
 const getCourses = async (req, res, next) => {
   try {
@@ -54,7 +65,8 @@ const getCourses = async (req, res, next) => {
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select('-materials');
+      // externalUrl fica de fora da listagem pública (só inscritos/gestores veem o link)
+      .select('-materials -externalUrl');
 
     const total = await Course.countDocuments(filter);
 
@@ -150,7 +162,21 @@ const getCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Sem permissão para acessar este curso' });
     }
 
-    res.json({ success: true, data: course });
+    // O link da plataforma externa só é entregue a quem gerencia o curso ou está
+    // inscrito com vaga (não vaza para visitantes, fila de espera ou cancelados).
+    const data = course.toJSON();
+    if (data.externalUrl) {
+      const canSeeLink =
+        course.hasManageAccess(req.user.id, req.user.role) ||
+        (await Enrollment.exists({
+          course: course._id,
+          user: req.user.id,
+          status: { $nin: [ENROLLMENT_STATUS.CANCELED, ENROLLMENT_STATUS.WAITING_LIST] },
+        }));
+      if (!canSeeLink) delete data.externalUrl;
+    }
+
+    res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 
@@ -499,6 +525,10 @@ const createCourse = async (req, res, next) => {
 
       startDate,
       endDate,
+
+      isExternal,
+      externalUrl,
+      externalMessage,
     } = req.body;
 
     validateSchedule({
@@ -543,6 +573,8 @@ const createCourse = async (req, res, next) => {
       enrollmentType: enrollmentType || 'open',
 
       prerequisites: prerequisiteIds,
+
+      ...normalizeExternal({ isExternal, externalUrl, externalMessage }),
 
       imageUrl: imageUrl || null,
     });
@@ -623,6 +655,18 @@ const updateCourse = async (req, res, next) => {
     // Pré-requisitos: [] remove todos; undefined mantém o que já existe
     if (req.body.prerequisites !== undefined) {
       updates.prerequisites = await resolvePrerequisites(req.body.prerequisites, course._id);
+    }
+
+    // Plataforma externa: só mexe nos campos se algum veio no body.
+    // Desativar a opção limpa link e mensagem (ver normalizeExternal).
+    const touchesExternal = ['isExternal', 'externalUrl', 'externalMessage']
+      .some((f) => req.body[f] !== undefined);
+    if (touchesExternal) {
+      Object.assign(updates, normalizeExternal({
+        isExternal: req.body.isExternal ?? course.isExternal,
+        externalUrl: req.body.externalUrl ?? course.externalUrl,
+        externalMessage: req.body.externalMessage ?? course.externalMessage,
+      }));
     }
 
     const prevStatus = course.status;
@@ -756,7 +800,21 @@ const updateCourse = async (req, res, next) => {
       }
     }
 
-
+    // Link da plataforma externa definido/alterado → avisa a turma (best-effort)
+    const prevExternalUrl = course.isExternal ? (course.externalUrl || '') : '';
+    const newExternalUrl = updated.isExternal ? (updated.externalUrl || '') : '';
+    if (newExternalUrl && newExternalUrl !== prevExternalUrl) {
+      await notifyCourseStudents({
+        course: course._id,
+        type: NOTIFICATION_TYPES.EXTERNAL_LINK,
+        title: prevExternalUrl ? 'Link da plataforma externa alterado' : 'Curso em plataforma externa',
+        message: prevExternalUrl
+          ? 'O endereço de acesso ao curso foi atualizado. Confira o novo link.'
+          : 'Este curso será realizado em outra plataforma. Veja como acessar.',
+        tab: NOTIFICATION_TABS.EXTERNO,
+        createdBy: req.user.id,
+      });
+    }
 
     const newStatus = updates.status;
 

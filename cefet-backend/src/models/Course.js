@@ -152,6 +152,28 @@ const courseSchema = new mongoose.Schema({
       ref: 'Course',
     },
   ],
+
+  isExternal: {
+    type: Boolean,
+    default: false,
+  },
+
+  externalUrl: {
+    type: String,
+    trim: true,
+    default: '',
+    validate: {
+      validator: (v) => !v || /^https?:\/\/\S+$/i.test(v),
+      message: 'O link da plataforma externa deve começar com http:// ou https://',
+    },
+  },
+
+  externalMessage: {
+    type: String,
+    trim: true,
+    default: '',
+    maxlength: [1000, 'A mensagem da plataforma externa deve ter no máximo 1000 caracteres.'],
+  },
 }, {
   timestamps: true,
 });

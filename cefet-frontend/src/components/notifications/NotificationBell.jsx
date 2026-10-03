@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, FileText, Award, Megaphone, CheckCheck, BookOpen, CalendarClock, GraduationCap, MessageSquareText, UserCheck, UserX } from 'lucide-react'
+import { Bell, FileText, Award, Megaphone, CheckCheck, BookOpen, CalendarClock, GraduationCap, MessageSquareText, UserCheck, UserX, ExternalLink } from 'lucide-react'
 import { useNotifications } from '../../context/NotificationContext'
 
 // Ícone por tipo de notificação
@@ -14,6 +14,8 @@ const typeIcon = {
   feedback: MessageSquareText,
   enrollment_approved: UserCheck,
   enrollment_rejected: UserX,
+  enrollment_rejected: UserX,
+  external_link: ExternalLink,
 }
 
 // Tempo relativo curto em pt-BR ("agora", "há 5 min", "há 2 h", "há 3 d")
@@ -100,9 +102,8 @@ const NotificationBell = () => {
                   <button
                     key={n._id}
                     onClick={() => handleOpenNotification(n)}
-                    className={`w-full text-left flex gap-3 px-4 py-3 border-b border-border last:border-b-0 transition-colors hover:bg-surface-hover ${
-                      n.read ? '' : 'bg-surface-blue'
-                    }`}
+                    className={`w-full text-left flex gap-3 px-4 py-3 border-b border-border last:border-b-0 transition-colors hover:bg-surface-hover ${n.read ? '' : 'bg-surface-blue'
+                      }`}
                   >
                     <div className="w-9 h-9 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0 text-primary">
                       <Icon size={16} />
