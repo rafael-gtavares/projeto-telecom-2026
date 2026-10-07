@@ -3,7 +3,8 @@ const {
   getCourses, getAllCourses, getCourse, getCourseStats,
   createCourse, updateCourse, deleteCourse,
   addAllowedProfessor, removeAllowedProfessor,
-  changeCoursePhase, getPrerequisiteOptions
+  changeCoursePhase, getPrerequisiteOptions,
+  getCertificateInstructorOptions, updateCertificateSettings
 } = require('../controllers/courses.controller');
 const verifyJWT = require('../middleware/auth');
 const optionalAuth = require('../middleware/optionalAuth');
@@ -41,6 +42,10 @@ router.get('/:courseId/students', verifyJWT, requireCourseAccess, getCourseStude
 
 // Certificado de conclusão (PDF) do aluno logado
 router.get('/:courseId/certificate/pdf', verifyJWT, getCertificatePdf);
+
+// Configuração do certificado: ministrador e fonte da assinatura
+router.get('/:courseId/certificate-instructor-options', verifyJWT, requireCourseAccess, getCertificateInstructorOptions);
+router.patch('/:id/certificate-settings', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), updateCertificateSettings);
 
 // Fase do curso
 router.patch('/:courseId/phase', verifyJWT, requireCourseAccess, changeCoursePhase);

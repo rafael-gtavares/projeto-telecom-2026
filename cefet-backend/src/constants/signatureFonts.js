@@ -18,4 +18,7 @@ const SIGNATURE_FONT_FILES = {
   [SIGNATURE_FONTS.ALEX_BRUSH]: 'AlexBrush-Regular.ttf',
 };
 
-module.exports = { SIGNATURE_FONTS, SIGNATURE_FONT_FILES };
+// Fonte usada quando ninguém escolheu uma (assinatura padrão).
+const DEFAULT_SIGNATURE_FONT = SIGNATURE_FONTS.GREAT_VIBES;
+
+module.exports = { SIGNATURE_FONTS, SIGNATURE_FONT_FILES, DEFAULT_SIGNATURE_FONT };

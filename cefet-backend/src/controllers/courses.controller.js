@@ -3,6 +3,16 @@ const Enrollment = require('../models/Enrollment');
 const EnrollmentRequest = require('../models/EnrollmentRequest');
 const School = require('../models/School');
 const Lesson = require('../models/Lesson');
+const { ROLE_HIERARCHY, ROLES } = require('../constants/roles');
+const { VALID_FONTS } = require('../helpers/signatureHelper');
+const User = require('../models/User');
+const {
+  canEditCertificateSettings,
+  isInstructorLocked,
+  hasCourseAccess,
+  getEligibleInstructors,
+  buildCertificateSettings,
+} = require('../helpers/certificateInstructorHelper');
 
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { ENROLLMENT_REQUEST_STATUS } = require('../constants/enrollmentRequestStatus');
@@ -165,6 +175,17 @@ const getCourse = async (req, res, next) => {
     // O link da plataforma externa só é entregue a quem gerencia o curso ou está
     // inscrito com vaga (não vaza para visitantes, fila de espera ou cancelados).
     const data = course.toJSON();
+
+    // Configuração do certificado (ministrador/assinatura) só para quem gerencia
+    const isManager = course.hasManageAccess(req.user.id, req.user.role);
+    if (isManager) {
+      Object.assign(data, JSON.parse(JSON.stringify(await buildCertificateSettings(course))));
+    } else {
+      delete data.certificateInstructor;
+      delete data.certificateSignatureFont;
+      delete data.certificateInstructorLockedAt;
+    }
+
     if (data.externalUrl) {
       const canSeeLink =
         course.hasManageAccess(req.user.id, req.user.role) ||
@@ -936,6 +957,21 @@ const removeAllowedProfessor = async (req, res, next) => {
     if (req.user.role !== 'admin' && course.professor.toString() !== req.user.id)
       return res.status(403).json({ success: false, message: 'Apenas o criador do curso pode gerenciar permissões' });
 
+    // Se o professor removido é o ministrador do certificado e perderia o acesso:
+    // antes da 1ª emissão volta ao padrão (criador); depois da emissão, bloqueia.
+    if (course.certificateInstructor?.toString() === req.params.professorId) {
+      const removed = await User.findById(req.params.professorId).select('role');
+      const keepsAccess = removed && ROLE_HIERARCHY[removed.role] >= ROLE_HIERARCHY[ROLES.ADMIN];
+      if (!keepsAccess) {
+        if (await isInstructorLocked(course))
+          return res.status(409).json({
+            success: false,
+            message: 'Este professor é o ministrador dos certificados já emitidos e não pode perder o acesso ao curso.',
+          });
+        course.certificateInstructor = null;
+      }
+    }
+
     course.allowedProfessors = course.allowedProfessors.filter(
       p => p.toString() !== req.params.professorId
     );
@@ -978,7 +1014,91 @@ const changeCoursePhase = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// GET /courses/:courseId/certificate-instructor-options — pessoas que podem ser
+// escolhidas como ministrador (todas com acesso ao curso). Gestores do curso.
+const getCertificateInstructorOptions = async (req, res, next) => {
+  try {
+    const users = await getEligibleInstructors(req.course);
+    res.json({ success: true, data: users });
+  } catch (err) { next(err); }
+};
+
+// PATCH /courses/:id/certificate-settings — body: { instructorId?, signatureFont? }
+//  - instructorId: id do ministrador (null/'' = padrão: professor criador)
+//  - signatureFont: fonte da assinatura (null/'' = a da própria pessoa)
+// Só admin, superadmin ou o professor criador. O ministrador não muda após a
+// emissão do 1º certificado (a fonte pode mudar; certificados emitidos têm a
+// assinatura congelada e não são afetados).
+const updateCertificateSettings = async (req, res, next) => {
+  try {
+    let course = await Course.findById(req.params.id);
+    if (!course)
+      return res.status(404).json({ success: false, message: 'Curso não encontrado' });
+
+    if (!canEditCertificateSettings(course, req.user))
+      return res.status(403).json({
+        success: false,
+        message: 'Apenas o criador do curso, administradores e superadministradores podem alterar o certificado',
+      });
+
+    const { instructorId, signatureFont } = req.body;
+    if (instructorId === undefined && signatureFont === undefined)
+      return res.status(400).json({ success: false, message: 'Nenhuma alteração informada' });
+
+    const set = {};
+    const filter = { _id: course._id };
+
+    if (instructorId !== undefined) {
+      let nextId = instructorId ? String(instructorId) : null;
+      if (nextId && nextId === String(course.professor)) nextId = null; // criador = padrão
+
+      const currentId = course.certificateInstructor ? String(course.certificateInstructor) : null;
+
+      if (nextId !== currentId) {
+        if (await isInstructorLocked(course))
+          return res.status(409).json({
+            success: false,
+            message: 'O ministrador não pode mais ser alterado: já foi emitido um certificado neste curso',
+          });
+
+        if (nextId) {
+          const person = await User.findById(nextId).select('name role');
+          if (!person || !hasCourseAccess(course, person))
+            return res.status(400).json({
+              success: false,
+              message: 'Só é possível escolher uma pessoa que tenha acesso ao curso',
+            });
+        }
+
+        set.certificateInstructor = nextId;
+        filter.certificateInstructorLockedAt = null; // atômico: não grava se travou no meio
+      }
+    }
+
+    if (signatureFont !== undefined) {
+      const font = signatureFont || null;
+      if (font && !VALID_FONTS.includes(font))
+        return res.status(400).json({ success: false, message: 'Fonte de assinatura inválida' });
+      set.certificateSignatureFont = font;
+    }
+
+    if (Object.keys(set).length) {
+      const updated = await Course.findOneAndUpdate(filter, { $set: set }, { new: true });
+      if (!updated)
+        return res.status(409).json({
+          success: false,
+          message: 'O ministrador não pode mais ser alterado: já foi emitido um certificado neste curso',
+        });
+      course = updated;
+    }
+
+    const settings = await buildCertificateSettings(course);
+    res.json({ success: true, data: JSON.parse(JSON.stringify(settings)) });
+  } catch (err) { next(err); }
+};
+
 module.exports = {
+  getCertificateInstructorOptions, updateCertificateSettings,
   getCourses, getAllCourses, getCourse, getCourseStats,
   getPrerequisiteOptions,
   createCourse, updateCourse, deleteCourse,

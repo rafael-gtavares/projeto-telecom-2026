@@ -6,6 +6,7 @@ const { COURSE_STATUS } = require('../constants/courseStatus');
 const { CERTIFICATE_STATUS } = require('../constants/certificateStatus');
 const { createCertificateDoc } = require('../services/certificate');
 const { buildCertificateData, certificateFileName } = require('../services/certificateDelivery');
+const { resolveCertificateSigner } = require('../helpers/certificateInstructorHelper');
 
 // GET /courses/:courseId/certificate/pdf — gera o PDF do certificado do aluno logado.
 // ?download=1 → força o download; caso contrário abre inline (para preview).
@@ -39,12 +40,12 @@ const getCertificatePdf = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Seu certificado ainda não foi emitido' });
 
     // A assinatura é a "congelada" na emissão (certificado imutável). Antes da
-    // emissão só o gestor pré-visualiza — aí usamos a assinatura atual dele para
-    // que ele veja como ficará, sem alterar nenhum certificado já emitido.
+    // emissão só o gestor pré-visualiza — aí usamos a do ministrador do curso
+    // (padrão: criador) para ver como ficará, sem alterar certificados emitidos.
     let signature = enrollment.certificateSignature;
     if (!signature?.text) {
       const me = await User.findById(req.user.id).select('name signature');
-      signature = { name: me?.name, text: me?.signature?.text, font: me?.signature?.font };
+      signature = await resolveCertificateSigner(course, me);
     }
 
     const data = await buildCertificateData({

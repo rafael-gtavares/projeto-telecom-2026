@@ -1,6 +1,8 @@
 // Espelham a lógica do backend (services/certificate.js + certificate.controller.js)
 // para a prévia visual do certificado no front.
 
+import { SIGNATURE_FONTS, DEFAULT_SIGNATURE_FONT } from '../constants/signatureFonts'
+
 const timeToMinutes = (t) => {
   const [h, m] = String(t || '').split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
@@ -22,3 +24,14 @@ export const certificateWorkloadLabel = (lessons = []) => {
 // Código de validação estável a partir do id da inscrição
 export const certificateId = (enrollmentId) =>
   `CEFET-${String(enrollmentId || '').slice(-8).toUpperCase()}`
+
+// Assinatura padrão: espelha helpers/signatureHelper.js do backend. Sempre
+// devolve uma assinatura válida — texto salvo no perfil ou o próprio nome, e a
+// fonte do curso (override) → a do perfil → a fonte padrão.
+export const resolveSignature = (person, fontOverride = null) => {
+  const fonts = SIGNATURE_FONTS.map((f) => f.value)
+  const name = person?.name || ''
+  const text = (person?.signature?.text || '').trim() || name.trim()
+  const font = [fontOverride, person?.signature?.font].find((f) => fonts.includes(f)) || DEFAULT_SIGNATURE_FONT
+  return { name, text: text.slice(0, 60), font }
+}

@@ -27,7 +27,7 @@ const CertificateCard = ({
       </h2>
       <span className="w-16 h-[3px] rounded bg-primary my-3" />
 
-      <p className="text-xs sm:text-sm text-text-muted mt-2">Certificamos que</p>
+      <p className="text-xs sm:text-sm text-text-muted mt-2">A coordenação do curso técnico de telecomunicações certifica que</p>
       <p className="text-lg sm:text-2xl font-bold text-text-primary mt-1">{studentName || '—'}</p>
       <p className="text-xs sm:text-sm text-text-muted mt-3">concluiu com êxito o curso</p>
       <p className="text-base sm:text-xl font-bold text-primary mt-1 px-2">{course?.title || '—'}</p>

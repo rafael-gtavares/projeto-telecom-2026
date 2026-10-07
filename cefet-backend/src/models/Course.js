@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { ROLES, ROLE_HIERARCHY } = require('../constants/roles')
 const { COURSE_STATUS } = require('../constants/courseStatus')
 const { COURSE_PHASE } = require('../constants/coursePhase')
+const { SIGNATURE_FONTS } = require('../constants/signatureFonts')
 
 const courseSchema = new mongoose.Schema({
   title: {
@@ -70,6 +71,30 @@ const courseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+  },
+
+  // Ministrador exibido no certificado (nome + assinatura). null = padrão:
+  // o professor criador do curso. Só pode ser alguém com acesso ao curso e
+  // fica travado após a emissão do primeiro certificado.
+  certificateInstructor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+
+  // Fonte da assinatura escolhida para este curso. null = usa a fonte da
+  // própria assinatura do ministrador (ou a fonte padrão do sistema).
+  certificateSignatureFont: {
+    type: String,
+    enum: [...Object.values(SIGNATURE_FONTS), null],
+    default: null,
+  },
+
+  // Preenchido na emissão do 1º certificado e nunca limpado (nem se o
+  // certificado for revogado): é o que mantém o ministrador travado.
+  certificateInstructorLockedAt: {
+    type: Date,
+    default: null,
   },
 
   // Nome livre do instrutor/palestrante

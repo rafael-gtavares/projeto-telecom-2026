@@ -10,6 +10,7 @@ const { notifyCertificate } = require('../services/notify');
 const { sendCertificateByEmail } = require('../services/certificateDelivery');
 const { recomputeEnrollment } = require('../helpers/gradeCompute');
 const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
+const { resolveCertificateSigner, lockCertificateInstructor } = require('../helpers/certificateInstructorHelper');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
@@ -353,8 +354,14 @@ const releaseCertificate = async (req, res, next) => {
     if (course.status !== COURSE_STATUS.CLOSED)
       return res.status(400).json({ success: false, message: 'O certificado só pode ser liberado com o curso encerrado' });
 
-    // Emitir exige que o emissor tenha uma assinatura configurada — ela vai no PDF
-    let issuer;
+    // Quem assina é o ministrador do curso (padrão: o criador), com a assinatura
+    // padrão quando a pessoa não configurou nenhuma — emitir nunca falha por isso.
+    let signer;
+    if (status === CERTIFICATE_STATUS.ISSUED) {
+      const issuer = await User.findById(req.user.id).select('name signature');
+      signer = await resolveCertificateSigner(course, issuer);
+    }
+    F
     if (status === CERTIFICATE_STATUS.ISSUED) {
       issuer = await User.findById(req.user.id).select('name signature');
       if (!issuer?.signature?.text)
@@ -369,14 +376,19 @@ const releaseCertificate = async (req, res, next) => {
     if (status === CERTIFICATE_STATUS.ISSUED) {
       enrollment.certificateIssuedAt = new Date();
       enrollment.certificateIssuedBy = req.user.id;
-      // Congela a assinatura do emissor neste certificado (torna-o imutável)
+
+      // Congela a assinatura do ministrador neste certificado (torna-o imutável)
       enrollment.certificateSignature = {
-        name: issuer.name,
-        text: issuer.signature.text,
-        font: issuer.signature.font,
+        name: signer.name,
+        text: signer.text,
+        font: signer.font,
       };
+
+      // 1ª emissão do curso → trava a troca de ministrador
+      await lockCertificateInstructor(course);
       await enrollment.save();
       await notifyCertificate({ course: course._id, studentId: enrollment.user, createdBy: req.user.id });
+      
       // Emissão já gravada: o envio nunca lança, então não compromete a resposta
       if (!wasIssued) emailSent = await sendCertificateByEmail({ enrollment, course });
     } else {

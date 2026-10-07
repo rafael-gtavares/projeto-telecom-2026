@@ -47,6 +47,12 @@ export const getCourseStudentsAPI = (courseId) => api.get(`/courses/${courseId}/
 export const changeCoursePhaseAPI = (courseId, phase) =>
   api.patch(`/courses/${courseId}/phase`, { phase })
 
+// Certificado: ministrador e fonte da assinatura
+export const getCertificateInstructorOptionsAPI = (courseId) =>
+  api.get(`/courses/${courseId}/certificate-instructor-options`)
+export const updateCertificateSettingsAPI = (courseId, data) =>
+  api.patch(`/courses/${courseId}/certificate-settings`, data)
+
 // Permissões de professor no curso
 export const addAllowedProfessorAPI = (courseId, professorId) =>
   api.post(`/courses/${courseId}/allowed-professors`, { professorId })

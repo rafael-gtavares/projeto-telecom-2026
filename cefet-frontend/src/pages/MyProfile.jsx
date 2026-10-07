@@ -67,7 +67,7 @@ const MyProfile = () => {
       updateUser(data.data)
       setSigMsg({ error: '', success: 'Assinatura salva com sucesso!' })
     } catch (err) {
-      setSigMsg({ error: err.response?.data?.message || 'Erro ao salvar a assinatura', success: '' })
+      setSigMsg({ error: err.response?.data?.message || 'Erro ao restaurar a assinatura padrão', success: '' })
     } finally {
       setSigLoading(false)
     }
@@ -80,7 +80,7 @@ const MyProfile = () => {
       const { data } = await updateSignatureAPI({ text: '' })
       updateUser(data.data)
       setSig({ text: user?.name || '', font: SIGNATURE_FONTS[0].value })
-      setSigMsg({ error: '', success: 'Assinatura removida.' })
+      setSigMsg({ error: '', success: 'Assinatura padrão restaurada.' })
     } catch (err) {
       setSigMsg({ error: err.response?.data?.message || 'Erro ao remover a assinatura', success: '' })
     } finally {
@@ -155,9 +155,9 @@ const MyProfile = () => {
             {error && <div className="bg-error-light border border-error/20 text-error text-sm rounded-lg px-4 py-3 mb-5">{error}</div>}
 
             <div className="space-y-4">
-              <Input label="Nome completo" value={form.name} onChange={set('name')} disabled={!canEditIdentity}/>
+              <Input label="Nome completo" value={form.name} onChange={set('name')} disabled={!canEditIdentity} />
               <div className="grid grid-cols-2 gap-4">
-                <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} disabled={!canEditIdentity}/>
+                <Input label="Data de nascimento" type="date" value={form.birthDate} onChange={set('birthDate')} disabled={!canEditIdentity} />
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">Sexo</label>
                   <select value={form.gender} onChange={set('gender')} className="input-field">
@@ -294,8 +294,8 @@ const MyProfile = () => {
                 <h2 className="font-semibold text-text-primary text-lg">Assinatura do certificado</h2>
               </div>
               <p className="text-text-muted text-sm mb-5">
-                Defina como sua assinatura aparecerá nos certificados que você emitir.
-                Escolha o texto e um estilo de fonte.
+                Defina como sua assinatura aparecerá nos certificados dos cursos em que você for o ministrador.
+                Se você não configurar nada, usamos seu nome com um estilo padrão.
               </p>
 
               {sigMsg.success && <div className="bg-success-light border border-success/20 text-success-text text-sm rounded-lg px-4 py-3 mb-5">{sigMsg.success}</div>}
@@ -320,11 +320,10 @@ const MyProfile = () => {
                           key={f.value}
                           type="button"
                           onClick={() => setSig(s => ({ ...s, font: f.value }))}
-                          className={`rounded-card border px-3 py-3 text-center transition-all ${
-                            selected
+                          className={`rounded-card border px-3 py-3 text-center transition-all ${selected
                               ? 'border-primary ring-2 ring-primary/30 bg-primary/5'
                               : 'border-border hover:border-primary/40'
-                          }`}
+                            }`}
                         >
                           <span
                             className="block text-2xl text-text-primary leading-tight truncate"
@@ -362,7 +361,7 @@ const MyProfile = () => {
                 </Button>
                 {hasSavedSignature && (
                   <Button variant="secondary" onClick={handleRemoveSignature} disabled={sigLoading}>
-                    <Trash2 size={16} /> Remover
+                    <Trash2 size={16} /> Restaurar padrão
                   </Button>
                 )}
               </div>

@@ -1,6 +1,7 @@
 import { Plus, CheckCircle } from 'lucide-react'
 import { Spinner, Badge, Avatar } from '../../ui/index'
 import { isAdmin as isAdminRole } from '../../../utils/permissions'
+import CertificateInstructorSection from './CertificateInstructorSection'
 
 const STATUS_OPTIONS = [
   { key: 'draft', label: 'Rascunho', desc: 'Oculto para alunos', dot: 'bg-text-muted' },
@@ -10,7 +11,10 @@ const STATUS_OPTIONS = [
   { key: 'closed', label: 'Encerrado', desc: 'Curso finalizado', dot: 'bg-warning' },
 ]
 
-const ConfigTab = ({ course, configUsers, configUsersLoading, onGrantAccess, onRevokeAccess }) => (
+const ConfigTab = ({
+  course, configUsers, configUsersLoading, onGrantAccess, onRevokeAccess,
+  canEditCertificate, certificateOptions, certificateOptionsLoading, certificateSaving, onSaveCertificateSettings,
+}) => (
   <div className="p-4 md:p-6 space-y-6">
 
     {/* Status do Curso — somente leitura (alterado automaticamente pelas datas) */}
@@ -96,6 +100,15 @@ const ConfigTab = ({ course, configUsers, configUsersLoading, onGrantAccess, onR
         </div>
       )}
     </div>
+
+    <CertificateInstructorSection
+      course={course}
+      canEdit={canEditCertificate}
+      options={certificateOptions}
+      optionsLoading={certificateOptionsLoading}
+      saving={certificateSaving}
+      onSave={onSaveCertificateSettings}
+    />
   </div>
 )
 

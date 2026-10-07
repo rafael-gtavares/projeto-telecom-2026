@@ -64,7 +64,7 @@ function createCertificateDoc(data) {
   const bodyW = W - 200;
   const bodyX = 100;
   doc.fillColor(MUTED).font('Helvetica').fontSize(13)
-    .text('Certificamos que', bodyX, 245, { width: bodyW, align: 'center' });
+    .text('A coordenação do curso técnico de telecomunicações certifica que', bodyX, 245, { width: bodyW, align: 'center' });
 
   doc.fillColor(INK).font('Helvetica-Bold').fontSize(24)
     .text(data.studentName, bodyX, 268, { width: bodyW, align: 'center' });

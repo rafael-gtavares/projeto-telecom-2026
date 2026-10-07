@@ -44,7 +44,8 @@ const updateMe = async (req, res, next) => {
 };
 
 // PUT /users/me/signature — professor/admin define (ou limpa) sua assinatura.
-// body: { text, font } → salva; { text: '' } ou { text: null } → remove.
+// body: { text, font } → salva; { text: '' } ou { text: null } → volta ao padrão
+// (o próprio nome, na fonte padrão — ver helpers/signatureHelper.js).
 const updateMySignature = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
@@ -52,7 +53,7 @@ const updateMySignature = async (req, res, next) => {
 
     const { text, font } = req.body;
 
-    // Texto vazio/nulo → remove a assinatura configurada
+    // Texto vazio/nulo → limpa a assinatura salva (passa a valer a assinatura padrão)
     if (text === '' || text === null || text === undefined) {
       user.signature = { text: null, font: null };
       await user.save();
