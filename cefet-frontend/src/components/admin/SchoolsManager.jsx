@@ -11,7 +11,7 @@ import {
   deleteSchoolAPI,
 } from '../../api/users'
 
-const INITIAL_FORM = { name: '', city: '', contactName: '', contactNumber: '', active: true }
+const INITIAL_FORM = { name: '', city: '', contactName: '', contactNumber: '', observacoes: '', active: true }
 
 const SchoolsManager = () => {
   const [schools, setSchools] = useState([])
@@ -55,6 +55,7 @@ const SchoolsManager = () => {
       city: school.city || '',
       contactName: school.contactName || '',
       contactNumber: school.contactNumber || '',
+      observacoes: school.observacoes || '',
       active: school.active,
     })
     setFormError('')
@@ -152,7 +153,7 @@ const SchoolsManager = () => {
           {filtered.map(school => (
             <div
               key={school._id}
-              className={`flex items-center gap-3 p-3 border rounded-card transition-all ${school.active
+              className={`flex items-start gap-3 p-3 border rounded-card transition-all ${school.active
                 ? 'border-border hover:border-primary bg-white'
                 : 'border-border bg-surface-page opacity-60'
                 }`}
@@ -169,6 +170,11 @@ const SchoolsManager = () => {
                 {(school.contactName || school.contactNumber) && (
                   <p className="text-xs text-text-muted truncate">
                     {[school.contactName, school.contactNumber].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                {school.observacoes && (
+                  <p className="text-xs text-text-muted mt-1 whitespace-pre-line break-words">
+                    <span className="font-medium text-text-secondary">Obs.:</span> {school.observacoes}
                   </p>
                 )}
               </div>
@@ -242,6 +248,19 @@ const SchoolsManager = () => {
             onChange={e => setForm(f => ({ ...f, contactNumber: e.target.value }))}
             placeholder="Ex: (21) 99999-9999"
           />
+          <div className="w-full">
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              Observações
+            </label>
+            <textarea
+              value={form.observacoes}
+              onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))}
+              placeholder="Ex: outros professores, pontos de referência, informações gerais..."
+              rows={4}
+              maxLength={1000}
+              className="input-field resize-none"
+            />
+          </div>
 
           {modal.school && (
             <label className="flex items-center gap-3 cursor-pointer select-none p-3 rounded-lg border border-border hover:border-primary transition-colors">

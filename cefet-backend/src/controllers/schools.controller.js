@@ -24,7 +24,7 @@ const getAllSchools = async (req, res, next) => {
 // POST /schools — cria escola (admin only)
 const createSchool = async (req, res, next) => {
   try {
-    const { name, city, contactName, contactNumber } = req.body;
+    const { name, city, contactName, contactNumber, observacoes } = req.body;
     if (!name || !name.trim())
       return res.status(400).json({ success: false, message: 'Nome da escola é obrigatório' });
 
@@ -40,6 +40,7 @@ const createSchool = async (req, res, next) => {
       city: city?.trim() || '',
       contactName: contactName?.trim() || undefined,
       contactNumber: contactNumber?.trim() || undefined,
+      observacoes: observacoes?.trim() || '',
     });
     res.status(201).json({ success: true, data: school });
   } catch (err) { next(err); }
@@ -48,7 +49,7 @@ const createSchool = async (req, res, next) => {
 // PUT /schools/:id — edita escola (admin only)
 const updateSchool = async (req, res, next) => {
   try {
-    const { name, city, contactName, contactNumber, active } = req.body;
+    const { name, city, contactName, contactNumber, observacoes, active } = req.body;
     const school = await School.findById(req.params.id);
     if (!school)
       return res.status(404).json({ success: false, message: 'Escola não encontrada' });
@@ -57,6 +58,7 @@ const updateSchool = async (req, res, next) => {
     if (city !== undefined) school.city = city.trim();
     if (contactName !== undefined) school.contactName = contactName.trim();
     if (contactNumber !== undefined) school.contactNumber = contactNumber.trim();
+    if (observacoes !== undefined) school.observacoes = String(observacoes ?? '').trim();
     if (active !== undefined) school.active = active;
 
     await school.save();

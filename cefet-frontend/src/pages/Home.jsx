@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Zap, Briefcase, Globe, BookOpen, Star, Quote } from 'lucide-react'
+import { ArrowRight, Zap, Briefcase, Globe, BookOpen, Star, Quote, Calendar } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import EventCard from '../components/courses/EventCard'
@@ -16,6 +16,7 @@ import { cancelEnrollmentRequestAPI } from '../api/enrollmentRequests'
 import { mockCourses, mockPartners } from '../mockData/courses'
 import { MODALITY_LABELS } from '../utils/formatModality'
 import { getFeaturedFeedbacksAPI } from '../api/feedbacks'
+import { formatLocalDate } from '../utils/formatDate'
 import TelecomModeSection from '../components/home/TelecomModeSection'
 import DinoGameModal from '../components/home/DinoGameModal'
 
@@ -407,6 +408,11 @@ const Home = () => {
                     <div className="pt-3 border-t border-border">
                       <p className="text-sm font-semibold text-text-primary">{f.user?.name || 'Aluno'}</p>
                       <p className="text-xs text-text-muted mt-0.5">{f.course?.title}</p>
+                      {f.createdAt && (
+                        <p className="flex items-center gap-1 text-xs text-text-muted mt-1">
+                          <Calendar size={11} className="flex-shrink-0" /> {formatLocalDate(f.createdAt)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}

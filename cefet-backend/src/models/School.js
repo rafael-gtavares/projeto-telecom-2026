@@ -22,6 +22,12 @@ const schoolSchema = new mongoose.Schema({
     trim: true,
     default: 'Sem número de contato'
   },
+  observacoes: {
+    type: String,
+    trim: true,
+    default: '',
+    maxlength: [1000, 'Observações devem ter no máximo 1000 caracteres'],
+  },
   active: {
     type: Boolean,
     default: true,

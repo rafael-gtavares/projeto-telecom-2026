@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Search, Star, Trash2, MessageSquareText } from 'lucide-react'
+import { Search, Star, Trash2, MessageSquareText, Calendar } from 'lucide-react'
 import Button from '../ui/Button'
 import Modal from '../ui/Modal'
 import { Spinner } from '../ui/index'
+import { formatLocalDate } from '../../utils/formatDate'
 import { getAllFeedbacksAPI, deleteFeedbackAPI, toggleFeaturedFeedbackAPI } from '../../api/feedbacks'
 
 // Curadoria global dos depoimentos (feedback "antigo"): lista todos, permite
@@ -142,10 +143,17 @@ const AdminFeedbacksPanel = ({ onNotify }) => {
                       <p className="text-xs text-text-muted mt-0.5">{f.course?.title}</p>
                     </div>
 
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <Star key={n} size={13} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
-                      ))}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <Star key={n} size={13} className={n <= f.stars ? 'fill-warning text-warning' : 'text-border'} />
+                        ))}
+                      </div>
+                      {f.createdAt && (
+                        <span className="flex items-center gap-1 text-xs text-text-muted">
+                          <Calendar size={11} /> {formatLocalDate(f.createdAt)}
+                        </span>
+                      )}
                     </div>
                   </div>
 

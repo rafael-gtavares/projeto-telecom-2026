@@ -16,6 +16,24 @@ export const formatDate = (dateStr) => {
   return `${dia} de ${mes} de ${ano}`
 }
 
+// Para timestamps reais (ex.: createdAt): usa o fuso local do navegador, para que
+// um envio à noite não apareça no dia seguinte (formatDate usa UTC por causa das
+// datas de curso, que são gravadas à meia-noite UTC).
+export const formatLocalDate = (dateStr) => {
+  if (!dateStr) return ''
+
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const dia = String(date.getDate()).padStart(2, '0')
+  const meses = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
+  ]
+
+  return `${dia} de ${meses[date.getMonth()]} de ${date.getFullYear()}`
+}
+
 export const getInitials = (name = '') =>
   name.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
 

@@ -214,7 +214,7 @@ const StudentCourse = () => {
     <div className="min-h-screen bg-surface-page">
       <Header />
       <div className="page-container">
-        <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="max-w-4xl mx-auto px-4 py-6">
 
           <button onClick={() => navigate('/meus-cursos')}
             className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors mb-4 text-sm font-medium">
