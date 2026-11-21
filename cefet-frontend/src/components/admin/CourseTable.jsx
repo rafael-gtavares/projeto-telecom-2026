@@ -31,7 +31,10 @@ const CourseTable = ({ courses, onEdit, onDelete, onView }) => {
 
               {/* Título e status */}
               <button onClick={() => onView(course)} className="flex-1 min-w-0 text-left">
-                <p className="font-semibold text-text-primary text-sm truncate hover:text-primary transition-colors">{course.title}</p>
+                <p className="font-semibold text-text-primary text-sm break-words hover:text-primary transition-colors">{course.title}</p>
+                {course.instructor && (
+                  <p className="text-xs text-text-muted mt-0.5 break-words">Professor/Palestrante: {course.instructor}</p>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant={statusVariant}>{statusLabel}</Badge>
                   <span className="text-xs text-text-muted">{course.enrolledCount}/{course.maxSlots}</span>
@@ -71,6 +74,9 @@ const CourseTable = ({ courses, onEdit, onDelete, onView }) => {
             {/* Coluna "Criado por" — ocultar em telas abaixo de lg */}
             <th className="pb-3 pr-4 text-xs font-bold text-text-muted uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Criado por</th>
 
+            {/* Coluna "Professor / Palestrante" — ocultar em telas abaixo de lg */}
+            <th className="pb-3 pr-4 text-xs font-bold text-text-muted uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">Professor / Palestrante</th>
+
             {/* Coluna "Período / Dias" — ocultar em telas abaixo de md */}
             <th className="pb-3 pr-4 text-xs font-bold text-text-muted uppercase tracking-wider whitespace-nowrap hidden md:table-cell">Período / Dias</th>
 
@@ -98,8 +104,8 @@ const CourseTable = ({ courses, onEdit, onDelete, onView }) => {
                             <BookOpen size={20} />
                           </div>}
                     </div>
-                    <div className="flex flex-col">
-                      <span onClick={() => onView(course)} className="font-bold text-text-primary max-w-[180px] truncate group-hover:text-primary transition-colors cursor-pointer hover:underline">
+                    <div className="flex flex-col min-w-0 max-w-[360px]">
+                      <span onClick={() => onView(course)} className="font-bold text-text-primary whitespace-normal break-words group-hover:text-primary transition-colors cursor-pointer hover:underline">
                         {course.title}
                       </span>
                       <span className="text-[11px] text-text-muted">ID: {course._id.slice(-6)}</span>
@@ -110,6 +116,11 @@ const CourseTable = ({ courses, onEdit, onDelete, onView }) => {
                 {/* COLUNA: CRIADO POR */}
                 <td className="py-4 pr-4 text-text-secondary font-medium whitespace-nowrap hidden lg:table-cell">
                   {course.professor?.name || '—'}
+                </td>
+
+                {/* COLUNA: PROFESSOR / PALESTRANTE (campo "instructor" do curso) */}
+                <td className="py-4 pr-4 text-text-secondary font-medium max-w-[200px] break-words hidden lg:table-cell">
+                  {course.instructor || '—'}
                 </td>
 
                 {/* COLUNA: DATA / MODALIDADE */}

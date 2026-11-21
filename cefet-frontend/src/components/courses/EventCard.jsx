@@ -6,6 +6,19 @@ import { formatModality } from '../../utils/formatModality'
 
 const CARD_GRADIENT = 'from-primary to-primary-light'
 
+// Retorna "14:00 às 17:00" só quando o curso tem um único intervalo de horário
+// (todas as aulas com o mesmo início/término). Com horários diferentes ou
+// dados incompletos retorna null — o detalhe fica só no modal.
+const getSingleTimeRange = (config) => {
+  if (!Array.isArray(config) || config.length === 0) return null
+  const ranges = new Set()
+  for (const item of config) {
+    if (!item?.startTime || !item?.endTime) return null
+    ranges.add(`${item.startTime} às ${item.endTime}`)
+  }
+  return ranges.size === 1 ? [...ranges][0] : null
+}
+
 const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) => {
   const isEnrolled = course.isEnrolled ?? false
   const isWaitlisted = course.isWaitlisted ?? false
@@ -21,6 +34,7 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
   const isFull = slots <= 0
   const isOneDay = course.startDate?.slice(0, 10) === course.endDate?.slice(0, 10)
   const mainLocation = course.location || 'A definir'
+  const timeRange = getSingleTimeRange(course.scheduleConfig)
 
   return (
     <div
@@ -59,6 +73,14 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
               }
             </span>
           </div>
+
+          {/* Horário (só quando há um único intervalo) */}
+          {timeRange && (
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Clock size={13} className="text-primary flex-shrink-0" />
+              <span>{timeRange}</span>
+            </div>
+          )}
 
           {/* Horários e Dias */}
           <div className="flex items-center gap-2 text-xs text-text-muted">
