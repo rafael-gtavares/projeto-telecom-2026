@@ -588,7 +588,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </p>
                 </div>
               )}
-              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && !prerequisitesBlocked && !scheduleBlocked(
+              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && !prerequisitesBlocked && !scheduleBlocked && (
                 <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-primary">
@@ -645,15 +645,13 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                     ? 'Vagas encerradas'
                     : prerequisitesBlocked
                       ? (<><Lock size={18} className="inline mr-1" /> Pré-requisitos pendentes</>)
-                        ? (<><Lock size={18} className="inline mr-1" /> Pré-requisitos pendentes</>)
-                        : scheduleBlocked
-                          ? (<><Ban size={18} className="inline mr-1" /> Conflito de horário</>)
-                          : requiresApproval
-                      : requiresApproval
-                        ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
-                        : isFull
-                          ? 'Entrar na fila de espera'
-                          : 'Quero me inscrever'}
+                      : scheduleBlocked
+                        ? (<><Ban size={18} className="inline mr-1" /> Conflito de horário</>)
+                        : requiresApproval
+                          ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
+                          : isFull
+                            ? 'Entrar na fila de espera'
+                            : 'Quero me inscrever'}
               </Button>
             </div>
           )}
