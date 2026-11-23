@@ -5,6 +5,7 @@ const CourseInvitation = require('../models/CourseInvitation');
 const { ROLES, ROLE_HIERARCHY } = require('../constants/roles');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { COURSE_INVITATION_STATUS } = require('../constants/courseInvitationStatus');
+const { COURSE_STATUS } = require('../constants/courseStatus');
 const {
   expireInvitations, closeInvitation, getWaitlistCandidates, getMaxInviteDays,
 } = require('../helpers/invitationHelper');
@@ -172,8 +173,17 @@ const acceptInvitation = async (req, res, next) => {
     const invitation = await findOwnInvitation(req, res);
     if (!invitation) return;
 
-    const course = await Course.findById(invitation.course).select('_id title');
+    const course = await Course.findById(invitation.course).select('_id title status');
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado.' });
+
+    // Curso voltou para rascunho ou já começou/encerrou: não dá para entrar.
+    // (Vagas encerradas é aceito: a vaga do convidado já estava reservada.)
+    if (![COURSE_STATUS.PUBLISHED, COURSE_STATUS.VACANCIES_CLOSED].includes(course.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Este curso não está disponível para inscrição no momento. Fale com o professor responsável.',
+      });
+    }
 
     // Conflito de horário: a vaga continua reservada até o fim do prazo, para
     // o aluno poder cancelar o curso conflitante e tentar de novo.

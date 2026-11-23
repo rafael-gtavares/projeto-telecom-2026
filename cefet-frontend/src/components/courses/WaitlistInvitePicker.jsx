@@ -19,6 +19,7 @@ const STATUS_LABELS = {
 //
 // Props:
 //  - value / onChange: { enabled, sourceCourseId, studentIds, days }
+//                      (onChange precisa aceitar a forma funcional, como um setState)
 //  - courseId:         curso em edição (null na criação)
 //  - prerequisiteIds:  pré-requisitos do formulário (só usados na criação)
 //  - maxDays:          maior prazo permitido (null = cronograma ainda sem data)
@@ -62,7 +63,8 @@ const WaitlistInvitePicker = ({
         if (cancelled) return
         setCandidates(data.data)
         const eligible = data.data.filter((c) => c.eligible).map((c) => c.studentId)
-        onChange({ ...value, studentIds: eligible.slice(0, Math.max(0, freeSlots)) })
+        // Forma funcional: não sobrescreve o prazo digitado enquanto a fila carregava
+        onChange((prev) => ({ ...prev, studentIds: eligible.slice(0, Math.max(0, freeSlots)) }))
       })
       .catch(() => { if (!cancelled) setCandidates([]) })
       .finally(() => { if (!cancelled) setLoadingCandidates(false) })

@@ -47,6 +47,17 @@ const enroll = async (req, res, next) => {
       return sendPrerequisitesNotMet(res, prereq.missing);
     }
 
+    // Quem tem convite pendente já tem vaga reservada: deve aceitar o convite,
+    // senão ocuparia uma segunda vaga. Vem antes da turma fechada porque o
+    // convite dispensa escola e código.
+    if (!req._resolvingRequest && await hasPendingInvitation(req.user.id, courseId)) {
+      return res.status(409).json({
+        success: false,
+        code: 'PENDING_INVITATION',
+        message: 'Você tem um convite com vaga reservada para este curso. Aceite-o em "Meus cursos" › Convites.',
+      });
+    }
+
     // Turma fechada: escola do perfil + código de acesso (vale também para a
     // fila de espera). Na aprovação de solicitação o código já foi checado no pedido.
     if (!req._resolvingRequest) {
@@ -57,16 +68,6 @@ const enroll = async (req, res, next) => {
         accessCode: req.body.accessCode,
       });
       if (denied) return sendAccessError(res, denied);
-    }
-
-    // Quem tem convite pendente já tem vaga reservada: deve aceitar o convite,
-    // senão ocuparia uma segunda vaga.
-    if (!req._resolvingRequest && await hasPendingInvitation(req.user.id, courseId)) {
-      return res.status(409).json({
-        success: false,
-        code: 'PENDING_INVITATION',
-        message: 'Você tem um convite com vaga reservada para este curso. Aceite-o em "Meus cursos" › Convites.',
-      });
     }
 
     // 1) Cria a inscrição

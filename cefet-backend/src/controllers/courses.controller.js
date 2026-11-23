@@ -1030,7 +1030,7 @@ const deleteCourse = async (req, res, next) => {
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
     // Apenas o criador original ou admin pode deletar
-    if (req.user.role !== 'admin' && course.professor.toString() !== req.user.id)
+    if (ROLE_HIERARCHY[req.user.role] < ROLE_HIERARCHY[ROLES.ADMIN] && course.professor.toString() !== req.user.id)
       return res.status(403).json({ success: false, message: 'Apenas o criador do curso ou um admin pode excluí-lo' });
 
     await course.deleteOne();
@@ -1055,7 +1055,7 @@ const addAllowedProfessor = async (req, res, next) => {
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
     // Só o criador do curso ou admin pode gerenciar permissões
-    if (req.user.role !== 'admin' && course.professor.toString() !== req.user.id)
+    if (ROLE_HIERARCHY[req.user.role] < ROLE_HIERARCHY[ROLES.ADMIN] && course.professor.toString() !== req.user.id)
       return res.status(403).json({ success: false, message: 'Apenas o criador do curso pode gerenciar permissões' });
 
     const { professorId } = req.body;
@@ -1079,7 +1079,7 @@ const removeAllowedProfessor = async (req, res, next) => {
     const course = await Course.findById(req.params.id);
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
-    if (req.user.role !== 'admin' && course.professor.toString() !== req.user.id)
+    if (ROLE_HIERARCHY[req.user.role] < ROLE_HIERARCHY[ROLES.ADMIN] && course.professor.toString() !== req.user.id)
       return res.status(403).json({ success: false, message: 'Apenas o criador do curso pode gerenciar permissões' });
 
     // Se o professor removido é o ministrador do certificado e perderia o acesso:

@@ -1,6 +1,7 @@
 const Feedback = require('../models/Feedback');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
+const { ROLES, ROLE_HIERARCHY } = require('../constants/roles');
 
 // Todos os feedbacks
 const getAllFeedbacks = async (req, res, next) => {
@@ -115,7 +116,7 @@ const deleteFeedback = async (req, res, next) => {
     try {
         const { id } = req.params;
         const userId = req.user.id; // mesmo ajuste do createFeedback
-        const isAdmin = req.user.role === 'admin'; // ajuste conforme seu padrão de roles
+        const isAdmin = ROLE_HIERARCHY[req.user.role] >= ROLE_HIERARCHY[ROLES.ADMIN];
 
         if (!id) {
             const err = new Error('Id não encontrado');
