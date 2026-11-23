@@ -113,7 +113,9 @@ const Home = () => {
     setCourses(prev => prev.map(c => {
       if (c._id !== courseId) return c
       const enrolledCount = result.enrolledCount ?? c.enrolledCount + 1
-      return { ...c, isEnrolled: true, enrolledCount, availableSlots: c.maxSlots - enrolledCount }
+      // Vagas reservadas por convites pendentes também estão ocupadas
+      const availableSlots = Math.max(0, c.maxSlots - enrolledCount - (c.reservedCount || 0))
+      return { ...c, isEnrolled: true, enrolledCount, availableSlots }
     }))
     setToast({ show: true, message: 'Inscrição confirmada com sucesso! 🎉' })
     refreshCourses()
@@ -124,7 +126,8 @@ const Home = () => {
     setCourses(prev => prev.map(c => {
       if (c._id !== courseId) return c
       const enrolledCount = result.enrolledCount ?? Math.max(0, c.enrolledCount - 1)
-      return { ...c, isEnrolled: false, enrolledCount, availableSlots: c.maxSlots - enrolledCount }
+      const availableSlots = Math.max(0, c.maxSlots - enrolledCount - (c.reservedCount || 0))
+      return { ...c, isEnrolled: false, enrolledCount, availableSlots }
     }))
     setToast({ show: true, message: 'Inscrição cancelada.' })
     refreshCourses()

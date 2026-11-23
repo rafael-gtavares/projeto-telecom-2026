@@ -148,6 +148,9 @@ const CourseTable = ({ courses, onEdit, onDelete, onView }) => {
                 <td className="py-4 pr-4 whitespace-nowrap">
                   <div className="flex flex-col">
                     <span className="text-text-primary font-bold">{course.enrolledCount}/{course.maxSlots}</span>
+                    {course.reservedCount > 0 && (
+                      <span className="text-[11px] text-text-muted">+{course.reservedCount} reservada{course.reservedCount !== 1 ? 's' : ''}</span>
+                    )}
                     <div className="w-16 bg-border h-1 rounded-full mt-1 overflow-hidden hidden sm:block">
                       <div 
                         className="bg-primary h-full" 

@@ -14,6 +14,9 @@ const requireCourseAccess = require('../middleware/courseAccess');
 const { getCourseStudents } = require('../controllers/enrollments.controller');
 const { getCertificatePdf } = require('../controllers/certificate.controller');
 const { getCalendar } = require('../controllers/calendar.controller');
+const {
+  getWaitlistSources, getCourseWaitlist, getCourseInvitations, cancelInvitation,
+} = require('../controllers/invitations.controller');
 
 // Sub-rotas aninhadas
 const lessonsRouter = require('./lessons.routes');
@@ -27,6 +30,8 @@ router.get('/', optionalAuth, getCourses);
 router.get('/calendar', optionalAuth, getCalendar);
 router.get('/all', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getAllCourses);
 router.get('/prerequisite-options', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getPrerequisiteOptions);
+// Cursos com fila de espera que podem servir de origem para convites
+router.get('/waitlist-sources', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getWaitlistSources);
 router.get('/:id', verifyJWT, getCourse); // Obs.: Essa rota está deixando qualquer usuário autenticado acessar
 router.get('/:id/stats', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), getCourseStats)
 router.post('/', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), createCourse);
@@ -46,6 +51,11 @@ router.get('/:courseId/certificate/pdf', verifyJWT, getCertificatePdf);
 // Configuração do certificado: ministrador e fonte da assinatura
 router.get('/:courseId/certificate-instructor-options', verifyJWT, requireCourseAccess, getCertificateInstructorOptions);
 router.patch('/:id/certificate-settings', verifyJWT, requireMinimumRole(ROLES.PROFESSOR), updateCertificateSettings);
+
+// Convites para quem ficou na fila de espera de outro curso
+router.get('/:courseId/waitlist', verifyJWT, requireCourseAccess, getCourseWaitlist);
+router.get('/:courseId/invitations', verifyJWT, requireCourseAccess, getCourseInvitations);
+router.delete('/:courseId/invitations/:id', verifyJWT, requireCourseAccess, cancelInvitation);
 
 // Fase do curso
 router.patch('/:courseId/phase', verifyJWT, requireCourseAccess, changeCoursePhase);

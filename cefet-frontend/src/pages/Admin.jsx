@@ -51,6 +51,7 @@ import { canManageUsers, canManageSchools } from '../utils/permissions'
 
 // Hooks
 import { useSchools } from '../hooks/useSchools'
+import { withInvitations } from '../utils/invitations'
 
 
 // APIs
@@ -276,7 +277,7 @@ const Admin = () => {
 
         setToast({
           show: true,
-          message: 'Curso atualizado com sucesso.'
+          message: withInvitations('Curso atualizado com sucesso.', data.invitationsSent)
         })
       }
 
@@ -292,7 +293,7 @@ const Admin = () => {
 
         setToast({
           show: true,
-          message: 'Curso criado com sucesso.'
+          message: withInvitations('Curso criado com sucesso.', data.invitationsSent)
         })
       }
 

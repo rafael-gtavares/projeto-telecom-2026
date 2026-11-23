@@ -82,9 +82,12 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
 
   if (!course) return null
 
-  const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
+  // Vagas reservadas por convites pendentes contam como ocupadas
+  const reservedCount = course.reservedCount || 0
+  const occupiedCount = course.enrolledCount + reservedCount
+  const slots = course.availableSlots ?? (course.maxSlots - occupiedCount)
   const isFull = slots <= 0
-  const occupancyPercent = Math.min(100, (course.enrolledCount / course.maxSlots) * 100)
+  const occupancyPercent = Math.min(100, (occupiedCount / course.maxSlots) * 100)
   const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
   const prerequisiteList = course.prerequisites || []
   const scheduleBlocked = conflicts.length > 0 && course.status !== 'closed' && course.status !== 'vagas_encerradas'
@@ -414,7 +417,10 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
               <Users size={18} className="text-primary" />
               <span className="text-sm font-bold text-text-primary">Disponibilidade</span>
             </div>
-            <span className="text-sm font-semibold text-primary">{course.enrolledCount} / {course.maxSlots} vagas</span>
+            <span className="text-sm font-semibold text-primary">
+              {occupiedCount} / {course.maxSlots} vagas
+              {reservedCount > 0 && <span className="font-normal text-text-muted"> ({reservedCount} reservada{reservedCount !== 1 ? 's' : ''})</span>}
+            </span>
           </div>
           <div className="bg-border h-2 rounded-full overflow-hidden w-full">
             <div

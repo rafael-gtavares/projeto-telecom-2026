@@ -30,6 +30,8 @@ import FeedbackTab from '../components/courses/admin/feedback/FeedbackTab'
 import FeedbacksTab from '../components/courses/admin/FeedbacksTab'
 
 import CandidatesTab from '../components/courses/admin/CandidatesTab'
+import InvitationsSection from '../components/courses/admin/InvitationsSection'
+import { withInvitations } from '../utils/invitations'
 
 import { useConfirmModal } from '../hooks/useConfirmModal'
 import { useToast } from '../hooks/useToast'
@@ -87,6 +89,7 @@ const AdminCourse = () => {
   const [editModal, setEditModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
+  const [invitationsVersion, setInvitationsVersion] = useState(0)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Aulas
@@ -217,9 +220,11 @@ const AdminCourse = () => {
       setLessons(lData.data)
       setSelectedCalendarDay(null)
       setEditModal(false)
-      showToast('Curso atualizado com sucesso.')
-    } catch {
-      showToast('Erro ao salvar curso')
+      showToast(withInvitations('Curso atualizado com sucesso.', data.invitationsSent))
+      // Convites novos aparecem na lista da aba Alunos
+      if (data.invitationsSent) setInvitationsVersion((v) => v + 1)
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Erro ao salvar curso')
     } finally {
       setSaveLoading(false)
     }
@@ -715,6 +720,23 @@ const AdminCourse = () => {
                 onOpenStudent={(enrollment) => setStudentModal({ open: true, enrollment })}
                 onReleaseCertificate={handleReleaseCertificate}
                 onPreviewCertificate={handlePreviewCertificate}
+              />
+            )}
+
+            {activeTab === 'alunos' && (
+              <InvitationsSection
+                courseId={courseId}
+                version={invitationsVersion}
+                showToast={showToast}
+                // Cancelar libera vaga (e pode promover alguém da fila): recarrega curso e alunos
+                onChanged={async () => {
+                  const [{ data: cData }, { data: sData }] = await Promise.all([
+                    getCourseAPI(courseId),
+                    getCourseStudentsAPI(courseId),
+                  ])
+                  setCourse(cData.data)
+                  setStudents(sData.data)
+                }}
               />
             )}
 

@@ -124,6 +124,14 @@ const courseSchema = new mongoose.Schema({
     min: 0,
   },
 
+  // Vagas reservadas por convites pendentes (ver CourseInvitation). Contam
+  // como ocupadas até o convite ser aceito, recusado, cancelado ou expirar.
+  reservedCount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+
   imageUrl: {
     type: String,
     default: null,
@@ -206,7 +214,7 @@ const courseSchema = new mongoose.Schema({
 courseSchema.virtual('availableSlots').get(function () {
   return Math.max(
     0,
-    this.maxSlots - this.enrolledCount
+    this.maxSlots - this.enrolledCount - (this.reservedCount || 0)
   );
 });
 

@@ -12,11 +12,16 @@ const { recomputeEnrollment } = require('../helpers/gradeCompute');
 const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
 const { resolveCertificateSigner, lockCertificateInstructor } = require('../helpers/certificateInstructorHelper');
 const { getScheduleConflicts, sendScheduleConflict } = require('../helpers/enrollmentConflictHelper');
+const { takeSlot, promoteFromWaitlist } = require('../helpers/slotHelper');
+const { expireInvitations, hasPendingInvitation } = require('../helpers/invitationHelper');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
   try {
     const { courseId } = req.body;
+
+    // Libera reservas de convites vencidos antes de checar as vagas
+    await expireInvitations();
 
     const course = await Course.findById(courseId);
 
@@ -38,6 +43,16 @@ const enroll = async (req, res, next) => {
     const prereq = await getPrerequisiteStatus(req.user.id, course);
     if (!prereq.met) {
       return sendPrerequisitesNotMet(res, prereq.missing);
+    }
+
+    // Quem tem convite pendente já tem vaga reservada: deve aceitar o convite,
+    // senão ocuparia uma segunda vaga.
+    if (!req._resolvingRequest && await hasPendingInvitation(req.user.id, courseId)) {
+      return res.status(409).json({
+        success: false,
+        code: 'PENDING_INVITATION',
+        message: 'Você tem um convite com vaga reservada para este curso. Aceite-o em "Meus cursos" › Convites.',
+      });
     }
 
     // 1) Cria a inscrição
@@ -69,23 +84,9 @@ const enroll = async (req, res, next) => {
       return sendScheduleConflict(res, raceConflicts, { forStudent: !req._resolvingRequest });
     }
 
-    // 2) Tenta ocupar uma vaga atomicamente
-    const updated = await Course.findOneAndUpdate(
-      {
-        _id: courseId,
-        $expr: {
-          $lt: ['$enrolledCount', '$maxSlots'],
-        },
-      },
-      {
-        $inc: {
-          enrolledCount: 1,
-        },
-      },
-      {
-        new: true,
-      }
-    );
+    // 2) Tenta ocupar uma vaga atomicamente (vagas reservadas por convites
+    // pendentes contam como ocupadas)
+    const updated = await takeSlot(courseId);
 
     // 3a) Conseguiu vaga
     if (updated) {
@@ -261,23 +262,8 @@ const cancelEnrollment = async (req, res, next) => {
       );
 
       // Promove o primeiro da fila (se houver) — ele assume a vaga liberada
-      const next = await Enrollment.findOne({ course: courseId, status: ENROLLMENT_STATUS.WAITING_LIST })
-        .sort({ createdAt: 1 });
-
-      if (next) {
-        const taken = await Course.findOneAndUpdate(
-          { _id: courseId, $expr: { $lt: ['$enrolledCount', '$maxSlots'] } },
-          { $inc: { enrolledCount: 1 } },
-          { new: true }
-        );
-        if (taken) {
-          next.status = ENROLLMENT_STATUS.ENROLLED;
-          await next.save();
-          promoted = true;
-          course = taken;
-        }
-      }
-      if (!promoted) course = await Course.findById(courseId);
+      promoted = await promoteFromWaitlist(courseId);
+      course = await Course.findById(courseId);
     }
 
     res.json({

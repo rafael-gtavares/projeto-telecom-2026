@@ -135,4 +135,44 @@ const sendCertificateEmail = async (to, name, { courseTitle, pdfBuffer, fileName
   `, [{ name: fileName, content: pdfBuffer.toString('base64') }]);
 };
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail, sendCertificateEmail };
+// Convite para quem ficou na fila de espera de outro curso. A vaga fica
+// reservada até `expiresAt`.
+const sendCourseInvitationEmail = async (to, name, { courseTitle, sourceTitle, expiresAt }) => {
+  const safeName = escapeHtml(name);
+  const safeCourse = escapeHtml(courseTitle);
+  const safeSource = escapeHtml(sourceTitle);
+  const until = escapeHtml(new Date(expiresAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
+  const link = `${process.env.CLIENT_URL}/meus-cursos?tab=convites`;
+  const subject = `Convite: vaga reservada no curso "${String(courseTitle).replace(/\s+/g, ' ').trim()}" — CEFET/RJ`;
+
+  await sendEmail(to, name, subject, `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #F5F7FA; padding: 32px 16px;">
+      <div style="background: white; border-radius: 12px; padding: 40px; border: 1px solid #DDE3EE;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="color: #1565C0; font-size: 22px; font-weight: 700; margin: 0;">CEFET/RJ</h1>
+          <p style="color: #5C6880; font-size: 14px; margin: 8px 0 0;">Portal de Cursos e Eventos</p>
+        </div>
+        <h2 style="color: #1A1A2E; font-size: 20px; font-weight: 600; margin: 0 0 8px;">Olá, ${safeName}!</h2>
+        <p style="color: #5C6880; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+          Você ficou na fila de espera do curso <strong>${safeSource}</strong> e agora tem uma
+          vaga reservada no curso <strong>${safeCourse}</strong>.
+        </p>
+        <p style="color: #5C6880; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+          A vaga fica reservada até <strong>${until}</strong>. Depois disso, ela é liberada para outra pessoa.
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${link}" style="background: #1565C0; color: white; text-decoration: none; padding: 14px 32px;
+                    border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">
+            Ver convite
+          </a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #DDE3EE; margin: 24px 0;" />
+        <p style="color: #9EA8B8; font-size: 12px; text-align: center; margin: 0;">
+          Este é um e-mail automático, não é necessário respondê-lo.
+        </p>
+      </div>
+    </div>
+  `);
+};
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, sendCertificateEmail, sendCourseInvitationEmail };

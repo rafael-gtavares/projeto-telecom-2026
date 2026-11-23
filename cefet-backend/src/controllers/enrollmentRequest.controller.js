@@ -5,6 +5,7 @@ const { ENROLLMENT_REQUEST_STATUS } = require('../constants/enrollmentRequestSta
 const { COURSE_STATUS } = require('../constants/courseStatus');
 const { notifyEnrollmentRequestResolved } = require('../services/notify');
 const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
+const { hasPendingInvitation } = require('../helpers/invitationHelper');
 
 // POST /courses/:courseId/enrollment-requests
 // Aluno solicita entrada no curso.
@@ -29,6 +30,15 @@ const requestEnrollment = async (req, res, next) => {
     const alreadyEnrolled = await Enrollment.findOne({ user: studentId, course: courseId });
     if (alreadyEnrolled) {
       return res.status(409).json({ success: false, message: 'Você já está matriculado neste curso.' });
+    }
+
+    // Quem tem convite pendente já tem vaga reservada: basta aceitar o convite
+    if (await hasPendingInvitation(studentId, courseId)) {
+      return res.status(409).json({
+        success: false,
+        code: 'PENDING_INVITATION',
+        message: 'Você tem um convite com vaga reservada para este curso. Aceite-o em "Meus cursos" › Convites.',
+      });
     }
 
     const existingPending = await EnrollmentRequest.findOne({

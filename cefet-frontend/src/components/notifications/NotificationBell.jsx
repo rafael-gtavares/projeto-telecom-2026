@@ -52,9 +52,14 @@ const NotificationBell = () => {
   const handleOpenNotification = (n) => {
     setOpen(false)
     if (!n.read) markRead(n._id)
-    const courseId = n.course?._id || n.course
     // `r` muda a cada clique (timestamp): garante que a URL mude mesmo que a
     // pessoa já esteja no curso/aba, disparando o recarregamento do conteúdo.
+    // Convite: o aluno ainda não está inscrito, então abre a aba Convites.
+    if (n.type === 'course_invitation') {
+      navigate(`/meus-cursos?tab=convites&r=${Date.now()}`)
+      return
+    }
+    const courseId = n.course?._id || n.course
     if (courseId) navigate(`/meu-curso/${courseId}?tab=${n.tab}&r=${Date.now()}`)
   }
 

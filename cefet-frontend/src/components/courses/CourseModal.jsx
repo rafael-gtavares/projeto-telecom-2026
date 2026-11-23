@@ -12,6 +12,8 @@ import {
 import { formatDateForInput } from '../../utils/formatDate'
 import { uploadFileAPI } from '../../api/upload'
 import PrerequisitesPicker from './PrerequisitesPicker'
+import WaitlistInvitePicker from './WaitlistInvitePicker'
+import { INITIAL_INVITE, getInviteError, getMaxInviteDays } from '../../utils/invitations'
 
 const MODALITY_OPTIONS = [
   { value: 'presencial', label: 'Presencial' },
@@ -170,6 +172,17 @@ const isScheduleValid = (form) => {
   return false
 }
 
+// Primeira data do cronograma do formulário ('AAAA-MM-DD'), ou '' se ainda não definida
+const getFormStartDate = (form) => {
+  if (form.scheduleType === 'single') return form.singleConfig[0]?.date || ''
+  if (form.scheduleType === 'weekly') return form.weeklyConfig.startDate || ''
+  if (form.scheduleType === 'custom') {
+    const dates = form.customConfig.map((c) => c.date).filter(Boolean).sort()
+    return dates[0] || ''
+  }
+  return ''
+}
+
 // Link externo é opcional, mas se preenchido precisa ser http(s) válido
 const isValidHttpUrl = (v) => /^https?:\/\/\S+$/i.test(v.trim())
 
@@ -195,8 +208,11 @@ const getTimeError = (form) => {
 const CourseModal = ({ open, onClose, onSave, course, loading }) => {
   const [form, setForm] = useState(INITIAL)
   const [preview, setPreview] = useState(null)
+  // Convites para a fila de espera de outro curso (enviados ao salvar)
+  const [invite, setInvite] = useState(INITIAL_INVITE)
 
   useEffect(() => {
+    setInvite(INITIAL_INVITE)
     if (course && open) {
       const parsed = parseCourseToForm(course)
       setForm(parsed)
@@ -216,6 +232,17 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
       ? 'Informe um link válido, começando com http:// ou https://'
       : ''
 
+  // Convites: prazo limitado pelo início do curso; vagas livres descontam
+  // inscritos e reservas já existentes (na edição)
+  const inviteMaxDays = getMaxInviteDays(getFormStartDate(form))
+  const inviteFreeSlots =
+    (Number(form.maxSlots) || 0) - (course?.enrolledCount || 0) - (course?.reservedCount || 0)
+  const inviteError = getInviteError(invite, {
+    maxDays: inviteMaxDays,
+    freeSlots: inviteFreeSlots,
+    published: form.status === 'published',
+  })
+
   const isFormValid =
     form.title.trim() &&
     form.description.trim() &&
@@ -223,12 +250,21 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     isScheduleValid(form) &&
     !timeError &&
     !externalUrlError &&
+    !inviteError &&
     (!form.hasPrerequisites || form.prerequisites.length > 0)
 
   const handleSubmit = async () => {
     if (!isFormValid) return
 
     let payload = buildPayload(form)
+
+    if (invite.enabled) {
+      payload.invitations = {
+        sourceCourseId: invite.sourceCourseId,
+        studentIds: invite.studentIds,
+        days: Number(invite.days),
+      }
+    }
 
     if (form.imageType === 'upload' && form.imageFile) {
       const formData = new FormData()
@@ -485,6 +521,17 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             </>
           )}
         </div>
+
+        {/* Convites para a fila de espera de outro curso (opcional) */}
+        <WaitlistInvitePicker
+          value={invite}
+          onChange={setInvite}
+          courseId={course?._id || null}
+          prerequisiteIds={form.hasPrerequisites ? form.prerequisites.map((c) => c._id) : []}
+          maxDays={inviteMaxDays}
+          freeSlots={inviteFreeSlots}
+          error={inviteError}
+        />
 
         {/* Imagem de capa */}
         <div>

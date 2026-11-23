@@ -34,6 +34,7 @@ const analyticsRoutes = require('./src/routes/analytics.routes');
 // Sistema de depoimentos (feedback "antigo"): avaliações públicas com estrelas
 // destacadas na Home. Coexiste com o feedback por formulário (/courses/:id/feedback).
 const feedbacksRoutes = require('./src/routes/feedbacks.routes');
+const invitationsRoutes = require('./src/routes/invitations.routes');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/upload', uploadRoutes)
 app.use('/notifications', notificationsRoutes)
 app.use('/usage', analyticsRoutes)
 app.use('/feedbacks', feedbacksRoutes)
+app.use('/invitations', invitationsRoutes)
 
 app.get('/health', (req, res) => res.json({ status: 'ok', message: 'CEFET API rodando' }));
 

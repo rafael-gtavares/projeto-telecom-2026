@@ -185,7 +185,27 @@ const notifyEnrollmentRequestResolved = async ({ course, studentId, approved, cr
   }
 };
 
+// Convite para curso (vaga reservada) → notifica só o aluno convidado.
+// O clique leva a /meus-cursos?tab=convites (o aluno ainda não está inscrito).
+const notifyCourseInvitation = async ({ course, studentId, invitationId, expiresAt, createdBy = null }) => {
+  try {
+    const until = new Date(expiresAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    await createNotifications([studentId], {
+      type: NOTIFICATION_TYPES.COURSE_INVITATION,
+      course,
+      title: 'Você recebeu um convite',
+      message: `Há uma vaga reservada para você até ${until}. Aceite o convite para garantir sua inscrição.`,
+      tab: NOTIFICATION_TABS.CONVITES,
+      refId: invitationId,
+      createdBy,
+    });
+  } catch (err) {
+    console.error('[notify] notifyCourseInvitation falhou:', err.message);
+  }
+};
+
 module.exports = {
+  notifyCourseInvitation,
   getEnrolledStudentIds,
   notifyCourseStudents,
   notifyNewMaterial,

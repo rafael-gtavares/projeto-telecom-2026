@@ -111,5 +111,6 @@ const updateCourseStatus = async () => {
 
 module.exports = {
   updateCourseStatus,
-  getCourseStatus
+  getCourseStatus,
+  brDayStart,
 };

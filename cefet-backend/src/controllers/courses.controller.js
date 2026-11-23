@@ -39,6 +39,14 @@ const {
 
 const { getConflictsForCourses } = require('../helpers/enrollmentConflictHelper');
 
+const {
+  expireInvitations,
+  clampInvitationsToStart,
+  prepareInvitations,
+  sendInvitations,
+} = require('../helpers/invitationHelper');
+const CourseInvitation = require('../models/CourseInvitation');
+
 const { notifyCourseStudents, removeNotificationsByRef, notifyFeedbackAvailable } = require('../services/notify');
 
 // Normaliza os campos de plataforma externa: link e mensagem só são mantidos
@@ -59,6 +67,9 @@ const getCourses = async (req, res, next) => {
     // Teto de paginação para evitar abuso (ex.: limit=999999)
     const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 100);
     const filter = {};
+
+    // Libera vagas de convites vencidos antes de mostrar as vagas disponíveis
+    await expireInvitations();
 
     if (req.user?.role === 'aluno' || !req.user) {
       // Cursos com vagas encerradas continuam visíveis na home (para consulta),
@@ -139,6 +150,7 @@ const getAllCourses = async (req, res, next) => {
   try {
 
     await updateCourseStatus();
+    await expireInvitations();
 
     const { status, page = 1 } = req.query;
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
@@ -171,6 +183,7 @@ const getAllCourses = async (req, res, next) => {
 const getCourse = async (req, res, next) => {
   try {
     await updateCourseStatus();
+    await expireInvitations();
 
     const course = await Course.findById(req.params.id)
       .populate('professor', 'name email')
@@ -579,6 +592,23 @@ const createCourse = async (req, res, next) => {
 
     const prerequisiteIds = await resolvePrerequisites(prerequisites);
 
+    // Convites para a fila de espera de outro curso: valida ANTES de criar,
+    // para não salvar o curso com um convite inválido (prazo, vagas, etc.)
+    const preparedInvitations = req.body.invitations
+      ? await prepareInvitations({
+        input: req.body.invitations,
+        target: {
+          status: status || COURSE_STATUS.DRAFT,
+          startDate: period.startDate,
+          maxSlots,
+          enrolledCount: 0,
+          reservedCount: 0,
+          prerequisites: prerequisiteIds,
+        },
+        actor: req.user,
+      })
+      : null;
+
     const course = await Course.create({
       title,
       description,
@@ -629,9 +659,17 @@ const createCourse = async (req, res, next) => {
 
     await course.populate('prerequisites', 'title status');
 
+    const invitationsSent = preparedInvitations
+      ? await sendInvitations({ course, prepared: preparedInvitations, actor: req.user })
+      : 0;
+
+    // Reflete na resposta as vagas reservadas pelos convites
+    if (invitationsSent) course.reservedCount = invitationsSent;
+
     res.status(201).json({
       success: true,
       data: course,
+      invitationsSent,
     });
 
   } catch (err) {
@@ -765,6 +803,33 @@ const updateCourse = async (req, res, next) => {
       endDate: finalEndDate,
     });
 
+    // Vagas reservadas por convites pendentes não podem ficar sem lugar
+    const finalMaxSlots = Number(updates.maxSlots ?? course.maxSlots);
+    const reserved = course.reservedCount || 0;
+    if (reserved > 0 && finalMaxSlots < course.enrolledCount + reserved) {
+      return res.status(400).json({
+        success: false,
+        message: `O curso tem ${course.enrolledCount} inscrito(s) e ${reserved} vaga(s) reservada(s) por convites. O número de vagas não pode ser menor que ${course.enrolledCount + reserved}.`,
+      });
+    }
+
+    // Novos convites para a fila de espera de outro curso (validados antes de salvar)
+    const preparedInvitations = req.body.invitations
+      ? await prepareInvitations({
+        input: req.body.invitations,
+        target: {
+          _id: course._id,
+          status: updates.status,
+          startDate: finalStartDate,
+          maxSlots: finalMaxSlots,
+          enrolledCount: course.enrolledCount,
+          reservedCount: reserved,
+          prerequisites: updates.prerequisites ?? course.prerequisites,
+        },
+        actor: req.user,
+      })
+      : null;
+
     const updated = await Course.findByIdAndUpdate(
       req.params.id,
       updates,
@@ -831,6 +896,16 @@ const updateCourse = async (req, res, next) => {
         });
       }
     }
+
+    // Início antecipado: nenhum convite pendente pode vencer depois do início
+    if (hasScheduleUpdate) {
+      await clampInvitationsToStart(course._id, updated.startDate);
+    }
+
+    const invitationsSent = preparedInvitations
+      ? await sendInvitations({ course: updated, prepared: preparedInvitations, actor: req.user })
+      : 0;
+    if (invitationsSent) updated.reservedCount = (updated.reservedCount || 0) + invitationsSent;
 
     // Link da plataforma externa definido/alterado → avisa a turma (best-effort)
     const prevExternalUrl = course.isExternal ? (course.externalUrl || '') : '';
@@ -907,6 +982,7 @@ const updateCourse = async (req, res, next) => {
     res.json({
       success: true,
       data: updated,
+      invitationsSent,
     });
   } catch (err) {
     next(err);
@@ -923,6 +999,9 @@ const deleteCourse = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Apenas o criador do curso ou um admin pode excluí-lo' });
 
     await course.deleteOne();
+
+    // Convites para este curso deixam de existir junto com ele
+    await CourseInvitation.deleteMany({ course: course._id });
 
     // Remove o curso excluído da lista de pré-requisitos dos demais
     await Course.updateMany(

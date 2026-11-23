@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { BookOpen, Clock, Calendar, User, XCircle, MapPin, ChevronRight, AlertTriangle, LayoutList, LayoutGrid, Award } from 'lucide-react'
 import Header from '../components/layout/Header'
 import { Tabs, Badge, Spinner } from '../components/ui/index'
@@ -9,12 +9,12 @@ import { useAuth } from '../context/AuthContext'
 import { getMyEnrollmentsAPI, cancelEnrollmentAPI } from '../api/courses'
 import { formatDate } from '../utils/formatDate'
 import { formatModality } from '../utils/formatModality'
+import { getMyInvitationsAPI } from '../api/invitations'
+import MyInvitations from '../components/courses/MyInvitations'
+import Toast from '../components/ui/Toast'
+import { useToast } from '../hooks/useToast'
 
-const tabs = [
-  { value: 'inscritos', label: 'Inscritos' },
-  { value: 'em_andamento', label: 'Em andamento' },
-  { value: 'concluidos', label: 'Concluídos' },
-]
+const TAB_VALUES = ['inscritos', 'em_andamento', 'concluidos', 'convites']
 
 const statusBadge = {
   published: {
@@ -36,7 +36,12 @@ const statusBadge = {
 const MyCourses = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('inscritos')
+  // ?tab=convites abre direto a aba (link da notificação e do e-mail de convite)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(TAB_VALUES.includes(tabParam) ? tabParam : 'inscritos')
+  const [invitations, setInvitations] = useState([])
+  const { toast, showToast, closeToast } = useToast()
   const [enrollments, setEnrollments] = useState([])
   const [loading, setLoading] = useState(true)
   const [cancelModal, setCancelModal] = useState({ open: false, enrollment: null })
@@ -56,9 +61,42 @@ const MyCourses = () => {
       .finally(() => setLoading(false))
   }
 
+  const fetchInvitations = () =>
+    getMyInvitationsAPI()
+      .then(r => setInvitations(r.data.data))
+      .catch(() => setInvitations([]))
+
   useEffect(() => {
     fetchEnrollments()
+    fetchInvitations()
   }, [])
+
+  // Notificação clicada com a página já aberta: segue o ?tab= novo
+  useEffect(() => {
+    if (!TAB_VALUES.includes(tabParam)) return
+    setActiveTab(tabParam)
+    if (tabParam === 'convites') fetchInvitations()
+  }, [searchParams])
+
+  const changeTab = (tab) => {
+    setActiveTab(tab)
+    if (tab === 'convites') fetchInvitations()
+    if (tabParam) setSearchParams({}, { replace: true })
+  }
+
+  const pendingInvitations = invitations.filter(i => i.status === 'pendente').length
+  const tabs = [
+    { value: 'inscritos', label: 'Inscritos' },
+    { value: 'em_andamento', label: 'Em andamento' },
+    { value: 'concluidos', label: 'Concluídos' },
+    { value: 'convites', label: pendingInvitations ? `Convites (${pendingInvitations})` : 'Convites' },
+  ]
+
+  // Aceitar matricula o aluno: recarrega convites e cursos
+  const handleInvitationChanged = (action) => {
+    fetchInvitations()
+    if (action === 'accept') fetchEnrollments()
+  }
 
   const filtered = enrollments.filter(({ course }) => {
     if (!course) return false
@@ -104,10 +142,10 @@ const MyCourses = () => {
 
           <div className="card shadow-sm border-none bg-transparent md:bg-white overflow-hidden">
             <div className="px-4 pt-2 border-b border-border bg-white rounded-t-card flex items-center justify-between gap-3">
-              <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+              <Tabs tabs={tabs} active={activeTab} onChange={changeTab} />
 
               {/* Toggle lista / card */}
-              <div className="flex items-center gap-1 flex-shrink-0 mb-1 p-1 bg-surface-page rounded-lg border border-border">
+              <div className={`flex items-center gap-1 flex-shrink-0 mb-1 p-1 bg-surface-page rounded-lg border border-border ${activeTab === 'convites' ? 'invisible' : ''}`}>
                 <button
                   onClick={() => toggleView('list')}
                   title="Visualização em lista"
@@ -126,7 +164,13 @@ const MyCourses = () => {
             </div>
 
             <div className="py-6">
-              {loading ? (
+              {activeTab === 'convites' ? (
+                <MyInvitations
+                  invitations={invitations}
+                  onChanged={handleInvitationChanged}
+                  showMessage={showToast}
+                />
+              ) : loading ? (
                 <div className="flex justify-center py-20"><Spinner size="lg" /></div>
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-b-card border border-border md:border-none">
@@ -406,6 +450,8 @@ const MyCourses = () => {
           </Button>
         </div>
       </Modal>
+
+      <Toast show={toast.show} message={toast.message} onClose={closeToast} />
     </div>
   )
 }
