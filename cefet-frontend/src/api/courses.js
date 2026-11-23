@@ -7,7 +7,9 @@ export const getCourseStatsAPI = (id, period) => api.get(`/courses/${id}/stats`,
 export const createCourseAPI = (data) => api.post('/courses', data)
 export const updateCourseAPI = (id, data) => api.put(`/courses/${id}`, data)
 export const deleteCourseAPI = (id) => api.delete(`/courses/${id}`)
-export const enrollAPI = (courseId) => api.post('/enrollments', { courseId })
+// `accessCode`: obrigatório só em turmas fechadas para escola(s)
+export const enrollAPI = (courseId, accessCode) =>
+  api.post('/enrollments', accessCode ? { courseId, accessCode } : { courseId })
 export const getMyEnrollmentsAPI = () => api.get('/enrollments/my')
 export const checkEnrollmentAPI = (courseId) => api.get(`/enrollments/check/${courseId}`)
 export const cancelEnrollmentAPI = (courseId) => api.delete(`/enrollments/${courseId}`)

@@ -1,4 +1,4 @@
-import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X, Lock, Ban } from 'lucide-react'
+import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X, Lock, Ban, School } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
 import { formatDateShort as formatDate } from '../../utils/formatDate' // dd/mm/aaaa
@@ -25,6 +25,8 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
   const isPendingRequest = course.isPendingRequest ?? false
   const isVacanciesClosed = course.status === 'vagas_encerradas'
   const hasPrerequisites = (course.prerequisites ?? []).length > 0
+  // Turma fechada para escola(s): exige escola + código (detalhes no modal)
+  const isRestricted = (course.restrictedSchools ?? []).length > 0
   // prerequisitesMet === null → visitante (não bloqueia visualmente)
   const isPrereqBlocked =
     course.prerequisitesMet === false &&
@@ -111,11 +113,16 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           {isFull
             ? <Badge variant="gray"><Users size={11} className="mr-1" />Vagas esgotadas</Badge>
             : <Badge variant="blue"><Users size={11} className="mr-1" />{slots} {slots === 1 ? 'vaga' : 'vagas'} restantes</Badge>
           }
+          {isRestricted && (
+            <Badge variant="purple">
+              <School size={11} className="mr-1" />Turma fechada
+            </Badge>
+          )}
           {hasPrerequisites && (
             <Badge variant={isPrereqBlocked ? 'warning' : 'gray'}>
               <Lock size={11} className="mr-1" />Pré-requisito

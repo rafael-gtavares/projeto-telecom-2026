@@ -3,10 +3,11 @@ const { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, updateSitua
 const { getCourseConflicts } = require('../controllers/calendar.controller');
 const verifyJWT = require('../middleware/auth');
 const checkScheduleConflict = require('../middleware/scheduleConflict');
+const enrollLimiter = require('../middleware/enrollLimiter');
 const { requireMinimumRole } = require('../middleware/roles')
 const { ROLES } = require('../constants/roles');
 
-router.post('/', verifyJWT, checkScheduleConflict, enroll);
+router.post('/', verifyJWT, enrollLimiter, checkScheduleConflict, enroll);
 router.get('/my', verifyJWT, getMyEnrollments);
 router.get('/user/:userId', verifyJWT, requireMinimumRole(ROLES.ADMIN), getUserEnrollments)
 router.get('/check/:courseId', verifyJWT, checkEnrollment);

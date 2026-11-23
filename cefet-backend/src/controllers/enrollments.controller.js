@@ -14,6 +14,7 @@ const { resolveCertificateSigner, lockCertificateInstructor } = require('../help
 const { getScheduleConflicts, sendScheduleConflict } = require('../helpers/enrollmentConflictHelper');
 const { takeSlot, promoteFromWaitlist } = require('../helpers/slotHelper');
 const { expireInvitations, hasPendingInvitation } = require('../helpers/invitationHelper');
+const { checkSchoolAccess, sendAccessError } = require('../helpers/schoolAccessHelper');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
@@ -23,7 +24,8 @@ const enroll = async (req, res, next) => {
     // Libera reservas de convites vencidos antes de checar as vagas
     await expireInvitations();
 
-    const course = await Course.findById(courseId);
+    // +accessCode: necessário para validar turmas fechadas para escola(s)
+    const course = await Course.findById(courseId).select('+accessCode');
 
     if (!course) {
       return res.status(404).json({
@@ -43,6 +45,18 @@ const enroll = async (req, res, next) => {
     const prereq = await getPrerequisiteStatus(req.user.id, course);
     if (!prereq.met) {
       return sendPrerequisitesNotMet(res, prereq.missing);
+    }
+
+    // Turma fechada: escola do perfil + código de acesso (vale também para a
+    // fila de espera). Na aprovação de solicitação o código já foi checado no pedido.
+    if (!req._resolvingRequest) {
+      const denied = await checkSchoolAccess({
+        course,
+        userId: req.user.id,
+        userRole: req.user.role,
+        accessCode: req.body.accessCode,
+      });
+      if (denied) return sendAccessError(res, denied);
     }
 
     // Quem tem convite pendente já tem vaga reservada: deve aceitar o convite,

@@ -13,6 +13,8 @@ import { formatDateForInput } from '../../utils/formatDate'
 import { uploadFileAPI } from '../../api/upload'
 import PrerequisitesPicker from './PrerequisitesPicker'
 import WaitlistInvitePicker from './WaitlistInvitePicker'
+import SchoolRestrictionFields from './SchoolRestrictionFields'
+import { getAccessCodeError } from '../../utils/schoolAccess'
 import { INITIAL_INVITE, getInviteError, getMaxInviteDays } from '../../utils/invitations'
 
 const MODALITY_OPTIONS = [
@@ -39,6 +41,9 @@ const INITIAL = {
   enrollmentType: 'open',
   hasPrerequisites: false,
   prerequisites: [],
+  isRestricted: false,
+  restrictedSchools: [],
+  accessCode: '',
   isExternal: false,
   externalUrl: '',
   externalMessage: '',
@@ -67,6 +72,9 @@ const parseCourseToForm = (course) => {
     enrollmentType: course.enrollmentType || 'open',
     prerequisites: course.prerequisites || [],
     hasPrerequisites: (course.prerequisites || []).length > 0,
+    isRestricted: (course.restrictedSchools || []).length > 0,
+    restrictedSchools: (course.restrictedSchools || []).map((s) => String(s?._id || s)),
+    accessCode: course.accessCode || '',
     isExternal: !!course.isExternal,
     externalUrl: course.externalUrl || '',
     externalMessage: course.externalMessage || '',
@@ -117,6 +125,9 @@ const buildPayload = (form) => {
     status: form.status,
     enrollmentType: form.enrollmentType,
     prerequisites: form.hasPrerequisites ? form.prerequisites.map((c) => c._id) : [],
+    // Turma fechada: sem escolas o backend reabre a turma e apaga o código
+    restrictedSchools: form.isRestricted ? form.restrictedSchools : [],
+    accessCode: form.isRestricted ? form.accessCode : null,
     imageUrl: form.imageUrl || null,
     isExternal: form.isExternal,
     externalUrl: form.isExternal ? form.externalUrl.trim() : '',
@@ -243,6 +254,10 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     published: form.status === 'published',
   })
 
+  // Turma fechada: ao menos uma escola e um código válido
+  const accessCodeError = form.isRestricted ? getAccessCodeError(form.accessCode) : ''
+  const restrictionError = form.isRestricted && (form.restrictedSchools.length === 0 || accessCodeError)
+
   const isFormValid =
     form.title.trim() &&
     form.description.trim() &&
@@ -251,6 +266,7 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
     !timeError &&
     !externalUrlError &&
     !inviteError &&
+    !restrictionError &&
     (!form.hasPrerequisites || form.prerequisites.length > 0)
 
   const handleSubmit = async () => {
@@ -486,6 +502,15 @@ const CourseModal = ({ open, onClose, onSave, course, loading }) => {
             <option value="approval">Requer aprovação — aluno solicita e você aprova a entrada</option>
           </select>
         </div>
+
+        {/* Turma fechada para escola(s) com código de acesso (opcional) */}
+        <SchoolRestrictionFields
+          enabled={form.isRestricted}
+          schools={form.restrictedSchools}
+          accessCode={form.accessCode}
+          codeError={accessCodeError}
+          onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+        />
 
         {/* Pré-requisitos (opcional) */}
         <div className="space-y-3">

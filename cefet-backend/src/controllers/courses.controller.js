@@ -46,6 +46,7 @@ const {
   sendInvitations,
 } = require('../helpers/invitationHelper');
 const CourseInvitation = require('../models/CourseInvitation');
+const { resolveRestriction } = require('../helpers/schoolAccessHelper');
 
 const { notifyCourseStudents, removeNotificationsByRef, notifyFeedbackAvailable } = require('../services/notify');
 
@@ -85,6 +86,8 @@ const getCourses = async (req, res, next) => {
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
       .populate('prerequisites', 'title')
+      // Turma fechada: nomes das escolas para o aviso ao aluno (o código nunca sai aqui)
+      .populate('restrictedSchools', 'name city')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -170,10 +173,12 @@ const getAllCourses = async (req, res, next) => {
     const courses = await Course.find(filter)
       .populate('professor', 'name email')
       .populate('prerequisites', 'title status')
+      .populate('restrictedSchools', 'name city')
       .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .select('-materials');
+      // Painel de gestão: inclui o código de acesso das turmas fechadas
+      .select('-materials +accessCode');
 
     const total = await Course.countDocuments(filter);
     res.json({ success: true, data: { courses, total, page: Number(page), limit } });
@@ -186,8 +191,10 @@ const getCourse = async (req, res, next) => {
     await expireInvitations();
 
     const course = await Course.findById(req.params.id)
+      .select('+accessCode')
       .populate('professor', 'name email')
-      .populate('allowedProfessors', 'name email role');
+      .populate('allowedProfessors', 'name email role')
+      .populate('restrictedSchools', 'name city');
     if (!course) return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
     // Rascunhos (draft) são privados: só quem gerencia o curso pode vê-los.
@@ -208,6 +215,8 @@ const getCourse = async (req, res, next) => {
       delete data.certificateInstructor;
       delete data.certificateSignatureFont;
       delete data.certificateInstructorLockedAt;
+      // Código de acesso da turma fechada: só para quem gerencia o curso
+      delete data.accessCode;
     }
 
     if (data.externalUrl) {
@@ -592,6 +601,13 @@ const createCourse = async (req, res, next) => {
 
     const prerequisiteIds = await resolvePrerequisites(prerequisites);
 
+    // Turma fechada para escola(s): valida escolas e define o código de acesso
+    // (gera um automaticamente se o gestor não informou)
+    const restriction = await resolveRestriction({
+      restrictedSchools: req.body.restrictedSchools,
+      accessCode: req.body.accessCode,
+    });
+
     // Convites para a fila de espera de outro curso: valida ANTES de criar,
     // para não salvar o curso com um convite inválido (prazo, vagas, etc.)
     const preparedInvitations = req.body.invitations
@@ -638,6 +654,8 @@ const createCourse = async (req, res, next) => {
 
       ...normalizeExternal({ isExternal, externalUrl, externalMessage }),
 
+      ...restriction,
+
       imageUrl: imageUrl || null,
     });
 
@@ -658,6 +676,7 @@ const createCourse = async (req, res, next) => {
     );
 
     await course.populate('prerequisites', 'title status');
+    await course.populate('restrictedSchools', 'name city');
 
     const invitationsSent = preparedInvitations
       ? await sendInvitations({ course, prepared: preparedInvitations, actor: req.user })
@@ -679,7 +698,8 @@ const createCourse = async (req, res, next) => {
 
 const updateCourse = async (req, res, next) => {
   try {
-    const course = await Course.findById(req.params.id);
+    // +accessCode: mantém o código atual se a turma fechada for editada sem trocá-lo
+    const course = await Course.findById(req.params.id).select('+accessCode');
 
     if (!course) {
       return res.status(404).json({
@@ -737,6 +757,18 @@ const updateCourse = async (req, res, next) => {
         externalUrl: req.body.externalUrl ?? course.externalUrl,
         externalMessage: req.body.externalMessage ?? course.externalMessage,
       }));
+    }
+
+    // Turma fechada: só mexe se algum dos campos veio no body. Sem escolas,
+    // a turma volta a ser aberta e o código é apagado. Trocar o código não
+    // afeta quem já entrou (ele só é exigido na entrada).
+    const touchesRestriction = ['restrictedSchools', 'accessCode']
+      .some((f) => req.body[f] !== undefined);
+    if (touchesRestriction) {
+      Object.assign(updates, await resolveRestriction({
+        restrictedSchools: req.body.restrictedSchools ?? course.restrictedSchools,
+        accessCode: req.body.accessCode,
+      }, course.accessCode));
     }
 
     const prevStatus = course.status;
@@ -838,6 +870,9 @@ const updateCourse = async (req, res, next) => {
         runValidators: true,
       }
     )
+      // Resposta vai só para quem gerencia o curso: inclui o código de acesso
+      .select('+accessCode')
+      .populate('restrictedSchools', 'name city')
       .populate('professor', 'name email')
       .populate('prerequisites', 'title status')
       .populate(

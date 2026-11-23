@@ -1,8 +1,9 @@
 import api from './axios'
 
 // Aluno solicita entrada no curso
-export const requestEnrollmentAPI = (courseId) =>
-  api.post(`/courses/${courseId}/enrollment-requests`)
+// `accessCode`: obrigatório só em turmas fechadas para escola(s)
+export const requestEnrollmentAPI = (courseId, accessCode) =>
+  api.post(`/courses/${courseId}/enrollment-requests`, accessCode ? { accessCode } : {})
 
 // Aluno lista as próprias solicitações (todas, ou filtradas por status)
 export const getMyEnrollmentRequestsAPI = (status) =>

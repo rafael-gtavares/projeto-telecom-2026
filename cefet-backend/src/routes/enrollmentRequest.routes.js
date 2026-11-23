@@ -12,9 +12,10 @@ const { enroll } = require('../controllers/enrollments.controller');
 const verifyJWT = require('../middleware/auth');
 const requireCourseAccess = require('../middleware/courseAccess');
 const checkScheduleConflict = require('../middleware/scheduleConflict');
+const enrollLimiter = require('../middleware/enrollLimiter');
 
 // Aluno solicita entrada no curso
-router.post('/courses/:courseId/enrollment-requests', verifyJWT, checkScheduleConflict, requestEnrollment);
+router.post('/courses/:courseId/enrollment-requests', verifyJWT, enrollLimiter, checkScheduleConflict, requestEnrollment);
 
 // Aluno lista as próprias solicitações
 router.get('/enrollment-requests/my', verifyJWT, listMyRequests);

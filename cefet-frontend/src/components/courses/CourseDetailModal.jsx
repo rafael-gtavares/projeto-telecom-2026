@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send, Lock, ListChecks, Ban } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send, Lock, ListChecks, Ban, School, KeyRound } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Badge, Spinner } from '../ui/index'
@@ -10,9 +10,16 @@ import { enrollAPI, checkEnrollmentAPI, cancelEnrollmentAPI } from '../../api/co
 import { requestEnrollmentAPI, getMyEnrollmentRequestsAPI, cancelEnrollmentRequestAPI } from '../../api/enrollmentRequests'
 import { getCourseConflictsAPI } from '../../api/calendar'
 import { formatDateShort as formatDate } from '../../utils/formatDate' // dd/mm/aaaa
+import { isTeacher } from '../../utils/permissions'
+import {
+  isRestrictedCourse,
+  userBelongsToCourseSchools,
+  normalizeAccessCode,
+  formatSchoolNames,
+} from '../../utils/schoolAccess'
 
 const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange, onRequestCreated, onRequestCanceled, onScheduleConflict }) => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user, role } = useAuth()
   const navigate = useNavigate()
   const [enrollmentStatus, setEnrollmentStatus] = useState(null)
   const [waitlistPosition, setWaitlistPosition] = useState(null)
@@ -24,12 +31,15 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const [myRequest, setMyRequest] = useState(null)
   // Situação dos pré-requisitos do aluno: { met, missing: [{ _id, title }] }
   const [prereq, setPrereq] = useState(null)
+  // Código digitado pelo aluno (turma fechada para escola)
+  const [accessCode, setAccessCode] = useState('')
 
   const requiresApproval = course?.enrollmentType === 'approval'
 
   useEffect(() => {
     if (!open || !course) return
     setConfirmCancel(false)
+    setAccessCode('')
 
     // Já começa com o que o backend mandou na listagem; a busca abaixo atualiza
     setConflicts(course.scheduleConflicts || [])
@@ -94,6 +104,14 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const hasPrerequisites = prerequisiteList.length > 0
   const missingIds = new Set((prereq?.missing || []).map((m) => String(m._id)))
   const prerequisitesBlocked = hasPrerequisites && !!prereq && !prereq.met
+
+  // Turma fechada: escola do perfil + código. Professores/gestores não são
+  // barrados aqui (o backend libera quem gerencia o curso).
+  const restricted = isRestrictedCourse(course)
+  const enrollmentOpen = course.status !== 'closed' && course.status !== 'vagas_encerradas'
+  const schoolBlocked = restricted && enrollmentOpen && !isTeacher(role) && !userBelongsToCourseSchools(user, course)
+  const needsAccessCode = restricted && enrollmentOpen && !schoolBlocked && !isTeacher(role)
+  const codeMissing = needsAccessCode && !normalizeAccessCode(accessCode)
 
   const renderScheduleInfo = () => {
     const config = Array.isArray(course.scheduleConfig) ? course.scheduleConfig : []
@@ -200,7 +218,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const handleEnroll = async () => {
     try {
       setActionLoading(true)
-      const { data } = await enrollAPI(course._id)
+      const { data } = await enrollAPI(course._id, needsAccessCode ? normalizeAccessCode(accessCode) : undefined)
       if (data.waitlisted) {
         // Curso cheio — entrou na fila de espera
         setWaitlistPosition(data.waitlistPosition)
@@ -224,7 +242,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const handleRequestEnrollment = async () => {
     try {
       setActionLoading(true)
-      const { data } = await requestEnrollmentAPI(course._id)
+      const { data } = await requestEnrollmentAPI(course._id, needsAccessCode ? normalizeAccessCode(accessCode) : undefined)
       setMyRequest(data.data)
       onRequestCreated?.(course._id, data.data._id)
       setToast({ show: true, message: 'Solicitação enviada! Aguarde a aprovação do professor.' })
@@ -406,6 +424,20 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   )
                 })}
               </ul>
+            </div>
+          </div>
+        )}
+
+        {/* Turma fechada para escola(s) */}
+        {restricted && (
+          <div className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
+            <School size={18} className="text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-text-primary">
+              <p className="font-semibold mb-0.5">Turma fechada</p>
+              <p className="text-text-secondary">
+                Exclusiva para alunos de: <strong className="text-text-primary">{formatSchoolNames(course.restrictedSchools)}</strong>.
+                {' '}Para entrar, digite o código de acesso informado pelo professor.
+              </p>
             </div>
           </div>
         )}
@@ -638,10 +670,42 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </div>
                 </div>
               )}
+              {schoolBlocked && (
+                <div className="flex items-start gap-2 bg-error/5 border border-error/20 rounded-lg px-3 py-2.5">
+                  <School size={15} className="text-error flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-text-primary">
+                    <strong>Sua escola cadastrada não faz parte desta turma.</strong>{' '}
+                    Se você estuda em {formatSchoolNames(course.restrictedSchools)}, atualize sua escola em{' '}
+                    <Link to="/meu-perfil" className="text-primary font-semibold hover:underline" onClick={onClose}>
+                      Meu perfil
+                    </Link>.
+                  </p>
+                </div>
+              )}
+              {needsAccessCode && !prerequisitesBlocked && !scheduleBlocked && (
+                <div>
+                  <label htmlFor="course-access-code" className="block text-sm font-medium text-text-secondary mb-1.5">
+                    Código de acesso da turma
+                  </label>
+                  <div className="relative">
+                    <KeyRound size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                    <input
+                      id="course-access-code"
+                      type="text"
+                      value={accessCode}
+                      maxLength={20}
+                      autoComplete="off"
+                      onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                      className="input-field w-full pl-9 font-mono tracking-widest"
+                      placeholder="Informado pelo professor"
+                    />
+                  </div>
+                </div>
+              )}
               <Button
-                variant={scheduleBlocked ? 'secondary' : 'primary'}
-                className={`w-full py-4 text-lg ${scheduleBlocked ? 'border-error/40 text-error-text cursor-not-allowed' : ''}`}
-                disabled={course.status === 'closed' || course.status === 'vagas_encerradas' || prerequisitesBlocked || scheduleBlocked}
+                variant={scheduleBlocked || schoolBlocked ? 'secondary' : 'primary'}
+                className={`w-full py-4 text-lg ${scheduleBlocked || schoolBlocked ? 'border-error/40 text-error-text cursor-not-allowed' : ''}`}
+                disabled={course.status === 'closed' || course.status === 'vagas_encerradas' || prerequisitesBlocked || scheduleBlocked || schoolBlocked || codeMissing}
                 loading={actionLoading}
                 onClick={requiresApproval ? handleRequestEnrollment : handleEnroll}
               >
@@ -653,6 +717,8 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                       ? (<><Lock size={18} className="inline mr-1" /> Pré-requisitos pendentes</>)
                       : scheduleBlocked
                         ? (<><Ban size={18} className="inline mr-1" /> Conflito de horário</>)
+                        : schoolBlocked
+                          ? (<><School size={18} className="inline mr-1" /> Turma exclusiva</>)
                         : requiresApproval
                           ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
                           : isFull

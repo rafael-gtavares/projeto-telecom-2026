@@ -31,6 +31,7 @@ import FeedbacksTab from '../components/courses/admin/FeedbacksTab'
 
 import CandidatesTab from '../components/courses/admin/CandidatesTab'
 import InvitationsSection from '../components/courses/admin/InvitationsSection'
+import AccessCodeBanner from '../components/courses/admin/AccessCodeBanner'
 import { withInvitations } from '../utils/invitations'
 
 import { useConfirmModal } from '../hooks/useConfirmModal'
@@ -683,6 +684,9 @@ const AdminCourse = () => {
             </button>
           </div>
         </div>
+
+        {/* Turma fechada: escolas e código de acesso */}
+        <AccessCodeBanner course={course} />
 
         {/* Abas + conteúdo */}
         <div>

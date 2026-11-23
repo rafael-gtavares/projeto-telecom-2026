@@ -186,6 +186,23 @@ const courseSchema = new mongoose.Schema({
     },
   ],
 
+  // Turma fechada: só entra quem é de uma destas escolas E informa o código
+  // de acesso. Vazio = curso aberto a todos.
+  restrictedSchools: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+    },
+  ],
+
+  // Código de acesso da turma fechada. `select: false`: nunca sai nas
+  // listagens/populates — só é lido com .select('+accessCode') (gestores).
+  accessCode: {
+    type: String,
+    default: null,
+    select: false,
+  },
+
   isExternal: {
     type: Boolean,
     default: false,
@@ -261,13 +278,18 @@ courseSchema.methods.hasManageAccess = function (userId, userRole) {
 
   const id = userId.toString();
 
-  if (this.professor.toString() === id) {
+  // `professor`/`allowedProfessors` podem vir populados (documento) ou como
+  // ObjectId — compara sempre pelo _id. (Um documento populado não devolve o
+  // id em toString(), o que fazia o gestor não ser reconhecido no getCourse.)
+  const toId = (v) => String(v?._id ?? v);
+
+  if (toId(this.professor) === id) {
     return true;
   }
 
   if (
     this.allowedProfessors?.some(
-      professor => professor.toString() === id
+      professor => toId(professor) === id
     )
   ) {
     return true;

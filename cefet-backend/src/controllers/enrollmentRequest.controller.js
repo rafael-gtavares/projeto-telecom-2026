@@ -6,6 +6,7 @@ const { COURSE_STATUS } = require('../constants/courseStatus');
 const { notifyEnrollmentRequestResolved } = require('../services/notify');
 const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
 const { hasPendingInvitation } = require('../helpers/invitationHelper');
+const { checkSchoolAccess, sendAccessError } = require('../helpers/schoolAccessHelper');
 
 // POST /courses/:courseId/enrollment-requests
 // Aluno solicita entrada no curso.
@@ -14,7 +15,8 @@ const requestEnrollment = async (req, res, next) => {
     const { courseId } = req.params;
     const studentId = req.user.id;
 
-    const course = await Course.findById(courseId);
+    // +accessCode: necessário para validar turmas fechadas para escola(s)
+    const course = await Course.findById(courseId).select('+accessCode');
     if (!course) {
       return res.status(404).json({ success: false, message: 'Curso não encontrado.' });
     }
@@ -31,6 +33,16 @@ const requestEnrollment = async (req, res, next) => {
     if (alreadyEnrolled) {
       return res.status(409).json({ success: false, message: 'Você já está matriculado neste curso.' });
     }
+
+    // Turma fechada: escola do perfil + código de acesso já no pedido
+    // (a aprovação pelo professor não pede o código de novo)
+    const denied = await checkSchoolAccess({
+      course,
+      userId: studentId,
+      userRole: req.user.role,
+      accessCode: req.body?.accessCode,
+    });
+    if (denied) return sendAccessError(res, denied);
 
     // Quem tem convite pendente já tem vaga reservada: basta aceitar o convite
     if (await hasPendingInvitation(studentId, courseId)) {
