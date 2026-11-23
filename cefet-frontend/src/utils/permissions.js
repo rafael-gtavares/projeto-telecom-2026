@@ -63,6 +63,18 @@ export const getAssignableRoles = (actorRole) => {
  *  - admin só edita aluno/professor (não pode tocar em outro admin)
  *  - superadmin edita aluno/professor/admin
  */
+/**
+ * Quem pode corrigir nome e data de nascimento de outra pessoa
+ * (espelha updateUserPersonalInfo no backend):
+ *  - apenas admin ou superadmin
+ *  - dados de um superadmin só podem ser alterados por superadmin
+ */
+export const canEditUserPersonalInfo = (actorRole, targetRole) => {
+  if (!isAdmin(actorRole)) return false
+  if (targetRole === ROLES.SUPERADMIN) return isSuperAdmin(actorRole)
+  return true
+}
+
 export const canEditUserRole = (actorRole, targetRole) => {
   if (targetRole === ROLES.SUPERADMIN) return false
   if (isSuperAdmin(actorRole)) return true

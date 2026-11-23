@@ -5,6 +5,8 @@ import Button from '../ui/Button'
 import Input from '../ui/Input'
 import { Avatar } from '../ui/index'
 import { updateUserPersonalInfoAPI } from '../../api/users'
+import { useAuth } from '../../context/AuthContext'
+import { canEditUserPersonalInfo } from '../../utils/permissions'
 import {
   formatDateShort,
   formatDateForInput,
@@ -30,6 +32,7 @@ const todayInput = () => {
 // Modal "Dados cadastrais" — leitura de todos os dados e edição (apenas nome e
 // data de nascimento) dentro do próprio modal. A API valida tudo de novo no backend.
 const UserDetailModal = ({ open, user, schoolName, onClose, onUpdated }) => {
+  const { role: myRole } = useAuth()
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ name: '', birthDate: '' })
   const [saving, setSaving] = useState(false)
@@ -46,7 +49,10 @@ const UserDetailModal = ({ open, user, schoolName, onClose, onUpdated }) => {
 
   if (!user) return null
 
+  const canEdit = canEditUserPersonalInfo(myRole, user.role)
+
   const startEdit = () => {
+    if (!canEdit) return
     setForm({ name: user.name || '', birthDate: formatDateForInput(user.birthDate) })
     setError(null)
     setSaved(false)
@@ -145,7 +151,7 @@ const UserDetailModal = ({ open, user, schoolName, onClose, onUpdated }) => {
 
           {error && <p className="text-sm text-error-text">{error}</p>}
 
-          {editing ? (
+          {editing && canEdit ? (
             <div className="flex gap-3">
               <Button type="submit" className="flex-1" loading={saving}>
                 Salvar alterações
@@ -154,10 +160,14 @@ const UserDetailModal = ({ open, user, schoolName, onClose, onUpdated }) => {
                 Cancelar
               </Button>
             </div>
-          ) : (
+          ) : canEdit ? (
             <Button type="button" variant="secondary" className="w-full gap-2" onClick={startEdit}>
               <Pencil size={15} /> Editar nome e data de nascimento
             </Button>
+          ) : (
+            <p className="text-xs text-text-muted text-center">
+              Os dados de um superadministrador só podem ser alterados por outro superadministrador.
+            </p>
           )}
         </form>
       </div>

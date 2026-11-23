@@ -146,8 +146,9 @@ const updateUserPersonalInfo = async (req, res, next) => {
     if (!target)
       return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
 
-    // Mesma proteção do cargo: admin comum não altera superadministrador
-    if (req.user.role === ROLES.ADMIN && target.role === ROLES.SUPERADMIN)
+    // Nome e nascimento de um superadministrador só podem ser alterados por
+    // outro superadministrador (admin comum recebe 403)
+    if (target.role === ROLES.SUPERADMIN && req.user.role !== ROLES.SUPERADMIN)
       return res.status(403).json({ success: false, message: 'Você não pode alterar um superadministrador.' });
 
     const name = parseName(req.body.name);
