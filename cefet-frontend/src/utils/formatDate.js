@@ -2,9 +2,9 @@ import { ROLE_LABELS } from '../constants/roles'
 
 export const formatDate = (dateStr) => {
   if (!dateStr) return ''
-  
+
   const date = new Date(dateStr)
-  
+
   const dia = String(date.getUTCDate()).padStart(2, '0')
   const meses = [
     "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -14,6 +14,20 @@ export const formatDate = (dateStr) => {
   const ano = date.getUTCFullYear()
 
   return `${dia} de ${mes} de ${ano}`
+}
+
+// Formato compacto dd/mm/aaaa. Usa UTC como formatDate (datas de curso/nascimento
+// são gravadas à meia-noite UTC), então o dia exibido não muda com o fuso do navegador.
+export const formatDateShort = (dateStr) => {
+  if (!dateStr) return ''
+
+  const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const dia = String(date.getUTCDate()).padStart(2, '0')
+  const mes = String(date.getUTCMonth() + 1).padStart(2, '0')
+
+  return `${dia}/${mes}/${date.getUTCFullYear()}`
 }
 
 // Para timestamps reais (ex.: createdAt): usa o fuso local do navegador, para que
@@ -43,6 +57,20 @@ export const getIncomeLabel = (val) => ({
   ate_1sm: 'Até 1 salário mínimo', '1_a_2sm': 'De 1 a 2 salários mínimos',
   '2_a_3sm': 'De 2 a 3 salários mínimos', '3_a_5sm': 'De 3 a 5 salários mínimos',
   acima_5sm: 'Acima de 5 salários mínimos', prefiro_nao_informar: 'Prefiro não informar',
+}[val] || val)
+
+export const getGenderLabel = (val) => ({
+  masculino: 'Masculino', feminino: 'Feminino', prefiro_nao_informar: 'Prefiro não informar',
+}[val] || val)
+
+export const getSchoolLevelLabel = (val) => ({
+  ensino_fundamental: 'Ensino Fundamental',
+  '1_ou_2_ano_em': '1º ou 2º Ano do Ensino Médio',
+  ultimo_ano_em: 'Último ano do Ensino Médio',
+  ensino_medio_finalizado: 'Ensino Médio Finalizado',
+  eja: 'EJA',
+  superior_completo: 'Ensino Superior Completo',
+  superior_incompleto: 'Ensino Superior Incompleto',
 }[val] || val)
 
 export const parseUTCDate = (dateStr) => {

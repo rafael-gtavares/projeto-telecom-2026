@@ -11,6 +11,7 @@ const { sendCertificateByEmail } = require('../services/certificateDelivery');
 const { recomputeEnrollment } = require('../helpers/gradeCompute');
 const { getPrerequisiteStatus, sendPrerequisitesNotMet } = require('../helpers/prerequisiteHelper');
 const { resolveCertificateSigner, lockCertificateInstructor } = require('../helpers/certificateInstructorHelper');
+const { getScheduleConflicts, sendScheduleConflict } = require('../helpers/enrollmentConflictHelper');
 
 // POST /enrollments
 const enroll = async (req, res, next) => {
@@ -56,6 +57,16 @@ const enroll = async (req, res, next) => {
       }
 
       throw e;
+    }
+
+    // 1b) Revalida o conflito de horário logo após criar a matrícula. O middleware
+    // já checou antes, mas duas inscrições simultâneas (cursos A e B) podem passar
+    // juntas por ele; aqui cada uma enxerga a outra e desfaz a própria. Roda antes
+    // de ocupar a vaga, então não há contador para desfazer.
+    const raceConflicts = await getScheduleConflicts(req.user.id, courseId);
+    if (raceConflicts.length) {
+      await Enrollment.deleteOne({ _id: enrollment._id });
+      return sendScheduleConflict(res, raceConflicts, { forStudent: !req._resolvingRequest });
     }
 
     // 2) Tenta ocupar uma vaga atomicamente
@@ -388,7 +399,7 @@ const releaseCertificate = async (req, res, next) => {
       await lockCertificateInstructor(course);
       await enrollment.save();
       await notifyCertificate({ course: course._id, studentId: enrollment.user, createdBy: req.user.id });
-      
+
       // Emissão já gravada: o envio nunca lança, então não compromete a resposta
       if (!wasIssued) emailSent = await sendCertificateByEmail({ enrollment, course });
     } else {

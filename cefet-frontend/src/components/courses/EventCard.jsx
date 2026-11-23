@@ -1,7 +1,7 @@
-import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X, Lock } from 'lucide-react'
+import { Calendar, Clock, User, Users, CheckCircle, MapPin, Hourglass, Send, X, Lock, Ban } from 'lucide-react'
 import { Badge } from '../ui/index'
 import Button from '../ui/Button'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateShort as formatDate } from '../../utils/formatDate' // dd/mm/aaaa
 import { formatModality } from '../../utils/formatModality'
 
 const CARD_GRADIENT = 'from-primary to-primary-light'
@@ -29,6 +29,16 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
   const isPrereqBlocked =
     course.prerequisitesMet === false &&
     !isEnrolled && !isWaitlisted && !isPendingRequest && !isVacanciesClosed
+
+  // Conflito de horário calculado pelo backend (mesma regra da inscrição).
+  // Quem já está inscrito/na fila/com solicitação pendente mantém o estado atual.
+  const isScheduleBlocked =
+    course.hasScheduleConflict === true &&
+    !isEnrolled && !isWaitlisted && !isPendingRequest && !isVacanciesClosed && !isPrereqBlocked
+  const conflictTitles = (course.scheduleConflicts ?? [])
+    .map(c => c.course?.title)
+    .filter(Boolean)
+    .join(', ')
 
   const slots = course.availableSlots ?? (course.maxSlots - course.enrolledCount)
   const isFull = slots <= 0
@@ -114,9 +124,10 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
         </div>
 
         <Button
-          variant={(isEnrolled || isWaitlisted || isPendingRequest || isVacanciesClosed || isPrereqBlocked) ? 'secondary' : 'primary'}
-          disabled={isVacanciesClosed && !isEnrolled && !isWaitlisted && !isPendingRequest}
-          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : isPendingRequest ? 'border-primary/50 text-primary' : isPrereqBlocked ? 'border-warning/50 text-warning-text' : ''}`}
+          variant={(isEnrolled || isWaitlisted || isPendingRequest || isVacanciesClosed || isPrereqBlocked || isScheduleBlocked) ? 'secondary' : 'primary'}
+          disabled={(isVacanciesClosed && !isEnrolled && !isWaitlisted && !isPendingRequest) || isScheduleBlocked}
+          title={isScheduleBlocked ? 'Você já está inscrito em outro curso com atividades neste mesmo horário.' : undefined}
+          className={`w-full text-sm py-2.5 ${isEnrolled ? 'border-green-500/50 text-green-600' : isWaitlisted ? 'border-warning/50 text-warning-text' : isPendingRequest ? 'border-primary/50 text-primary' : isPrereqBlocked ? 'border-warning/50 text-warning-text' : isScheduleBlocked ? 'border-error/40 text-error-text cursor-not-allowed' : ''}`}
         >
           {isEnrolled ? (
             <span className="flex items-center justify-center gap-2">
@@ -138,6 +149,10 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
             <span className="flex items-center justify-center gap-2">
               <Lock size={16} /> Pré-requisitos pendentes
             </span>
+          ) : isScheduleBlocked ? (
+            <span className="flex items-center justify-center gap-2">
+              <Ban size={16} /> Conflito de horário
+            </span>
           ) : isFull ? (
             'Entrar na fila de espera'
           ) : course.enrollmentType === 'approval' ? (
@@ -149,8 +164,16 @@ const EventCard = ({ course, onOpenModal, onCancelRequest, cancelingRequest }) =
           )}
         </Button>
 
+        {/* Motivo do bloqueio por conflito de horário */}
+        {isScheduleBlocked && (
+          <p className="text-[11px] text-error-text text-center mt-2">
+            Você já está inscrito em outro curso neste mesmo horário{conflictTitles ? `: ${conflictTitles}` : ''}.
+            {' '}Cancele a inscrição nele para participar deste curso.
+          </p>
+        )}
+
         {/* Aviso: vaga só com desistência */}
-        {isFull && !isVacanciesClosed && !isEnrolled && !isPendingRequest && !isPrereqBlocked && course.enrollmentType !== 'approval' && (
+        {isFull && !isVacanciesClosed && !isEnrolled && !isPendingRequest && !isPrereqBlocked && !isScheduleBlocked && course.enrollmentType !== 'approval' && (
           <p className="text-[11px] text-text-muted text-center mt-2">
             {isWaitlisted
               ? 'Você assume a vaga somente se houver desistência.'

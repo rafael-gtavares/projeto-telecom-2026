@@ -3,7 +3,7 @@ const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
 const { ENROLLMENT_STATUS } = require('../constants/enrollmentStatus');
 const { COURSE_STATUS } = require('../constants/courseStatus');
-const { findConflicts } = require('../helpers/scheduleConflicts');
+const { getScheduleConflicts } = require('../helpers/enrollmentConflictHelper');
 
 // Inscrições que ocupam a agenda do aluno (não conta fila de espera nem cancelada)
 const ACTIVE_STATUSES = [ENROLLMENT_STATUS.ENROLLED, ENROLLMENT_STATUS.ACTIVE];
@@ -53,39 +53,18 @@ const getCalendar = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /enrollments/conflicts/:courseId — choques entre o curso-alvo e a agenda
-// atual do aluno logado. Usado para avisar antes da inscrição.
+// GET /enrollments/conflicts/:courseId — conflitos de horário (mesma data e
+// faixa de horário) entre o curso-alvo e as matrículas ativas do aluno logado.
+// Usa a mesma regra do bloqueio na inscrição (helpers/enrollmentConflictHelper).
 const getCourseConflicts = async (req, res, next) => {
   try {
     const { courseId } = req.params;
 
-    const targetCourse = await Course.findById(courseId).select(COURSE_FIELDS).lean();
+    const targetCourse = await Course.findById(courseId).select('_id').lean();
     if (!targetCourse)
       return res.status(404).json({ success: false, message: 'Curso não encontrado' });
 
-    const enrollments = await Enrollment.find(
-      { user: req.user.id, status: { $in: ACTIVE_STATUSES }, course: { $ne: courseId } },
-      'course'
-    ).lean();
-
-    const otherIds = enrollments.map(e => String(e.course));
-    if (otherIds.length === 0)
-      return res.json({ success: true, data: { conflicts: [] } });
-
-    const [targetLessons, otherCourses, otherLessons] = await Promise.all([
-      Lesson.find({ course: courseId }).select(LESSON_FIELDS).lean(),
-      Course.find({ _id: { $in: otherIds } }).select(COURSE_FIELDS).lean(),
-      Lesson.find({ course: { $in: otherIds } }).select(LESSON_FIELDS).lean(),
-    ]);
-
-    const lessonsByCourse = new Map();
-    for (const l of otherLessons) {
-      const key = String(l.course);
-      if (!lessonsByCourse.has(key)) lessonsByCourse.set(key, []);
-      lessonsByCourse.get(key).push(l);
-    }
-
-    const conflicts = findConflicts(targetCourse, targetLessons, otherCourses, lessonsByCourse);
+    const conflicts = await getScheduleConflicts(req.user.id, courseId);
     res.json({ success: true, data: { conflicts } });
   } catch (err) { next(err); }
 };

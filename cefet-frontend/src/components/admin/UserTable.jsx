@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, Eye } from 'lucide-react'
 import { Avatar, Badge } from '../ui/index'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import UserEnrollmentsModal from './UserEnrollmentsModal'
+import UserDetailModal from './UserDetailModal'
 import { getRoleLabel } from '../../utils/formatDate'
 import { useAuth } from '../../context/AuthContext'
 import { canEditUserRole, getAssignableRoles } from '../../utils/permissions'
@@ -20,13 +21,19 @@ const UserTable = ({
   schools = [],
   onRoleChange,
   loading,
-  onToggleEditPermission
+  onToggleEditPermission,
+  onUserUpdated
 }) => {
   const { role: myRole, user: me } = useAuth()
 
   const [confirm, setConfirm] = useState(null)
   const [permissionConfirm, setPermissionConfirm] = useState(null)
   const [enrollmentsUser, setEnrollmentsUser] = useState(null)
+
+  const [detailUserId, setDetailUserId] = useState(null)
+
+  // Sempre o registro mais novo da lista (reflete a edição logo após salvar)
+  const detailUser = users.find(u => u._id === detailUserId) || null
 
   const assignableRoles = getAssignableRoles(myRole)
 
@@ -83,6 +90,7 @@ const UserTable = ({
                 'Cargo',
                 'Permissão',
                 'Matrículas',
+                'Dados',
               ].map(h => (
                 <th
                   key={h}
@@ -178,6 +186,18 @@ const UserTable = ({
                   </button>
                 </td>
 
+                {/* DADOS CADASTRAIS */}
+                <td className="py-3 pr-4 text-center">
+                  <button
+                    onClick={() => setDetailUserId(u._id)}
+                    title="Ver dados cadastrais"
+                    aria-label={`Ver dados cadastrais de ${u.name}`}
+                    className="inline-flex items-center justify-center w-8 h-8 text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 rounded-full transition-all"
+                  >
+                    <Eye size={15} />
+                  </button>
+                </td>
+
               </tr>
             ))}
           </tbody>
@@ -268,6 +288,15 @@ const UserTable = ({
           </div>
         )}
       </Modal>
+
+      {/* ================= DADOS CADASTRAIS MODAL ================= */}
+      <UserDetailModal
+        open={!!detailUser}
+        user={detailUser}
+        schoolName={detailUser ? getSchoolName(detailUser) : null}
+        onClose={() => setDetailUserId(null)}
+        onUpdated={onUserUpdated}
+      />
 
       {/* ================= MATRÍCULAS MODAL ================= */}
       <UserEnrollmentsModal

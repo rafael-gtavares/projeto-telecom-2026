@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send, Lock, ListChecks } from 'lucide-react'
+import { Calendar, Clock, User, Users, LogIn, CheckCircle, XCircle, MapPin, Info, Hourglass, AlertTriangle, Send, Lock, ListChecks, Ban } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import { Badge, Spinner } from '../ui/index'
@@ -9,10 +9,9 @@ import { useAuth } from '../../context/AuthContext'
 import { enrollAPI, checkEnrollmentAPI, cancelEnrollmentAPI } from '../../api/courses'
 import { requestEnrollmentAPI, getMyEnrollmentRequestsAPI, cancelEnrollmentRequestAPI } from '../../api/enrollmentRequests'
 import { getCourseConflictsAPI } from '../../api/calendar'
-import { formatDate } from '../../utils/formatDate'
-import { WEEKDAY_LABELS } from '../../utils/scheduleConflicts'
+import { formatDateShort as formatDate } from '../../utils/formatDate' // dd/mm/aaaa
 
-const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange, onRequestCreated, onRequestCanceled }) => {
+const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuccess, onWaitlistChange, onRequestCreated, onRequestCanceled, onScheduleConflict }) => {
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [enrollmentStatus, setEnrollmentStatus] = useState(null)
@@ -31,7 +30,10 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   useEffect(() => {
     if (!open || !course) return
     setConfirmCancel(false)
-    setConflicts([])
+
+    // Já começa com o que o backend mandou na listagem; a busca abaixo atualiza
+    setConflicts(course.scheduleConflicts || [])
+
     setMyRequest(null)
     setPrereq(null)
 
@@ -85,6 +87,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
   const occupancyPercent = Math.min(100, (course.enrolledCount / course.maxSlots) * 100)
   const isMultiDay = new Date(course.startDate).toDateString() !== new Date(course.endDate).toDateString()
   const prerequisiteList = course.prerequisites || []
+  const scheduleBlocked = conflicts.length > 0 && course.status !== 'closed' && course.status !== 'vagas_encerradas'
   const hasPrerequisites = prerequisiteList.length > 0
   const missingIds = new Set((prereq?.missing || []).map((m) => String(m._id)))
   const prerequisitesBlocked = hasPrerequisites && !!prereq && !prereq.met
@@ -181,6 +184,16 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
     }
   }
 
+  // Se o backend recusar por conflito de horário (ex.: matrícula feita em outra aba),
+  // atualiza o modal e o card com os cursos conflitantes
+  const handleScheduleError = (err) => {
+    if (err.response?.data?.code === 'SCHEDULE_CONFLICT') {
+      const list = err.response.data.conflicts || []
+      setConflicts(list)
+      onScheduleConflict?.(course._id, list)
+    }
+  }
+
   const handleEnroll = async () => {
     try {
       setActionLoading(true)
@@ -197,6 +210,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       }
     } catch (err) {
       handlePrereqError(err)
+      handleScheduleError(err)
       setToast({ show: true, message: err.response?.data?.message || 'Erro ao se inscrever' })
     } finally {
       setActionLoading(false)
@@ -212,6 +226,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
       onRequestCreated?.(course._id, data.data._id)
       setToast({ show: true, message: 'Solicitação enviada! Aguarde a aprovação do professor.' })
     } catch (err) {
+      handleScheduleError(err)
       setToast({ show: true, message: err.response?.data?.message || 'Erro ao solicitar entrada' })
     } finally {
       setActionLoading(false)
@@ -573,7 +588,7 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </p>
                 </div>
               )}
-              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && !prerequisitesBlocked && (
+              {isFull && course.status !== 'closed' && course.status !== 'vagas_encerradas' && !requiresApproval && !prerequisitesBlocked && !scheduleBlocked(
                 <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2.5">
                   <AlertTriangle size={15} className="text-warning-text flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-primary">
@@ -590,35 +605,37 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                   </p>
                 </div>
               )}
-              {conflicts.length > 0 && course.status !== 'closed' && course.status !== 'vagas_encerradas' && (
+              {scheduleBlocked && (
                 <div className="flex items-start gap-2 bg-error/5 border border-error/20 rounded-lg px-3 py-2.5">
-                  <AlertTriangle size={15} className="text-error flex-shrink-0 mt-0.5" />
+                  <Ban size={15} className="text-error flex-shrink-0 mt-0.5" />
                   <div className="text-xs text-text-primary">
                     <p className="mb-1">
-                      <strong>Conflito de horário</strong> com {conflicts.length === 1 ? 'um curso que você já faz' : 'cursos que você já faz'}:
+                      <strong>Conflito de horário.</strong> Você já está inscrito em outro curso que possui
+                      atividades neste mesmo horário. Para participar deste curso, é necessário cancelar sua
+                      inscrição no curso conflitante.
                     </p>
                     <ul className="space-y-0.5">
                       {conflicts.map((c) => (
                         <li key={c.course._id} className="text-text-secondary">
                           <span className="font-medium text-text-primary">{c.course.title}</span>
                           {' — '}
-                          {c.slots.map((s, i) => (
+                          {c.slots.slice(0, 3).map((s, i) => (
                             <span key={i}>
                               {i > 0 && '; '}
-                              {WEEKDAY_LABELS[s.weekday]} {s.startTime}–{s.endTime}
+                              {formatDate(s.date)} {s.startTime}–{s.endTime}
                             </span>
                           ))}
+                          {c.slots.length > 3 && ` e mais ${c.slots.length - 3}`}
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-1 text-text-muted">Você ainda pode se inscrever, mas os horários se sobrepõem.</p>
                   </div>
                 </div>
               )}
               <Button
-                variant="primary"
-                className="w-full py-4 text-lg"
-                disabled={course.status === 'closed' || course.status === 'vagas_encerradas' || prerequisitesBlocked}
+                variant={scheduleBlocked ? 'secondary' : 'primary'}
+                className={`w-full py-4 text-lg ${scheduleBlocked ? 'border-error/40 text-error-text cursor-not-allowed' : ''}`}
+                disabled={course.status === 'closed' || course.status === 'vagas_encerradas' || prerequisitesBlocked || scheduleBlocked}
                 loading={actionLoading}
                 onClick={requiresApproval ? handleRequestEnrollment : handleEnroll}
               >
@@ -628,6 +645,10 @@ const CourseDetailModal = ({ open, onClose, course, onEnrollSuccess, onCancelSuc
                     ? 'Vagas encerradas'
                     : prerequisitesBlocked
                       ? (<><Lock size={18} className="inline mr-1" /> Pré-requisitos pendentes</>)
+                        ? (<><Lock size={18} className="inline mr-1" /> Pré-requisitos pendentes</>)
+                        : scheduleBlocked
+                          ? (<><Ban size={18} className="inline mr-1" /> Conflito de horário</>)
+                          : requiresApproval
                       : requiresApproval
                         ? (<><Send size={18} className="inline mr-1" /> Solicitar vaga</>)
                         : isFull

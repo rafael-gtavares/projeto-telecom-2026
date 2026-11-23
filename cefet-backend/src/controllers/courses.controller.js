@@ -37,6 +37,8 @@ const {
   getPrerequisiteStatusMap,
 } = require('../helpers/prerequisiteHelper');
 
+const { getConflictsForCourses } = require('../helpers/enrollmentConflictHelper');
+
 const { notifyCourseStudents, removeNotificationsByRef, notifyFeedbackAvailable } = require('../services/notify');
 
 // Normaliza os campos de plataforma externa: link e mensagem só são mantidos
@@ -86,6 +88,7 @@ const getCourses = async (req, res, next) => {
     let waitlistedIds = new Set();
     let pendingRequestMap = new Map(); // courseId -> requestId
     let prereqMap = new Map(); // courseId -> { met, missing }  
+    let conflictMap = new Map(); // courseId -> [{ course: { _id, title }, slots }]
     if (req.user?.id) {
       const enrollments = await Enrollment.find(
         { user: req.user.id, course: { $in: courses.map(c => c._id) } },
@@ -103,10 +106,16 @@ const getCourses = async (req, res, next) => {
       for (const r of pendingRequests) pendingRequestMap.set(r.course.toString(), r._id.toString());
 
       prereqMap = await getPrerequisiteStatusMap(req.user.id, courses);
+
+      // Conflitos de horário com as matrículas ativas do aluno (regra única, no backend)
+      conflictMap = await getConflictsForCourses(req.user.id, courses.map(c => c._id));
     }
 
     const coursesWithEnrollment = courses.map(c => {
       const prereq = prereqMap.get(c._id.toString());
+      // Quem já está inscrito/na fila deste curso não é "bloqueado" por ele
+      const alreadyIn = enrolledIds.has(c._id.toString()) || waitlistedIds.has(c._id.toString());
+      const scheduleConflicts = alreadyIn ? [] : (conflictMap.get(c._id.toString()) || []);
       return {
         ...c.toJSON(),
         isEnrolled: enrolledIds.has(c._id.toString()),
@@ -116,6 +125,8 @@ const getCourses = async (req, res, next) => {
         // null = visitante (não dá para saber); true/false = aluno logado
         prerequisitesMet: prereq ? prereq.met : null,
         missingPrerequisites: prereq ? prereq.missing : [],
+        hasScheduleConflict: scheduleConflicts.length > 0,
+        scheduleConflicts,
       };
     });
 

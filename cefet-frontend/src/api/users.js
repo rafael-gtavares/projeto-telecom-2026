@@ -6,6 +6,7 @@ export const updateSignatureAPI = (data) => api.put('/users/me/signature', data)
 export const getUsersAPI = (params) => api.get('/users', { params })
 export const getUsersBaseAPI = (params) => api.get('/users/base')
 export const updateUserRoleAPI = (id, role) => api.put(`/users/${id}/role`, { role })
+export const updateUserPersonalInfoAPI = (id, data) => api.put(`/users/${id}/personal-info`, data)
 export const updateEditPermissionAPI = (id, canEditPersonalInfo) => api.put(`/users/${id}/editPermission`, canEditPersonalInfo)
 export const getAdminStatsAPI = (period) => api.get(`/admin/stats?period=${period}`)
 

@@ -97,6 +97,13 @@ const Home = () => {
     setVisibleCourses(3)
   }
 
+  // Rebusca a listagem para atualizar vagas e conflitos de horário de todos os cards
+  // (uma matrícula nova ou cancelada muda o bloqueio dos outros cursos)
+  const refreshCourses = () =>
+    getCoursesAPI({ status: ['published', 'vagas_encerradas'] })
+      .then(r => setCourses(r.data.data.courses))
+      .catch(() => { })
+
   const handleOpenModal = (course) => {
     setSelectedCourse(course)
     setModalOpen(true)
@@ -109,6 +116,7 @@ const Home = () => {
       return { ...c, isEnrolled: true, enrolledCount, availableSlots: c.maxSlots - enrolledCount }
     }))
     setToast({ show: true, message: 'Inscrição confirmada com sucesso! 🎉' })
+    refreshCourses()
   }
 
   const handleCancelSuccess = (courseId, result = {}) => {
@@ -119,6 +127,7 @@ const Home = () => {
       return { ...c, isEnrolled: false, enrolledCount, availableSlots: c.maxSlots - enrolledCount }
     }))
     setToast({ show: true, message: 'Inscrição cancelada.' })
+    refreshCourses()
   }
 
   // Entrar/sair da fila de espera — atualiza o botão do card na hora (sem F5)
@@ -142,6 +151,13 @@ const Home = () => {
     } finally {
       setCancelingRequest(null)
     }
+  }
+
+  // Chamado pelo CourseDetailModal quando o backend recusa por conflito de horário
+  const handleScheduleConflict = (courseId, conflicts) => {
+    setCourses(prev => prev.map(c =>
+      c._id === courseId ? { ...c, hasScheduleConflict: true, scheduleConflicts: conflicts } : c
+    ))
   }
 
   // Chamado pelo CourseDetailModal quando o aluno solicita vaga com sucesso
@@ -471,6 +487,7 @@ const Home = () => {
         onWaitlistChange={handleWaitlistChange}
         onRequestCreated={handleRequestCreated}
         onRequestCanceled={handleRequestCanceled}
+        onScheduleConflict={handleScheduleConflict}
       />
 
       <Toast

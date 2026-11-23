@@ -1,6 +1,6 @@
 import { Edit2, Trash2, Calendar as CalendarIcon, Clock, BookOpen, ChevronRight } from 'lucide-react'
 import { Badge } from '../ui/index'
-import { formatDate } from '../../utils/formatDate'
+import { formatDateShort as formatDate } from '../../utils/formatDate' // dd/mm/aaaa
 
 const statusMap = {
   draft: ['gray', 'Rascunho'],

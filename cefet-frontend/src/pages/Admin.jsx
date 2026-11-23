@@ -28,6 +28,7 @@ import SchoolChartCard from '../components/admin/charts/SchoolChartCard'
 // Tables
 import CourseTable from '../components/admin/CourseTable'
 import UserTable from '../components/admin/UserTable'
+import CourseFilter from '../components/admin/CourseFilter'
 import AdminFeedbacksPanel from '../components/admin/AdminFeedbacksPanel'
 
 // Manager
@@ -58,7 +59,8 @@ import {
   createCourseAPI,
   updateCourseAPI,
   deleteCourseAPI,
-  getUserEnrollmentsAPI
+  getUserEnrollmentsAPI,
+  getPrerequisiteOptionsAPI
 } from '../api/courses'
 
 import {
@@ -67,8 +69,6 @@ import {
   getAdminStatsAPI,
   updateEditPermissionAPI
 } from '../api/users'
-
-
 
 // Mock
 import { mockCourses } from '../mockData/courses'
@@ -102,6 +102,8 @@ const Admin = () => {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [schoolFilter, setSchoolFilter] = useState('all')
+  const [courseFilter, setCourseFilter] = useState('all')
+  const [courseOptions, setCourseOptions] = useState([]) // cursos do filtro (id + título)
   const [courseSearch, setCourseSearch] = useState('')
 
   const [courseModal, setCourseModal] = useState({
@@ -212,21 +214,38 @@ const Admin = () => {
 
     setLoad('users', true)
 
+    // Evita que a resposta de uma busca antiga sobrescreva a de uma mais nova
+    let active = true
+
     const timeout = setTimeout(() => {
-      const params = {}
+      // Todos os filtros viajam juntos e o backend os combina (AND)
+      const params = { limit: 100 }
       if (search.trim()) params.search = search.trim()
       if (roleFilter !== 'all') params.role = roleFilter
       if (schoolFilter !== 'all') params.school = schoolFilter
+      if (courseFilter !== 'all') params.course = courseFilter
 
       getUsersAPI(params)
-        .then(response => { setUsers(response.data.data.users) })
-        .catch(() => { setUsers([]) })
-        .finally(() => { setLoad('users', false) })
+        .then(response => { if (active) setUsers(response.data.data.users) })
+        .catch(() => { if (active) setUsers([]) })
+        .finally(() => { if (active) setLoad('users', false) })
     }, 300)  // debounce de 300ms para não disparar a cada tecla
 
-    return () => clearTimeout(timeout)
+    return () => {
+      active = false
+      clearTimeout(timeout)
+    }
 
-  }, [tab, role, search, roleFilter, schoolFilter])
+  }, [tab, role, search, roleFilter, schoolFilter, courseFilter])
+
+  // Opções do filtro de cursos (todos os cursos da plataforma, em ordem alfabética)
+  useEffect(() => {
+    if (tab !== 'usuarios' || !canManageUsers(role)) return
+
+    getPrerequisiteOptionsAPI()
+      .then(response => setCourseOptions(response.data.data || []))
+      .catch(() => setCourseOptions([]))
+  }, [tab, role])
 
 
   // ======================================================
@@ -403,6 +422,16 @@ const Admin = () => {
     logout()
 
     navigate('/')
+  }
+
+  // Depois de salvar nome/nascimento no modal: troca o registro na lista e
+  // reordena por nome (a ordem alfabética continua valendo sem recarregar)
+  const handleUserUpdated = (updated) => {
+    setUsers(prev =>
+      prev
+        .map(user => (user._id === updated._id ? updated : user))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { sensitivity: 'base' }))
+    )
   }
 
   const handleToggleEditPermission = async (id, value) => {
@@ -681,13 +710,14 @@ const Admin = () => {
                   Usuários
                 </h1>
 
-                <div className="card overflow-hidden mb-2">
+                {/* Sem overflow-hidden: a lista do filtro de cursos abre por cima do card */}
+                <div className="card mb-2">
 
                   <div className="p-4 border-b border-border">
-                    <div className="flex gap-3 flex-wrap">
+                    <div className="flex flex-col lg:flex-row gap-3">
 
-                      {/* Campo de busca — ocupa o espaço disponível */}
-                      <div className="relative flex-1 min-w-[200px]">
+                      {/* Busca geral — largura fixa no desktop para dar espaço aos filtros */}
+                      <div className="relative w-full lg:w-64 lg:flex-shrink-0">
                         <Search
                           size={15}
                           className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
@@ -700,32 +730,41 @@ const Admin = () => {
                         />
                       </div>
 
-                      {/* Select de filtro por role */}
-                      <select
-                        value={roleFilter}
-                        onChange={e => setRoleFilter(e.target.value)}
-                        className="input-field text-sm py-2.5 w-auto"
-                      >
-                        <option value="all">Todos os usuários</option>
-                        <option value="aluno">Alunos</option>
-                        <option value="professor">Professores</option>
-                        <option value="admin">Admins</option>
-                        <option value="superadmin">Superadmins</option>
-                      </select>
+                      {/* Filtros: 1 coluna no celular, 3 colunas a partir de sm */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-w-0">
 
-                      {/* Select de filtro por escola */}
-                      <select
-                        value={schoolFilter}
-                        onChange={e => setSchoolFilter(e.target.value)}
-                        className="input-field text-sm py-2.5 w-auto"
-                      >
-                        <option value="all">Todas as escolas</option>
-                        <option value="__none__">Sem escola</option>
-                        {schools.map(s => (
-                          <option key={s._id} value={s._id}>{s.name}</option>
-                        ))}
-                      </select>
+                        <select
+                          value={roleFilter}
+                          onChange={e => setRoleFilter(e.target.value)}
+                          className="input-field text-sm py-2.5 w-full min-w-0"
+                        >
+                          <option value="all">Todos os usuários</option>
+                          <option value="aluno">Alunos</option>
+                          <option value="professor">Professores</option>
+                          <option value="admin">Admins</option>
+                          <option value="superadmin">Superadmins</option>
+                        </select>
 
+                        <select
+                          value={schoolFilter}
+                          onChange={e => setSchoolFilter(e.target.value)}
+                          className="input-field text-sm py-2.5 w-full min-w-0"
+                        >
+                          <option value="all">Todas as escolas</option>
+                          <option value="__none__">Sem escola</option>
+                          {schools.map(s => (
+                            <option key={s._id} value={s._id}>{s.name}</option>
+                          ))}
+                        </select>
+
+                        {/* Filtro por curso (com busca dentro das opções) */}
+                        <CourseFilter
+                          courses={courseOptions}
+                          value={courseFilter}
+                          onChange={setCourseFilter}
+                        />
+
+                      </div>
                     </div>
                   </div>
 
@@ -745,6 +784,7 @@ const Admin = () => {
                         onRoleChange={handleRoleChange}
                         loading={loading.role}
                         onToggleEditPermission={handleToggleEditPermission}
+                        onUserUpdated={handleUserUpdated}
                       />
                     )}
 

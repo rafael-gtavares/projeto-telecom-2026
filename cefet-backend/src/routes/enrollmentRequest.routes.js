@@ -7,13 +7,14 @@ const {
   finalizeApproval,
   rejectRequest,
   cancelRequest,
-} = require('../controllers/enrollmentRequest');
+} = require('../controllers/enrollmentRequest.controller');
 const { enroll } = require('../controllers/enrollments.controller');
 const verifyJWT = require('../middleware/auth');
 const requireCourseAccess = require('../middleware/courseAccess');
+const checkScheduleConflict = require('../middleware/scheduleConflict');
 
 // Aluno solicita entrada no curso
-router.post('/courses/:courseId/enrollment-requests', verifyJWT, requestEnrollment);
+router.post('/courses/:courseId/enrollment-requests', verifyJWT, checkScheduleConflict, requestEnrollment);
 
 // Aluno lista as próprias solicitações
 router.get('/enrollment-requests/my', verifyJWT, listMyRequests);
@@ -28,6 +29,7 @@ router.patch(
   requireCourseAccess,
   (req, res, next) => { req.approverId = req.user.id; next(); },
   approveRequest,
+  checkScheduleConflict,
   enroll,
   finalizeApproval
 );

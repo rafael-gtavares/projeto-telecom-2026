@@ -2,10 +2,11 @@ const router = require('express').Router();
 const { enroll, getMyEnrollments, checkEnrollment, cancelEnrollment, updateSituation, getUserEnrollments, releaseCertificate } = require('../controllers/enrollments.controller');
 const { getCourseConflicts } = require('../controllers/calendar.controller');
 const verifyJWT = require('../middleware/auth');
+const checkScheduleConflict = require('../middleware/scheduleConflict');
 const { requireMinimumRole } = require('../middleware/roles')
 const { ROLES } = require('../constants/roles');
 
-router.post('/', verifyJWT, enroll);
+router.post('/', verifyJWT, checkScheduleConflict, enroll);
 router.get('/my', verifyJWT, getMyEnrollments);
 router.get('/user/:userId', verifyJWT, requireMinimumRole(ROLES.ADMIN), getUserEnrollments)
 router.get('/check/:courseId', verifyJWT, checkEnrollment);
