@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Zap, Briefcase, Globe, BookOpen, Star, Quote, Calendar } from 'lucide-react'
+import { ArrowRight, Zap, Briefcase, Globe, BookOpen, Star, Quote, Calendar, MapPin } from 'lucide-react'
 import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import EventCard from '../components/courses/EventCard'
@@ -34,6 +34,11 @@ const heroHighlights = [
   { icon: Briefcase, label: 'Conexão com o mercado' },
   { icon: Globe, label: 'Tecnologia de ponta' },
 ]
+
+const CEFET_ENDERECO = 'Av. Maracanã, 229 — Maracanã, Rio de Janeiro/RJ'
+const CEFET_MAPS_URL =
+  'https://www.google.com/maps/search/?api=1&query=' +
+  encodeURIComponent('CEFET/RJ, Av. Maracanã, 229, Maracanã, Rio de Janeiro - RJ')
 
 const Home = () => {
   const { isAuthenticated } = useAuth()
@@ -216,9 +221,24 @@ const Home = () => {
                 </span>
               </h1>
 
-              <p className="text-text-secondary text-base md:text-lg leading-relaxed mb-8 max-w-lg">
+              <p className="text-text-secondary text-base md:text-lg leading-relaxed mb-5 max-w-lg">
                 O curso de Telecomunicações do CEFET/RJ prepara você para dominar as tecnologias que conectam pessoas, empresas e o futuro. Seja o profissional que o mercado busca.
               </p>
+
+              {/* Localização — onde os cursos são ministrados */}
+              <a
+                href={CEFET_MAPS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-start gap-2.5 text-left bg-white/70 backdrop-blur-sm border border-primary/15 rounded-xl px-3.5 py-2.5 mb-8 max-w-lg shadow-sm hover:border-primary hover:shadow-hover transition-all duration-200"
+              >
+                <MapPin size={18} className="text-primary mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-text-secondary leading-snug">
+                  <strong className="block text-text-primary font-semibold">Aulas presenciais no CEFET/RJ</strong>
+                  {CEFET_ENDERECO}
+                  <span className="block text-primary font-medium group-hover:underline">Ver no mapa</span>
+                </span>
+              </a>
 
               <div className="flex flex-wrap gap-3 justify-center md:justify-start w-full mb-8">
                 <a href="#cursos">
