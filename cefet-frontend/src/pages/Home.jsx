@@ -35,10 +35,10 @@ const heroHighlights = [
   { icon: Globe, label: 'Tecnologia de ponta' },
 ]
 
-const CEFET_ENDERECO = 'Av. Maracanã, 229 — Maracanã, Rio de Janeiro/RJ'
+const CEFET_ENDERECO = 'R. Gen. Canabarro, 485 — Maracanã, Rio de Janeiro - RJ, 20271-204'
 const CEFET_MAPS_URL =
   'https://www.google.com/maps/search/?api=1&query=' +
-  encodeURIComponent('CEFET/RJ, Av. Maracanã, 229, Maracanã, Rio de Janeiro - RJ')
+  encodeURIComponent('R. Gen. Canabarro, 485 — Maracanã, Rio de Janeiro - RJ, 20271-204')
 
 const Home = () => {
   const { isAuthenticated } = useAuth()
